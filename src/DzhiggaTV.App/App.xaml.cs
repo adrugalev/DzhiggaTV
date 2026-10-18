@@ -1,0 +1,35 @@
+using System.Windows;
+using System.Windows.Controls;
+
+namespace DzhiggaTV.App;
+
+public partial class App : Application
+{
+    public static string DisplayVersion => "v" + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "—");
+
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+        DispatcherUnhandledException += (_, args) =>
+        {
+            var diagnosticIndex = Array.IndexOf(e.Args, "--diagnostic-report");
+            if (diagnosticIndex >= 0 && diagnosticIndex + 1 < e.Args.Length)
+            {
+                // Only exception type + method stack, never Message/Data/URL or credentials.
+                try { File.AppendAllText(e.Args[diagnosticIndex + 1], args.Exception.GetType().FullName + "\n" + args.Exception.StackTrace + "\n"); } catch { }
+            }
+            // Exception text may contain provider credentials. Display a fixed, safe message.
+            MessageBox.Show("Не удалось выполнить действие. Попробуйте ещё раз. Приватные адреса не записываются в журнал.", "DzhiggaTV", MessageBoxButton.OK, MessageBoxImage.Warning);
+            args.Handled = true;
+        };
+        MainWindow = new MainWindow(e.Args);
+        MainWindow.Show();
+    }
+    private async void Favorite_Click(object sender, RoutedEventArgs e)
+    {
+        e.Handled = true;
+        if (sender is Button { Tag: ChannelItem item } && MainWindow is MainWindow window)
+            await window.Model.ToggleFavoriteAsync(item);
+    }
+}

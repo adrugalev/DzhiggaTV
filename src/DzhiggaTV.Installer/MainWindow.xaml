@@ -1,0 +1,16 @@
+<Window x:Class="DzhiggaTV.Installer.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="DzhiggaTV Setup" Width="640" Height="540" MinWidth="600" MinHeight="500" WindowStartupLocation="CenterScreen" ResizeMode="CanMinimize" Background="#10151B" Foreground="#F1F5F9" FontFamily="Segoe UI Variable" FontSize="14">
+  <Grid Margin="32"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <StackPanel><TextBlock Text="DzhiggaTV" FontSize="32" FontWeight="SemiBold"/><TextBlock Text="Телевидение в вашем ритме" Foreground="#8D9CA9" Margin="0,7,0,0"/></StackPanel>
+    <StackPanel Grid.Row="1" VerticalAlignment="Center">
+      <TextBlock Text="Установка для текущего пользователя" FontSize="19" FontWeight="SemiBold" Margin="0,0,0,10"/>
+      <TextBlock Text="Плеер и видеодвижок устанавливаются вместе. Плейлисты и настройки сохраняются отдельно." TextWrapping="Wrap" Foreground="#A4B0BC" Margin="0,0,0,24"/>
+      <TextBlock Text="Папка DzhiggaTV" Foreground="#A4B0BC" Margin="0,0,0,8"/>
+      <Grid Margin="0,0,0,20"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="DestinationText" Padding="10,9" Background="#1D2630" Foreground="#EFF5F8" BorderBrush="#34414D" VerticalContentAlignment="Center"/><Button x:Name="BrowseButton" Grid.Column="1" Content="Обзор…" Margin="8,0,0,0" Background="#273440" Foreground="#DCE6ED" Click="Browse_Click"/></Grid>
+      <CheckBox x:Name="StartMenuCheck" Content="Ярлык в меню «Пуск»" IsChecked="True"/>
+      <CheckBox x:Name="DesktopCheck" Content="Ярлык на рабочем столе"/>
+      <ProgressBar x:Name="Progress" Height="5" Minimum="0" Maximum="100" Foreground="#36D9CB" Background="#273440" BorderThickness="0" Margin="0,12,0,12"/>
+      <TextBlock x:Name="StatusText" Text="Готово к установке" Foreground="#A4B0BC" TextWrapping="Wrap" MinHeight="42"/>
+    </StackPanel>
+    <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Windows 11 · x64" Foreground="#728491" VerticalAlignment="Center"/><Button x:Name="CancelButton" Grid.Column="1" Content="Закрыть" Background="#273440" Foreground="#DCE6ED" Margin="0,0,10,0" Click="Cancel_Click"/><Button x:Name="InstallButton" Grid.Column="2" Content="Установить" Click="Install_Click"/></Grid>
+  </Grid>
+</Window>

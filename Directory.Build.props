@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <Version>1.0.10</Version>
+    <Authors>DzhiggaTV contributors</Authors>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,15 @@
+bin/
+obj/
+work/
+outputs/
+.vs/
+*.user
+*.db
+*.db-shm
+*.db-wal
+*.m3u
+*.m3u8
+*.log
+native/*.dll
+native/*.7z
+!tests/**/Fixtures/*.m3u

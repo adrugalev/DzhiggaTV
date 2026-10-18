@@ -1,0 +1,54 @@
+using System.Windows;
+using System.Windows.Controls;
+
+namespace DzhiggaTV.App;
+
+public sealed class ReleaseNotesWindow : Window
+{
+    public ReleaseNotesWindow(Window owner)
+    {
+        Theme.Window(this);
+        Owner = owner; Title = "DzhiggaTV · История версий"; ShowInTaskbar = false;
+        Width = 610; Height = 620; MinWidth = 480; MinHeight = 360;
+        MaxHeight = Math.Max(360, SystemParameters.WorkArea.Height - 60);
+        WindowStartupLocation = WindowStartupLocation.CenterOwner;
+
+        var root = new DockPanel { Margin = new(24) }; Content = root;
+        var heading = new StackPanel { Margin = new(0, 0, 0, 18) };
+        heading.Children.Add(new TextBlock { Text = "История версий", FontSize = 24, FontWeight = FontWeights.SemiBold });
+        var current = new TextBlock { Text = $"Текущая версия — {App.DisplayVersion}", FontSize = 12, Margin = new(0, 7, 0, 0) };
+        current.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); heading.Children.Add(current);
+        DockPanel.SetDock(heading, Dock.Top); root.Children.Add(heading);
+
+        var close = new Button { Content = "Закрыть", IsCancel = true, IsDefault = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0, 16, 0, 0) };
+        DockPanel.SetDock(close, Dock.Bottom); root.Children.Add(close);
+        var notes = new StackPanel();
+        (string Version, string Summary)[] releases =
+        [
+            ("1.0.10", "История изменений открывается по нажатию на номер версии."),
+            ("1.0.9", "Убран информационный блок EPG.ONE над поиском каналов."),
+            ("1.0.8", "Убраны лишние кнопки из верхней панели."),
+            ("1.0.7", "Новый логотип программы, тёмный заголовок окна и логотип текущего канала."),
+            ("1.0.6", "Исправлено меню плеера и обновлено оформление номера версии."),
+            ("1.0.5", "Номер версии появился рядом с названием приложения."),
+            ("1.0.4", "Упрощена навигация; категории открываются по клику, боковая панель свёрнута при запуске."),
+            ("1.0.3", "Компактное управление при наведении; убрана верхняя плашка внутри видео."),
+            ("1.0.2", "Убраны буквы под логотипами и исправлено закрытие приложения."),
+            ("1.0.1", "Исправлена загрузка телепрограммы и логотипов EPG.ONE."),
+            ("1.0.0", "Первый выпуск: IPTV, телепрограмма, избранное, история и мини-плеер.")
+        ];
+        foreach (var (version, summary) in releases)
+        {
+            var row = new Grid();
+            row.ColumnDefinitions.Add(new() { Width = new(76) }); row.ColumnDefinitions.Add(new());
+            var label = new TextBlock { Text = "v" + version, FontWeight = FontWeights.SemiBold, FontSize = 13, Margin = new(0, 1, 10, 0) };
+            label.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); row.Children.Add(label);
+            var text = new TextBlock { Text = summary, TextWrapping = TextWrapping.Wrap, FontSize = 13, LineHeight = 20 };
+            Grid.SetColumn(text, 1); row.Children.Add(text);
+            var card = new Border { Child = row, Padding = new(12, 10, 12, 10), CornerRadius = new(7), Margin = new(0, 0, 5, 4) };
+            if ("v" + version == App.DisplayVersion) card.SetResourceReference(BackgroundProperty, "CardBrush");
+            notes.Children.Add(card);
+        }
+        root.Children.Add(new ScrollViewer { Content = notes, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
+    }
+}

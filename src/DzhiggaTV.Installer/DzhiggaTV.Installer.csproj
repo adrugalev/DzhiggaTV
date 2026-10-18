@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>DzhiggaTV.Setup</AssemblyName>
+    <Product>DzhiggaTV</Product>
+    <Description>Установка DzhiggaTV для текущего пользователя</Description>
+    <Company>DzhiggaTV</Company>
+    <Version>1.0.10</Version>
+    <PlatformTarget>x64</PlatformTarget>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="Exists('..\DzhiggaTV.App\Assets\DzhiggaTV.ico')">..\DzhiggaTV.App\Assets\DzhiggaTV.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="SmokeTests/**/*.cs" />
+    <EmbeddedResource Include="$(PortableArchive)" LogicalName="DzhiggaTV.Portable.zip" Condition="'$(PortableArchive)' != '' and Exists('$(PortableArchive)')" />
+  </ItemGroup>
+</Project>

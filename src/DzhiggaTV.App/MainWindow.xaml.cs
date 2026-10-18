@@ -1,0 +1,379 @@
+using System.ComponentModel;
+using System.Globalization;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
+using DzhiggaTV.Player;
+using Microsoft.Win32;
+
+namespace DzhiggaTV.App;
+
+public partial class MainWindow : Window
+{
+    public MainViewModel Model { get; }
+    public MpvPlayer Player { get; } = new();
+    public bool IsFullscreen { get; private set; }
+    public bool IsMini { get; private set; }
+    public bool HasPlayback { get; private set; }
+    private OverlayWindow? _overlay;
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
+    private CancellationTokenSource? _playCancellation;
+    private readonly string[] _args;
+    private WindowSnapshot? _snapshot;
+    private bool _initialized, _engineReady, _modal, _closing, _shutdownComplete, _layoutQueued;
+    private bool _navigationCollapsed = true;
+    private Point _dragOrigin;
+    private ChannelItem? _dragItem;
+    private long _playGeneration;
+    private record WindowSnapshot(double Left, double Top, double Width, double Height, WindowState State);
+
+    public MainWindow(string[] args)
+    {
+        _args = args;
+        var custom = Argument("--data-dir");
+        Model = new(custom ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV"));
+        InitializeComponent(); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
+        VideoHost.HandleReady += (_, _) => InitializeEngine();
+        VideoHost.DoubleClicked += (_, _) => ToggleFullscreen();
+        VideoHost.PointerActivity += (_, e) => { _overlay?.Reveal(); if (e.Kind == NativePointerKind.Wheel) Player.Volume = Math.Clamp(Player.Volume + Math.Sign(e.WheelDelta) * 5, 0, 100); };
+        Player.StateChanged += (_, e) => Dispatcher.BeginInvoke(() =>
+        {
+            if (_closing) return;
+            Model.PlaybackStatus = e.Message;
+            if (e.State == PlaybackState.Error) Model.Status = e.Message;
+            HasPlayback = e.State is PlaybackState.Playing or PlaybackState.Paused or PlaybackState.Buffering or PlaybackState.Reconnecting or PlaybackState.Loading;
+            _overlay?.RefreshState();
+        });
+        Loaded += async (_, _) => await LoadedAsync();
+        LayoutUpdated += (_, _) => QueueOverlayLayout();
+        LocationChanged += (_, _) => QueueOverlayLayout();
+        StateChanged += (_, _) => QueueOverlayLayout();
+        SizeChanged += (_, _) => QueueOverlayLayout();
+        _timer.Tick += async (_, _) =>
+        {
+            ClockText.Text = DateTime.Now.ToString("HH:mm"); _overlay?.Tick();
+            if (_initialized && DateTime.Now.Second % 30 == 0) await GuardAsync(Model.UpdateNowNextAsync);
+        };
+        Closing += OnClosing;
+    }
+    private string? Argument(string name) { var i = Array.IndexOf(_args, name); return i >= 0 && i + 1 < _args.Length ? _args[i + 1] : null; }
+    private async Task LoadedAsync()
+    {
+        await GuardAsync(async () =>
+        {
+            await Model.InitializeAsync();
+            ApplySettings(); _initialized = true; InitializeEngine();
+            _overlay = new(this) { Owner = this, DataContext = Model }; _overlay.Show(); SyncOverlay(); _timer.Start();
+            if (Argument("--playlist") is { } playlist) await Model.ImportAsync(playlist);
+            if (Argument("--media") is { } media)
+            {
+                await PlayLocalAsync(media);
+                if (Argument("--smoke-report") is { } report) _ = SmokeAsync(report, media);
+            }
+            else if ((Model.Flag("resume") || _args.Contains("--resume")) && Model.AllChannels.Find(c => c.Id == Model.Setting("last.channel") && Model.IsAllowed(c)) is { } last) await PlayAsync(last);
+            await OfferEpgConnectionAsync();
+            await LoadViewportAsync();
+            if (Argument("--epg-report") is { } epgReport) _ = GuardAsync(() => VerifyEpgAsync(epgReport));
+        });
+    }
+    private void InitializeEngine()
+    {
+        if (_engineReady || VideoHost.VideoHandle == IntPtr.Zero) return;
+        try { Player.Initialize(VideoHost.VideoHandle); _engineReady = true; if (_initialized) ApplyPlayerSettings(); }
+        catch { Model.PlaybackStatus = "Не удалось загрузить libmpv. Проверьте папку native и разрядность x64."; }
+    }
+    public async Task GuardAsync(Func<Task> action)
+    {
+        try { await action(); } catch (OperationCanceledException) { }
+        catch { Model.Status = "Действие не завершено. Проверьте доступность файла или сети и повторите."; }
+    }
+    public async Task PlayAsync(ChannelItem item)
+    {
+        if (!_engineReady || !Model.IsAllowed(item)) return;
+        var generation = ++_playGeneration;
+        _playCancellation?.Cancel(); _playCancellation?.Dispose(); _playCancellation = new();
+        var token = _playCancellation.Token;
+        HasPlayback = true; Model.PlaybackStatus = "Подключение к каналу…"; _overlay?.RefreshState();
+        await GuardAsync(async () =>
+        {
+            await Player.PlayAsync(item.Channel.Url, token);
+            if (generation != _playGeneration || token.IsCancellationRequested) return;
+            await Model.RecordPlaybackAsync(item);
+            _overlay?.Reveal();
+        });
+    }
+    public async Task PlayLocalAsync(string file)
+    {
+        if (!_engineReady) return;
+        await Player.PlayAsync(Path.GetFullPath(file)); HasPlayback = true; _overlay?.RefreshState();
+    }
+    private async void Channel_Selected(object sender, SelectionChangedEventArgs e)
+    { if (_initialized && ChannelList.SelectedItem is ChannelItem item && Model.Active?.Id != item.Id) await PlayAsync(item); }
+    public async Task NextChannelAsync(int direction)
+    {
+        var list = Model.VisibleChannels; if (list.Count == 0) return;
+        var index = Model.Active is null ? -1 : list.IndexOf(Model.Active);
+        var next = list[(index + direction + list.Count) % list.Count];
+        await PlayAsync(next); Model.SelectedChannel = next; ChannelList.ScrollIntoView(next);
+    }
+    public async Task PreviousChannelAsync() { if (Model.AllChannels.Find(c => c.Id == Model.PreviousId) is { } item) await PlayAsync(item); }
+    public async Task ImportPlaylistAsync()
+    {
+        await WithModalAsync(async () =>
+        {
+            var dialog = new OpenFileDialog { Filter = "IPTV-плейлисты (*.m3u;*.m3u8)|*.m3u;*.m3u8|Все файлы|*.*", Title = "DzhiggaTV · добавить плейлист" };
+            if (dialog.ShowDialog(this) == true) await GuardAsync(() => Model.ImportAsync(dialog.FileName));
+        });
+        await OfferEpgConnectionAsync();
+    }
+    private async Task OfferEpgConnectionAsync()
+    {
+        if (_args.Contains("--no-prompt") || Model.AllChannels.Count == 0 || Model.Flag("epg.prompted")) return;
+        var answer = MessageBoxResult.No;
+        await WithModalAsync(() =>
+        {
+            answer = MessageBox.Show(this, "Подключить телепрограмму и логотипы EPG.ONE?\n\nЗагрузка продолжится в фоне, можно сразу смотреть каналы. Публичное зеркало сервиса подключается автоматически; адреса ваших трансляций ему не отправляются.", "DzhiggaTV · телепрограмма", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            return Task.CompletedTask;
+        });
+        Model.SetSetting("epg.prompted", true); Model.SetSetting("epg.enabled", answer == MessageBoxResult.Yes); await Model.SaveAsync();
+        if (answer == MessageBoxResult.Yes) _ = GuardAsync(Model.RefreshEpgAsync);
+    }
+    private async void Settings_Click(object sender, RoutedEventArgs e) => await ShowSettingsAsync();
+    private async void Version_Click(object sender, RoutedEventArgs e) => await WithModalAsync(() => { new ReleaseNotesWindow(this).ShowDialog(); return Task.CompletedTask; });
+    public async Task ShowSettingsAsync()
+    {
+        await WithModalAsync(async () => { new SettingsWindow(this).ShowDialog(); await Model.SaveAsync(); ApplySettings(); await Model.ReloadAsync(); await Model.RefreshEpgViewAsync(); });
+        await OfferEpgConnectionAsync();
+    }
+    private async void Guide_Click(object sender, RoutedEventArgs e) => await ShowGuideAsync();
+    public async Task ShowGuideAsync() => await WithModalAsync(() => { new GuideWindow(this).ShowDialog(); return Task.CompletedTask; });
+    public async Task WithModalAsync(Func<Task> action)
+    {
+        _modal = true; _overlay?.Hide();
+        try { await action(); } finally { _modal = false; if (!_closing && WindowState != WindowState.Minimized) { _overlay?.Show(); SyncOverlay(); } }
+    }
+    private async void Navigate_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string tag } button) return;
+        if (tag == "guide") { await ShowGuideAsync(); return; }
+        if (tag == "categories")
+        {
+            var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.Right, MaxHeight = Math.Min(520, SystemParameters.WorkArea.Height - 80) };
+            foreach (var group in Model.Groups)
+            {
+                var entry = new MenuItem { Header = new TextBlock { Text = group }, IsCheckable = true, IsChecked = Model.SelectedGroup == group };
+                entry.Click += async (_, _) =>
+                {
+                    Model.Search = ""; Model.SelectedGroup = group; Model.SetSection("all");
+                    if (Model.VisibleChannels.FirstOrDefault() is { } first) ChannelList.ScrollIntoView(first);
+                    await GuardAsync(LoadViewportAsync);
+                };
+                menu.Items.Add(entry);
+            }
+            if (Model.Groups.Count == 1) menu.Items.Add(new MenuItem { Header = "Нет категорий", IsEnabled = false });
+            menu.PlacementTarget = button; menu.IsOpen = true; return;
+        }
+        if (tag == "all") { Model.Search = ""; Model.SelectedGroup = "Все категории"; }
+        Model.SetSection(tag); await LoadViewportAsync();
+    }
+    private void CollapseNav_Click(object sender, RoutedEventArgs e) => SetNavigationCollapsed(!_navigationCollapsed);
+    private void SetNavigationCollapsed(bool collapsed)
+    {
+        _navigationCollapsed = collapsed;
+        NavigationColumn.Width = new(collapsed ? 64 : 196);
+        NavHeading.Visibility = SidebarFootnote.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var label in FindVisualChildren<TextBlock>(Navigation).Where(t => Equals(t.Tag, "NavLabel")))
+            label.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        NavToggleButton.ToolTip = collapsed ? "Развернуть панель" : "Свернуть панель";
+        System.Windows.Automation.AutomationProperties.SetName(NavToggleButton, (string)NavToggleButton.ToolTip);
+    }
+    private void Channel_RightClick(object sender, MouseButtonEventArgs e)
+    {
+        var item = FindParent<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext as ChannelItem; if (item is null) return;
+        var menu = new ContextMenu();
+        void Add(string label, Func<Task> action) { var option = new MenuItem { Header = label }; option.Click += async (_, _) => await GuardAsync(action); menu.Items.Add(option); }
+        Add(item.IsFavorite ? "Убрать из избранного" : "Добавить в избранное", () => Model.ToggleFavoriteAsync(item));
+        Add("Переименовать в приложении…", () => WithModalAsync(async () => { if (TextPrompt.Show(this, "Название канала", "Новое название", item.Name) is { Length: > 0 } name) { Model.State.Renames[item.Id] = name; item.Name = name; await Model.SaveAsync(); Model.RaisePlayback(); } }));
+        Add("Пользовательская категория…", () => WithModalAsync(async () => { if (TextPrompt.Show(this, "Категория", "Название категории", item.Group) is { Length: > 0 } group) { Model.State.CustomCategories[item.Id] = group; await Model.SaveAsync(); await Model.ReloadAsync(); } }));
+        Add("Назначить телепрограмму…", () => WithModalAsync(() => { new MappingWindow(this, item).ShowDialog(); return Model.RefreshEpgViewAsync(); }));
+        Add("Установить логотип…", () => WithModalAsync(async () => { var d = new OpenFileDialog { Filter = "Изображения|*.png;*.jpg;*.jpeg;*.webp;*.bmp" }; if (d.ShowDialog(this) == true) { Model.State.UserLogos[item.Id] = d.FileName; Model.InvalidateLogo(item.Id); await Model.SaveAsync(); await Model.LoadViewportAsync([item]); } }));
+        Add("Скрыть канал", async () => { Model.State.Hidden.Add(item.Id); await Model.SaveAsync(); Model.RefreshFilter(); });
+        menu.PlacementTarget = ChannelList; menu.IsOpen = true; e.Handled = true;
+    }
+    private void Channel_DragStart(object sender, MouseButtonEventArgs e) { _dragOrigin = e.GetPosition(ChannelList); _dragItem = FindParent<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext as ChannelItem; }
+    private void Channel_DragMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || _dragItem is null) return;
+        if ((e.GetPosition(ChannelList) - _dragOrigin).Length < 9) return;
+        var item = _dragItem; _dragItem = null; DragDrop.DoDragDrop(ChannelList, item, DragDropEffects.Move);
+    }
+    private async void Channel_Drop(object sender, DragEventArgs e)
+    { if (e.Data.GetData(typeof(ChannelItem)) is ChannelItem from && FindParent<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext is ChannelItem to) await Model.MoveAsync(from.Id, to.Id); }
+    private async void Channels_Scrolled(object sender, ScrollChangedEventArgs e) { if (_initialized) await GuardAsync(LoadViewportAsync); }
+    private Task LoadViewportAsync() => Model.LoadViewportAsync(FindVisualChildren<ListBoxItem>(ChannelList).Select(c => c.DataContext).OfType<ChannelItem>(), true);
+    public static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
+    { for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++) { var c = VisualTreeHelper.GetChild(parent, i); if (c is T match) yield return match; foreach (var child in FindVisualChildren<T>(c)) yield return child; } }
+    private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
+    { while (child is not null) { if (child is T match) return match; child = VisualTreeHelper.GetParent(child); } return null; }
+
+    public void ToggleFullscreen()
+    {
+        if (IsMini) { RestoreWindow(); return; }
+        if (IsFullscreen) { RestoreWindow(); return; }
+        RememberWindow(); IsFullscreen = true;
+        WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize;
+        CollapseChrome(); WindowState = WindowState.Maximized; _overlay?.Reveal(); QueueOverlayLayout();
+    }
+    public void ToggleMini()
+    {
+        if (IsMini) { RestoreWindow(); return; }
+        if (IsFullscreen) RestoreWindow();
+        RememberWindow(); IsMini = true;
+        WindowState = WindowState.Normal; WindowStyle = WindowStyle.ToolWindow; ResizeMode = ResizeMode.CanResizeWithGrip; Topmost = true;
+        MinWidth = 420; MinHeight = 260; Width = Parse("mini.width", 560); Height = Parse("mini.height", 350);
+        Left = Parse("mini.left", Math.Max(0, SystemParameters.WorkArea.Right - Width - 24)); Top = Parse("mini.top", Math.Max(0, SystemParameters.WorkArea.Bottom - Height - 24));
+        ClampToScreen(); CollapseChrome(); WindowAppearance.Apply(this); _overlay?.Reveal(); QueueOverlayLayout();
+    }
+    private double Parse(string key, double fallback) => double.TryParse(Model.Setting(key), CultureInfo.InvariantCulture, out var value) && double.IsFinite(value) ? value : fallback;
+    private void RememberWindow() => _snapshot = new(Left, Top, ActualWidth, ActualHeight, WindowState);
+    private void CollapseChrome()
+    {
+        Header.Visibility = Navigation.Visibility = ChannelPanel.Visibility = Splitter.Visibility = ViewingHeading.Visibility = ProgrammePanel.Visibility = StatusBar.Visibility = Visibility.Collapsed;
+        TopRow.Height = StatusRow.Height = ViewingHeadingRow.Height = ProgrammeRow.Height = new(0);
+        NavigationColumn.MinWidth = ChannelColumn.MinWidth = 0;
+        NavigationColumn.Width = ChannelColumn.Width = SplitterColumn.Width = new(0);
+        ViewingPanel.Margin = new(0); VideoBorder.CornerRadius = new(0); VideoBorder.BorderThickness = new(0);
+    }
+    public void RestoreWindow()
+    {
+        if (IsMini) { foreach (var (key, value) in new[] { ("mini.left", Left), ("mini.top", Top), ("mini.width", ActualWidth), ("mini.height", ActualHeight) }) Model.SetSetting(key, value); _ = Model.SaveAsync(); }
+        IsMini = IsFullscreen = false; Topmost = false; WindowState = WindowState.Normal; WindowStyle = WindowStyle.SingleBorderWindow; ResizeMode = ResizeMode.CanResize;
+        MinWidth = 940; MinHeight = 600;
+        Header.Visibility = Navigation.Visibility = ChannelPanel.Visibility = Splitter.Visibility = ViewingHeading.Visibility = ProgrammePanel.Visibility = StatusBar.Visibility = Visibility.Visible;
+        TopRow.Height = new(76); StatusRow.Height = new(32); ViewingHeadingRow.Height = GridLength.Auto; ProgrammeRow.Height = new(170);
+        NavigationColumn.MinWidth = 64; SetNavigationCollapsed(_navigationCollapsed); ChannelColumn.Width = new(350); ChannelColumn.MinWidth = 270; SplitterColumn.Width = new(5);
+        ViewingPanel.Margin = new(20,20,24,14); VideoBorder.CornerRadius = new(12); VideoBorder.BorderThickness = new(1);
+        if (_snapshot is { } s) { Width = s.Width; Height = s.Height; Left = s.Left; Top = s.Top; WindowState = s.State; }
+        WindowAppearance.Apply(this);
+        _overlay?.Reveal(); QueueOverlayLayout();
+    }
+    private void ClampToScreen() { Left = Math.Clamp(Left, SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - Width); Top = Math.Clamp(Top, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Height); }
+    private void QueueOverlayLayout()
+    {
+        if (_layoutQueued || _closing) return; _layoutQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => { _layoutQueued = false; SyncOverlay(); });
+    }
+    private void SyncOverlay()
+    {
+        if (_overlay is null || !IsLoaded || _closing) return;
+        if (_modal || WindowState == WindowState.Minimized || !IsVisible) { _overlay.Hide(); return; }
+        if (!_overlay.IsVisible) _overlay.Show();
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var location = transform.Transform(VideoArea.PointToScreen(new Point()));
+        _overlay.Left = location.X; _overlay.Top = location.Y; _overlay.Width = Math.Max(1, VideoArea.ActualWidth); _overlay.Height = Math.Max(1, VideoArea.ActualHeight); _overlay.Topmost = Topmost;
+    }
+    private async void OnKeyDown(object sender, KeyEventArgs e) => await HandleKeyAsync(e);
+    public async Task HandleKeyAsync(KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key == Key.Escape && (IsFullscreen || IsMini)) { RestoreWindow(); e.Handled = true; return; }
+        if (key == Key.F11 || key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) { ToggleFullscreen(); e.Handled = true; return; }
+        if (key == Key.M && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleMini(); e.Handled = true; return; }
+        if (key == Key.F && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); e.Handled = true; return; }
+        if (e.OriginalSource is TextBox || e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase) return;
+        switch (key)
+        {
+            case Key.F11: ToggleFullscreen(); break;
+            case Key.Enter when Keyboard.Modifiers.HasFlag(ModifierKeys.Alt): ToggleFullscreen(); break;
+            case Key.Space: Player.TogglePause(); break;
+            case Key.M when Keyboard.Modifiers.HasFlag(ModifierKeys.Control): ToggleMini(); break;
+            case Key.M: Player.IsMuted = !Player.IsMuted; break;
+            case Key.I: _overlay?.ToggleStatistics(); break;
+            case Key.C: _overlay?.ToggleDrawer(); break;
+            case Key.F when Keyboard.Modifiers.HasFlag(ModifierKeys.Control): if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); break;
+            case Key.F: if (Model.Active is { } c) await Model.ToggleFavoriteAsync(c); break;
+            case Key.PageDown: await NextChannelAsync(1); break;
+            case Key.PageUp: await NextChannelAsync(-1); break;
+            case Key.Back: await PreviousChannelAsync(); break;
+            case Key.Up: Player.Volume = Math.Clamp(Player.Volume + 5, 0, 100); break;
+            case Key.Down: Player.Volume = Math.Clamp(Player.Volume - 5, 0, 100); break;
+            case Key.G: await ShowGuideAsync(); break;
+            default: return;
+        }
+        e.Handled = true; _overlay?.Reveal();
+    }
+    public void ApplySettings()
+    {
+        Theme.Apply(Model.Setting("theme", "dark") == "light");
+        Model.Epg.AllowInsecureHttp = Model.Logos.AllowInsecureHttp = Model.Flag("epg.http");
+        ApplyPlayerSettings();
+    }
+    public void ApplyPlayerSettings()
+    {
+        if (!_engineReady) return;
+        Player.Volume = Parse("volume", 70); Player.IsMuted = Model.Flag("muted");
+        if (Enum.TryParse<BufferPreset>(Model.Setting("buffer", "Balanced"), out var buffer)) Player.SetBufferPreset(buffer);
+        if (Enum.TryParse<HdrMode>(Model.Setting("hdr", "Auto"), out var hdr)) Player.SetHdrMode(hdr);
+        if (Enum.TryParse<AspectMode>(Model.Setting("aspect", "Original"), out var aspect)) Player.SetAspect(aspect);
+        Player.SetPreferredLanguages(Model.Setting("audio.language", "rus,ru,eng,en"), Model.Setting("subtitle.language", "rus,ru"));
+        Player.SetAudioDevice(Model.Setting("audio.device", "auto"));
+    }
+    private async void OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (_shutdownComplete) return;
+        e.Cancel = true;
+        if (_closing) return;
+        _closing = true; _timer.Stop(); _playCancellation?.Cancel(); _overlay?.Close();
+        Model.SetSetting("volume", Player.Volume); Model.SetSetting("muted", Player.IsMuted);
+        await GuardAsync(Model.SaveAsync);
+        try { Model.Dispose(); Player.Dispose(); }
+        finally
+        {
+            _shutdownComplete = true;
+            // SQLite can complete synchronously. Finish the first Closing event before
+            // requesting the final close, otherwise WPF rejects the reentrant call.
+            _ = Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(Close));
+        }
+    }
+    private async Task SmokeAsync(string reportPath, string media)
+    {
+        var report = new Dictionary<string, object?>();
+        try
+        {
+            await Task.Delay(5000);
+            var before = Player.GetStatistics(); report["videoDecoded"] = before.Width > 0; report["statistics"] = before;
+            var handle = VideoHost.VideoHandle;
+            ToggleFullscreen(); await Task.Delay(1500); report["fullscreen"] = IsFullscreen && VideoHost.VideoHandle == handle && Player.GetStatistics().Width > 0;
+            RestoreWindow(); ToggleMini(); await Task.Delay(1500); report["mini"] = IsMini && Topmost && VideoHost.VideoHandle == handle && Player.GetStatistics().Width > 0;
+            RestoreWindow(); report["restored"] = !IsMini && !IsFullscreen && VideoHost.VideoHandle == handle;
+            var audio = Player.GetTracks().Where(t => t.Type == "audio").ToArray(); report["audioTrackCount"] = audio.Length;
+            if (audio.Length > 1) { Player.SelectAudio(audio[1].Id); await Task.Delay(500); report["audioSwitch"] = Player.GetTracks().Any(t => t.Id == audio[1].Id && t.Type == "audio" && t.Selected); }
+            Player.IsMuted = true; report["mute"] = Player.IsMuted; Player.IsMuted = false;
+            Player.TogglePause(); report["pause"] = Player.IsPaused; Player.TogglePause();
+            report["channels"] = Model.AllChannels.Count; report["groups"] = Model.AllChannels.Select(c => c.Channel.Group).Distinct().Count();
+            await Player.PlayAsync(media); await Task.Delay(1200); report["reload"] = Player.GetStatistics().Width > 0;
+            Model.Status = "Автоматическая проверка UI и локального видео завершена.";
+        }
+        catch (Exception error) { report["errorType"] = error.GetType().Name; }
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);
+        await File.WriteAllTextAsync(reportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
+    }
+    private async Task VerifyEpgAsync(string reportPath)
+    {
+        await Model.RefreshEpgAsync();
+        await LoadViewportAsync();
+        var until = DateTime.UtcNow.AddSeconds(30);
+        while (DateTime.UtcNow < until && !Model.VisibleChannels.Take(20).Any(c => c.LogoPath is not null)) await Task.Delay(250);
+        var rows = Model.VisibleChannels.Take(20).ToArray();
+        var decoded = 0;
+        foreach (var row in rows.Where(c => c.LogoPath is not null))
+        {
+            try { var bitmap = System.Windows.Media.Imaging.BitmapFrame.Create(new Uri(row.LogoPath!)); if (bitmap.PixelWidth > 0 && bitmap.PixelHeight > 0) decoded++; } catch { }
+        }
+        var report = new { Version = typeof(MainWindow).Assembly.GetName().Version?.ToString(), Channels = Model.AllChannels.Count, MappedChannels = Model.Mappings.Count, EpgChannels = Model.EpgChannels.Count, Programmes = await Model.Store.GetProgrammeCountAsync(), VisibleRows = rows.Length, RowsWithProgramme = rows.Count(c => c.Current is not null), DownloadedLogos = rows.Count(c => c.LogoPath is not null), WpfDecodedLogos = decoded, Model.EpgStatus, Model.IsEpgBusy };
+        await File.WriteAllTextAsync(reportPath, JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
+    }
+}

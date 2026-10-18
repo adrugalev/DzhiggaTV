@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>DzhiggaTV</AssemblyName>
+    <RootNamespace>DzhiggaTV.App</RootNamespace>
+    <ApplicationIcon>Assets\DzhiggaTV.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="Assets\DzhiggaTV-logo.png" />
+    <Resource Include="Assets\DzhiggaTV.ico" />
+    <ProjectReference Include="..\DzhiggaTV.Core\DzhiggaTV.Core.csproj" />
+    <ProjectReference Include="..\DzhiggaTV.Services\DzhiggaTV.Services.csproj" />
+    <ProjectReference Include="..\DzhiggaTV.Player\DzhiggaTV.Player.csproj" />
+    <Content Include="..\..\native\*.dll" Link="native\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

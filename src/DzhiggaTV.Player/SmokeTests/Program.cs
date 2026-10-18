@@ -1,0 +1,195 @@
+using System.Diagnostics;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.Json;
+using DzhiggaTV.Player;
+
+// Native integration harness; no test framework packages and no private playlist are needed.
+// Usage: dotnet run --project src/DzhiggaTV.Player/SmokeTests -- <absolute libmpv DLL> <scratch directory> [generated test-media.mkv]
+internal static class Program
+{
+    private static readonly List<string> Passed = [];
+    private static void Assert(bool condition, string description)
+    {
+        if (!condition) throw new InvalidOperationException(description);
+        Passed.Add(description);
+    }
+
+    private static async Task WaitUntil(Func<bool> predicate, int milliseconds = 12000)
+    {
+        var time = Stopwatch.StartNew();
+        while (!predicate())
+        {
+            if (time.ElapsedMilliseconds > milliseconds) throw new TimeoutException("Player state transition timed out.");
+            await Task.Delay(50);
+        }
+    }
+
+    private static string Fixture(string directory, int width, int height)
+    {
+        var file = Path.Combine(directory, $"test-{width}x{height}.y4m");
+        using var output = File.Create(file);
+        output.Write(Encoding.ASCII.GetBytes($"YUV4MPEG2 W{width} H{height} F25:1 Ip A1:1 C420jpeg\n"));
+        var frame = new byte[width * height * 3 / 2];
+        frame.AsSpan(0, width * height).Fill(100);
+        frame.AsSpan(width * height).Fill(128);
+        for (int i = 0; i < 250; i++) { output.Write("FRAME\n"u8); output.Write(frame); }
+        return file;
+    }
+
+    [STAThread]
+    private static int Main(string[] args)
+    {
+        try { Run(args).GetAwaiter().GetResult(); return 0; }
+        catch (Exception exception)
+        {
+            // Error messages from the wrapper never contain a media URL. Do not print arbitrary exception data.
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, failure = exception.GetType().Name, code = exception is MpvException mpv ? mpv.ErrorCode : (int?)null }));
+            return 1;
+        }
+    }
+
+    private static async Task Run(string[] args)
+    {
+        if (args.Length is < 2 or > 4) throw new ArgumentException("libmpv DLL and scratch directory required.");
+        string native = Path.Combine(AppContext.BaseDirectory, "native");
+        Directory.CreateDirectory(native);
+        File.Copy(args[0], Path.Combine(native, "libmpv-2.dll"), true);
+        Directory.CreateDirectory(args[1]);
+        string first = Fixture(args[1], 160, 90), latest = Fixture(args[1], 352, 198);
+        IntPtr hwnd = CreateWindowEx(0, "STATIC", "DzhiggaTV native integration test", 0x80000000, -30000, -30000, 640, 360, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        if (hwnd == IntPtr.Zero) throw new InvalidOperationException("Native test window creation failed.");
+        try
+        {
+            using var player = new MpvPlayer();
+            player.Volume = 40;
+            player.IsMuted = true;
+            player.Initialize(hwnd);
+            Assert(player.IsInitialized, "native initialization with gpu-next/D3D11 options");
+            foreach (var preset in Enum.GetValues<BufferPreset>()) player.SetBufferPreset(preset);
+            foreach (var aspect in Enum.GetValues<AspectMode>()) player.SetAspect(aspect);
+            foreach (var hdr in Enum.GetValues<HdrMode>()) player.SetHdrMode(hdr);
+            player.SetHdrMode(HdrMode.Auto);
+            player.SetAspect(AspectMode.Original);
+            Assert(Math.Abs(player.Volume - 40) < .01 && player.IsMuted, "volume and mute roundtrip");
+            Assert(player.GetAudioDevices().Count > 0, "real audio output device enumeration");
+            await player.PlayAsync(first);
+            await WaitUntil(() => player.GetStatistics().Width == 160);
+            var stats = player.GetStatistics();
+            Assert(stats.Height == 90 && stats.FramesPerSecond > 0 && stats.VideoOutput == "gpu-next", "decoded generated video through real D3D11 gpu-next output");
+            Assert(player.GetTracks().Count(track => track.Type == "video") == 1 && stats.AudioTrackCount == 0, "real track enumeration without invented audio tracks");
+            player.IsPaused = true;
+            Assert(player.IsPaused, "pause roundtrip");
+            player.TogglePause();
+            Assert(!player.IsPaused, "resume roundtrip");
+            var burst = Enumerable.Range(0, 32).Select(_ => player.PlayAsync(first)).ToList();
+            burst.Add(player.PlayAsync(latest));
+            foreach (var operation in burst) { try { await operation; } catch (OperationCanceledException) { } }
+            await WaitUntil(() => player.GetStatistics().Width == 352);
+            await Task.Delay(300);
+            Assert(player.GetStatistics().Height == 198, "latest of 33 overlapping load requests wins");
+            // A deliberately slow network response must never replace a newer channel after arriving late.
+            using var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            using var delayedServer = new CancellationTokenSource();
+            var response = Task.Run(async () =>
+            {
+                try
+                {
+                    using var client = await listener.AcceptTcpClientAsync(delayedServer.Token);
+                    await Task.Delay(1000, delayedServer.Token);
+                    byte[] bytes = await File.ReadAllBytesAsync(first, delayedServer.Token);
+                    using var stream = client.GetStream();
+                    await stream.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {bytes.Length}\r\nConnection: close\r\n\r\n"), delayedServer.Token);
+                    await stream.WriteAsync(bytes, delayedServer.Token);
+                }
+                catch (Exception e) when (e is OperationCanceledException or IOException or SocketException) { }
+            });
+            await player.PlayAsync($"http://127.0.0.1:{port}/slow.y4m?private_test_token=never_log_this");
+            await Task.Delay(80);
+            await player.PlayAsync(latest);
+            await WaitUntil(() => player.GetStatistics().Width == 352);
+            await Task.Delay(1300);
+            Assert(player.GetStatistics().Width == 352, "late stale network response cannot replace current channel");
+            delayedServer.Cancel();
+            listener.Stop();
+            await response;
+            if (args.Length >= 3)
+            {
+                if (!File.Exists(args[2])) throw new ArgumentException("A local generated compressed fixture is required.");
+                player.SetPreferredLanguages("rus,ru", "rus,ru");
+                await player.PlayAsync(args[2]);
+                await WaitUntil(() => player.GetStatistics().VideoCodec == "h264" && player.GetTracks().Count(t => t.Type == "audio") == 2);
+                var compressed = player.GetStatistics();
+                Assert(compressed.Width == 1280 && compressed.Height == 720 && compressed.AudioCodec == "aac", "H264 720p and AAC decode with accurate codec metadata");
+                var tracks = player.GetTracks();
+                Assert(tracks.Single(t => t.Type == "audio" && t.Selected).Language is "rus" or "ru", "preferred Russian audio track selected");
+                var english = tracks.Single(t => t.Type == "audio" && t.Language is "eng" or "en");
+                player.SelectAudio(english.Id);
+                await WaitUntil(() => player.GetTracks().Any(t => t.Type == "audio" && t.Id == english.Id && t.Selected));
+                Assert(true, "live audio track switch to English");
+                var subtitle = tracks.First(t => t.Type == "sub" && !t.External);
+                player.SelectSubtitle(subtitle.Id);
+                await WaitUntil(() => player.GetTracks().Any(t => t.Type == "sub" && t.Selected));
+                player.SelectSubtitle(null);
+                await WaitUntil(() => player.GetTracks().All(t => t.Type != "sub" || !t.Selected));
+                Assert(true, "embedded subtitle enable and disable");
+                Console.WriteLine(JsonSerializer.Serialize(new { compressedVideo = new { compressed.VideoCodec, compressed.AudioCodec, compressed.VideoDecoder, compressed.HardwareDecoder, compressed.SourceTransfer, compressed.TargetTransfer, compressed.VideoOutput } }));
+            }
+            using (var errors = new TcpListener(IPAddress.Loopback, 0))
+            using (var errorCancellation = new CancellationTokenSource())
+            {
+                errors.Start();
+                int errorPort = ((IPEndPoint)errors.LocalEndpoint).Port;
+                int requests = 0;
+                var errorServer = Task.Run(async () =>
+                {
+                    try
+                    {
+                        while (!errorCancellation.IsCancellationRequested)
+                        {
+                            using var client = await errors.AcceptTcpClientAsync(errorCancellation.Token);
+                            Interlocked.Increment(ref requests);
+                            using var stream = client.GetStream();
+                            await stream.WriteAsync("HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"u8.ToArray(), errorCancellation.Token);
+                        }
+                    }
+                    catch (Exception ex) when (ex is OperationCanceledException or IOException or SocketException) { }
+                });
+                await player.PlayAsync($"http://127.0.0.1:{errorPort}/missing.m3u8?private_test_token=never_log_this");
+                await WaitUntil(() => player.State == PlaybackState.Error, 16000);
+                Assert(Volatile.Read(ref requests) == 4, "network failure retries exactly three times then stops");
+                await player.PlayAsync($"http://127.0.0.1:{errorPort}/missing-again.m3u8?private_test_token=never_log_this");
+                await WaitUntil(() => player.State == PlaybackState.Reconnecting);
+                player.Stop();
+                await Task.Delay(1600);
+                Assert(Volatile.Read(ref requests) == 5 && player.State == PlaybackState.Idle, "stop cancels pending reconnect and prevents late retry");
+                errorCancellation.Cancel();
+                errors.Stop();
+                await errorServer;
+            }
+            if (args.Length == 4)
+            {
+                await BufferBenchmark.Run(player, args[3]);
+                Assert(true, "real HTTP HLS playback in all three buffer presets");
+            }
+            player.Stop();
+            await WaitUntil(() => player.GetStatistics().Width == null);
+            Assert(player.State == PlaybackState.Idle, "stop releases loaded video and returns idle");
+            var disposal = Stopwatch.StartNew();
+            player.Dispose();
+            player.Dispose();
+            Assert(!player.IsInitialized && disposal.ElapsedMilliseconds < 10000, "idempotent bounded native disposal");
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count, video = new { stats.Width, stats.Height, stats.VideoOutput, stats.HardwareDecoder, stats.MpvVersion }, hdrHardwareVerified = false }));
+        }
+        finally { DestroyWindow(hwnd); }
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr CreateWindowEx(uint exStyle, string className, string windowName, uint style, int x, int y, int width, int height, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr param);
+    [DllImport("user32.dll")] private static extern bool DestroyWindow(IntPtr hwnd);
+}

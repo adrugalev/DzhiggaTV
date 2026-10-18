@@ -1,0 +1,303 @@
+using System.Collections.ObjectModel;
+using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
+using System.Windows;
+using DzhiggaTV.Core;
+using DzhiggaTV.Services;
+
+namespace DzhiggaTV.App;
+
+public sealed class MainViewModel : Observable, IDisposable
+{
+    public SqliteStore Store { get; }
+    public EpgOneService Epg { get; }
+    public LogoService Logos { get; }
+    public UserState State { get; private set; } = new();
+    public List<ChannelItem> AllChannels { get; } = [];
+    public ObservableCollection<ChannelItem> VisibleChannels { get; } = [];
+    public ObservableCollection<string> Groups { get; } = ["Все категории"];
+    public string[] SortOptions { get; } = ["Плейлист", "А → Я", "Я → А"];
+    public Dictionary<string, ChannelMapping> Mappings { get; private set; } = [];
+    public Dictionary<string, EpgChannel> EpgChannels { get; private set; } = [];
+    public string DataDirectory { get; }
+    private readonly CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _searchCancellation;
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(45) };
+    private readonly HashSet<string> _logoLoading = [];
+    private readonly Dictionary<string, DateTimeOffset> _logoRetry = [];
+    private readonly Dictionary<string, long> _logoVersions = [];
+    private readonly HashSet<string> _viewportIds = [];
+    private int _catalogGeneration;
+    private readonly SemaphoreSlim _saveLock = new(1);
+    private bool _epgBusy;
+    public bool IsEpgBusy { get => _epgBusy; private set { if (Set(ref _epgBusy, value)) { Raise(nameof(CanRefreshEpg)); Raise(nameof(EpgButtonText)); } } }
+    public bool CanRefreshEpg => !IsEpgBusy;
+    public string EpgButtonText => IsEpgBusy ? "EPG.ONE · загрузка…" : EpgChannels.Count == 0 ? "Подключить EPG.ONE" : "EPG.ONE  ↻";
+    private string _epgStatus = "Телепрограмма и логотипы ещё не загружены";
+    public string EpgStatus { get => _epgStatus; private set => Set(ref _epgStatus, value); }
+    private double _epgPercent;
+    public double EpgPercent { get => _epgPercent; private set => Set(ref _epgPercent, value); }
+    private bool _epgIndeterminate;
+    public bool EpgIndeterminate { get => _epgIndeterminate; private set => Set(ref _epgIndeterminate, value); }
+    private string _search = "";
+    public string Search { get => _search; set { if (Set(ref _search, value)) DebounceFilter(); } }
+    private string _selectedGroup = "Все категории";
+    public string SelectedGroup { get => _selectedGroup; set { if (Set(ref _selectedGroup, value)) RefreshFilter(); } }
+    private int _sortIndex;
+    public int SortIndex { get => _sortIndex; set { if (Set(ref _sortIndex, value)) RefreshFilter(); } }
+    private string _section = "all";
+    public string SectionTitle => _section switch { "favorites" => "Избранное", "recent" => "Недавние", "watch" => "Сейчас смотрю", _ when _section.StartsWith("collection:") => _section[11..], _ => "Все каналы" };
+    public string ChannelCountText => $"{VisibleChannels.Count:N0} каналов · {Groups.Count - 1} категорий";
+    private ChannelItem? _selectedChannel;
+    public ChannelItem? SelectedChannel { get => _selectedChannel; set => Set(ref _selectedChannel, value); }
+    private ChannelItem? _active;
+    public ChannelItem? Active { get => _active; set { if (Set(ref _active, value)) RaisePlayback(); } }
+    public string? PreviousId { get; set; }
+    public string ActiveName => Active?.Name ?? "Сейчас смотрю";
+    public string CurrentTitle => Active?.Current?.Title ?? "Программа пока недоступна";
+    public string CurrentTime => Active?.Current is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "Подключите EPG.ONE в настройках";
+    public double CurrentProgress => Active?.Progress ?? 0;
+    public string NextTitle => Active?.Next?.Title ?? "Нет данных о следующей передаче";
+    public string NextTime => Active?.Next is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "EPG.ONE · ежедневное обновление";
+    private string _status = "Готов к просмотру. Добавьте свой плейлист.";
+    public string Status { get => _status; set => Set(ref _status, value); }
+    private string _playbackStatus = "Выберите канал";
+    public string PlaybackStatus { get => _playbackStatus; set => Set(ref _playbackStatus, value); }
+
+    public MainViewModel(string directory)
+    {
+        DataDirectory = directory;
+        Directory.CreateDirectory(directory);
+        Store = new(Path.Combine(directory, "library.db"));
+        Epg = new(Store);
+        Logos = new(Path.Combine(directory, "logos"));
+    }
+    public string Setting(string key, string fallback = "") => State.Settings.GetValueOrDefault(key, fallback);
+    public bool Flag(string key, bool fallback = false) => bool.TryParse(Setting(key), out var value) ? value : fallback;
+    public void SetSetting(string key, object value) => State.Settings[key] = Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "";
+    public async Task InitializeAsync()
+    {
+        await Store.InitializeAsync(); State = await Store.LoadUserStateAsync();
+        Epg.AllowInsecureHttp = Logos.AllowInsecureHttp = Flag("epg.http");
+        await Epg.InitializeAsync();
+        await ReloadAsync();
+        await RefreshEpgViewAsync();
+        _ = DailyEpgAsync();
+    }
+    public async Task ReloadAsync()
+    {
+        var channels = await Task.Run(async () => await Store.GetChannelsAsync());
+        var activeId = Active?.Id; var selectedId = SelectedChannel?.Id;
+        ++_catalogGeneration; _logoLoading.Clear(); _logoRetry.Clear();
+        AllChannels.Clear();
+        AllChannels.AddRange(channels.Select(c => new ChannelItem(c)
+        {
+            Name = State.Renames.GetValueOrDefault(c.Id, c.Name),
+            Group = State.CustomCategories.GetValueOrDefault(c.Id, c.Group),
+            IsFavorite = State.Favorites.Contains(c.Id)
+        }));
+        Active = AllChannels.Find(c => c.Id == activeId); SelectedChannel = AllChannels.Find(c => c.Id == selectedId);
+        Groups.Clear(); Groups.Add("Все категории");
+        foreach (var group in AllChannels.Where(IsAllowed).Select(c => c.Group).Distinct().OrderBy(g => g)) Groups.Add(group);
+        if (!Groups.Contains(_selectedGroup)) _selectedGroup = "Все категории";
+        Raise(nameof(SelectedGroup)); RefreshFilter();
+        Status = $"Библиотека: {AllChannels.Count:N0} каналов. Пользовательские изменения сохранены локально.";
+    }
+    public bool IsAllowed(ChannelItem item) => !State.Hidden.Contains(item.Id) && (Flag("adult.enabled") || !IsAdult(item.Channel.Group) && !IsAdult(item.Group));
+    public static bool IsAdult(string name) => new[] { "взрос", "adult", "xxx", "18+", "эроти", "porn" }.Any(x => name.Contains(x, StringComparison.OrdinalIgnoreCase));
+    public void SetSection(string section) { _section = section; Raise(nameof(SectionTitle)); RefreshFilter(); }
+    public void RefreshFilter()
+    {
+        IEnumerable<ChannelItem> items = AllChannels.Where(IsAllowed);
+        List<string>? order = null;
+        if (_section == "favorites") { order = State.Favorites; items = items.Where(c => order.Contains(c.Id)); }
+        else if (_section == "recent") { order = State.History; items = items.Where(c => order.Contains(c.Id)); }
+        else if (_section == "watch") items = items.Where(c => c.Id == Active?.Id);
+        else if (_section.StartsWith("collection:")) { order = State.Collections.GetValueOrDefault(_section[11..]) ?? []; items = items.Where(c => order.Contains(c.Id)); }
+        if (SelectedGroup != "Все категории") items = items.Where(c => c.Group == SelectedGroup);
+        if (!string.IsNullOrWhiteSpace(Search)) items = items.Where(c => ChannelMatcher.MatchesSearch(c.Name, Search));
+        if (order is not null) items = items.OrderBy(c => order.IndexOf(c.Id));
+        else if (SortIndex == 1) items = items.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
+        else if (SortIndex == 2) items = items.OrderByDescending(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
+        VisibleChannels.Clear(); foreach (var c in items) VisibleChannels.Add(c);
+        Raise(nameof(ChannelCountText));
+    }
+    private async void DebounceFilter()
+    {
+        _searchCancellation?.Cancel(); _searchCancellation?.Dispose(); _searchCancellation = new();
+        try { await Task.Delay(130, _searchCancellation.Token); RefreshFilter(); } catch (OperationCanceledException) { }
+    }
+    public async Task ImportAsync(string location, string? existingId = null)
+    {
+        Status = "Импорт плейлиста…";
+        var sources = await Store.GetPlaylistSourcesAsync();
+        var previous = sources.FirstOrDefault(s => s.Location == location);
+        var id = existingId ?? previous?.Id ?? Guid.NewGuid().ToString("N");
+        var remote = Uri.TryCreate(location, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https";
+        var list = await Task.Run(async () =>
+        {
+            if (!remote) return await M3uParser.ParseFileAsync(location, id, _lifetime.Token);
+            using var response = await _http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, _lifetime.Token);
+            response.EnsureSuccessStatusCode();
+            if (response.Content.Headers.ContentLength > 32 * 1024 * 1024) throw new InvalidDataException();
+            await using var source = await response.Content.ReadAsStreamAsync(_lifetime.Token);
+            using var memory = new MemoryStream(); var buffer = new byte[65536]; int read;
+            while ((read = await source.ReadAsync(buffer, _lifetime.Token)) > 0)
+            { if (memory.Length + read > 32 * 1024 * 1024) throw new InvalidDataException(); await memory.WriteAsync(buffer.AsMemory(0, read), _lifetime.Token); }
+            memory.Position = 0; return await M3uParser.ParseAsync(memory, id, _lifetime.Token);
+        });
+        if (list.Count == 0) throw new InvalidDataException("Плейлист не содержит каналов.");
+        await Store.SavePlaylistAsync(new(id, previous?.Name ?? (remote ? "Сетевой плейлист" : Path.GetFileNameWithoutExtension(location)), location, remote), list);
+        await ReloadAsync();
+        if (EpgChannels.Count > 0) { await Epg.MatchChannelsAsync(AllChannels.Select(c => c.Channel).ToArray()); await RefreshEpgViewAsync(); }
+        Status = $"Импортировано {list.Count:N0} каналов, {list.Select(c => c.Group).Distinct().Count()} категорий.";
+    }
+    public async Task RefreshEpgAsync()
+    {
+        if (IsEpgBusy) return; IsEpgBusy = true; EpgPercent = 0; EpgIndeterminate = true;
+        try
+        {
+            SetSetting("epg.enabled", true); await SaveAsync();
+            Status = EpgStatus = "EPG.ONE: подключение к источнику…";
+            var source = new Uri(Setting("epg.source", "https://epg.one/epg2.xml.gz"));
+            var channels = AllChannels.Select(c => c.Channel).ToArray();
+            var progress = new Progress<EpgProgress>(p =>
+            {
+                if (!IsEpgBusy) return;
+                EpgIndeterminate = p.TotalBytes is not > 0;
+                EpgPercent = p.TotalBytes is > 0 ? Math.Clamp(p.BytesDownloaded * 100d / p.TotalBytes.Value, 0, 100) : 0;
+                Status = EpgStatus = p.BytesDownloaded > 0 ? $"{p.Stage} · {p.BytesDownloaded / 1048576d:0.0} МиБ" + (p.TotalBytes is > 0 ? $" / {p.TotalBytes / 1048576d:0.0} МиБ" : "") : p.Stage;
+            });
+            var result = await Task.Run(async () => await Epg.RefreshAsync(channels, progress, _lifetime.Token, source));
+            if (result.Updated) Logos.ResetFailedDownloads();
+            await RefreshEpgViewAsync();
+            Status = EpgStatus = result.Updated ? $"EPG.ONE подключена · программа для {Mappings.Count:N0} каналов; логотипы загружаются." : result.Message;
+        }
+        catch (OperationCanceledException) { }
+        catch { Status = EpgStatus = "EPG.ONE временно недоступен. Нажмите «Подключить EPG.ONE», чтобы повторить. Последняя программа сохранена."; }
+        finally { IsEpgBusy = false; EpgIndeterminate = false; }
+    }
+    private async Task DailyEpgAsync()
+    {
+        while (!_lifetime.IsCancellationRequested)
+        {
+            try
+            {
+                var last = await Store.GetSettingAsync<DateTimeOffset?>("epg.lastSuccessfulUpdate", null);
+                if (AllChannels.Count > 0 && Flag("epg.enabled") && (last is null || DateTimeOffset.UtcNow - last >= TimeSpan.FromHours(24))) await RefreshEpgAsync();
+                await Task.Delay(TimeSpan.FromHours(1), _lifetime.Token);
+            }
+            catch (OperationCanceledException) { break; }
+            catch { try { await Task.Delay(TimeSpan.FromHours(1), _lifetime.Token); } catch { break; } }
+        }
+    }
+    public async Task RefreshEpgViewAsync()
+    {
+        var previousMappings = Mappings;
+        var previousCatalog = EpgChannels;
+        Mappings = (await Store.GetMappingsAsync()).ToDictionary(x => x.ChannelId);
+        EpgChannels = (await Store.GetEpgChannelsAsync()).ToDictionary(x => x.Id);
+        foreach (var item in AllChannels)
+        {
+            var before = previousMappings.GetValueOrDefault(item.Id)?.EpgId;
+            var after = Mappings.GetValueOrDefault(item.Id)?.EpgId;
+            var changed = before != after || (before is not null && after is not null && previousCatalog.GetValueOrDefault(before)?.Logo != EpgChannels.GetValueOrDefault(after)?.Logo);
+            if (changed) InvalidateLogo(item.Id);
+            else if (item.LogoPath is null) _logoRetry.Remove(item.Id);
+        }
+        await UpdateNowNextAsync();
+        Raise(nameof(EpgButtonText));
+        if (!IsEpgBusy) EpgStatus = EpgChannels.Count == 0 ? "Телепрограмма и логотипы ещё не загружены · нажмите «Подключить EPG.ONE»" : $"EPG.ONE · программа назначена {Mappings.Count:N0} каналам";
+        await LoadViewportAsync(RelevantChannels());
+    }
+    private IEnumerable<ChannelItem> RelevantChannels() => AllChannels.Where(c => _viewportIds.Contains(c.Id)).Concat(VisibleChannels.Take(20)).Append(Active).OfType<ChannelItem>().Distinct();
+    public async Task RefreshLogosAsync()
+    {
+        ++_catalogGeneration; _logoLoading.Clear(); _logoRetry.Clear();
+        foreach (var c in AllChannels) if (c.LogoPath is null) _logoVersions[c.Id] = _logoVersions.GetValueOrDefault(c.Id) + 1;
+        Logos.ResetFailedDownloads();
+        await LoadViewportAsync(RelevantChannels());
+    }
+    public async Task UpdateNowNextAsync()
+    {
+        // At most the visible viewport and active channel: no thousands of queries every tick.
+        var relevant = RelevantChannels().ToArray();
+        foreach (var c in relevant)
+        {
+            if (Mappings.TryGetValue(c.Id, out var match))
+            {
+                var now = await Store.GetNowNextAsync(match.EpgId);
+                c.Current = now.Current; c.Next = now.Next;
+                c.NowTitle = now.Current?.Title ?? "Нет программы на это время";
+                c.EndTime = now.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
+                c.Progress = now.Current is { } p ? Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : 0;
+            }
+            else
+            {
+                c.Current = c.Next = null; c.NowTitle = "Телепрограмма не назначена"; c.EndTime = ""; c.Progress = 0;
+            }
+        }
+        RaisePlayback();
+    }
+    public async Task LoadViewportAsync(IEnumerable<ChannelItem> items, bool updateViewport = false)
+    {
+        var snapshot = items.ToArray();
+        if (updateViewport) { _viewportIds.Clear(); foreach (var c in snapshot) _viewportIds.Add(c.Id); }
+        foreach (var item in snapshot)
+        {
+            if (Mappings.TryGetValue(item.Id, out var mapping) && item.Current is null)
+            {
+                var guide = await Store.GetNowNextAsync(mapping.EpgId); item.Current = guide.Current; item.Next = guide.Next;
+                item.NowTitle = guide.Current?.Title ?? "Нет программы на это время";
+                item.EndTime = guide.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
+                if (guide.Current is { } p) item.Progress = Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100);
+            }
+            if (item.LogoPath is not null || _logoRetry.GetValueOrDefault(item.Id) > DateTimeOffset.UtcNow || !_logoLoading.Add(item.Id)) continue;
+            _ = LoadLogoAsync(item, _catalogGeneration, _logoVersions.GetValueOrDefault(item.Id));
+        }
+    }
+    private async Task LoadLogoAsync(ChannelItem item, int generation, long version)
+    {
+        try
+        {
+            EpgChannel? epg = Mappings.TryGetValue(item.Id, out var m) ? EpgChannels.GetValueOrDefault(m.EpgId) : null;
+            var path = await Logos.ResolveAsync(item.Channel, State.UserLogos.GetValueOrDefault(item.Id), epg, epg is null ? null : Epg.GetReferenceLogo(epg.Id), _lifetime.Token);
+            if (generation != _catalogGeneration || version != _logoVersions.GetValueOrDefault(item.Id)) return;
+            item.LogoPath = path;
+            if (path is null) _logoRetry[item.Id] = DateTimeOffset.UtcNow.AddMinutes(15);
+        }
+        catch { } // Text fallback is intentional; no URL-bearing exception is logged.
+        finally { if (generation == _catalogGeneration && version == _logoVersions.GetValueOrDefault(item.Id)) _logoLoading.Remove(item.Id); }
+    }
+    public void InvalidateLogo(string id) { _logoVersions[id] = _logoVersions.GetValueOrDefault(id) + 1; _logoLoading.Remove(id); _logoRetry.Remove(id); var c = AllChannels.Find(c => c.Id == id); if (c is not null) { c.LogoPath = null; c.Current = c.Next = null; } }
+    public void RaisePlayback()
+    {
+        foreach (var name in new[] { nameof(ActiveName), nameof(CurrentTitle), nameof(CurrentTime), nameof(CurrentProgress), nameof(NextTitle), nameof(NextTime) }) Raise(name);
+    }
+    public async Task ToggleFavoriteAsync(ChannelItem item)
+    {
+        if (!State.Favorites.Remove(item.Id)) State.Favorites.Add(item.Id);
+        item.IsFavorite = State.Favorites.Contains(item.Id); await SaveAsync();
+        if (_section == "favorites") RefreshFilter();
+    }
+    public async Task RecordPlaybackAsync(ChannelItem item)
+    {
+        if (Active?.Id != item.Id) PreviousId = Active?.Id;
+        Active = item; State.RecordWatched(item.Id); SetSetting("last.channel", item.Id); await SaveAsync();
+        await LoadViewportAsync([item]); RaisePlayback();
+    }
+    public async Task MoveAsync(string fromId, string toId)
+    {
+        List<string>? list = _section == "favorites" ? State.Favorites : _section.StartsWith("collection:") ? State.Collections.GetValueOrDefault(_section[11..]) : null;
+        if (list is null || fromId == toId) return;
+        var from = list.IndexOf(fromId); var to = list.IndexOf(toId);
+        if (from < 0 || to < 0) return; list.RemoveAt(from); list.Insert(to, fromId); await SaveAsync(); RefreshFilter();
+    }
+    public async Task SaveAsync()
+    {
+        await _saveLock.WaitAsync();
+        try { await Store.SaveUserStateAsync(State); } finally { _saveLock.Release(); }
+    }
+    public void Dispose() { _lifetime.Cancel(); _http.Dispose(); _searchCancellation?.Cancel(); /* In-flight writers own their connection until completion. */ }
+}
