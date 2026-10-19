@@ -25,6 +25,8 @@ internal static class Program
     {
         (string Name, Func<Task> Run)[] cases =
         [
+            ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
+            ("Programme countdown handles missing data, hour boundaries and expired programmes", ProgrammeCountdownAsync),
             ("First EPG refresh replaces the missing-logo fallback immediately", MissingGuideThenRefreshAsync),
             ("Remapping a loaded channel replaces its programme and logo", RemapAsync),
             ("Removing an automatic mapping clears the previous programme", RemoveMappingAsync),
@@ -49,6 +51,42 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static async Task FavoriteToggleAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        var channel = model.AllChannels.Single(); model.Active = channel;
+        await model.ToggleFavoriteAsync(channel);
+        Assert(channel.IsFavorite && model.State.Favorites.SequenceEqual([channel.Id]), "The first click must add the channel exactly once.");
+        model.SetSection("favorites");
+        Assert(model.VisibleChannels.Contains(channel), "The selected favorite must be visible.");
+        var removal = model.ToggleFavoriteAsync(channel);
+        Assert(!channel.IsFavorite && !model.VisibleChannels.Contains(channel), "The second click must clear the star and remove the row before saving completes.");
+        await removal;
+        Assert(!(await model.Store.LoadUserStateAsync()).Favorites.Contains(channel.Id) && model.Active == channel, "The off state must persist without interrupting playback.");
+        await model.ToggleFavoriteAsync(channel);
+        Assert(model.VisibleChannels.Contains(channel), "Adding it again must restore the favorite row.");
+        // Older imported settings may contain repeated IDs; one click must remove all of them.
+        model.State.Favorites.Add(channel.Id);
+        await model.ToggleFavoriteAsync(channel);
+        await model.ReloadAsync();
+        Assert(model.State.Favorites.Count == 0 && model.VisibleChannels.Count == 0 && !model.AllChannels.Single().IsFavorite,
+            "Duplicate favorites must not survive removal or library reload.");
+    }
+
+    private static Task ProgrammeCountdownAsync()
+    {
+        var now = new DateTimeOffset(2026, 10, 19, 22, 0, 0, TimeSpan.FromHours(3));
+        Programme ProgrammeUntil(DateTimeOffset end) => new("guide", "Film", now.AddHours(-1), end);
+        Assert(ProgrammeTiming.Remaining(null, now) == "—", "Missing EPG must never invent a duration.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddHours(2).AddSeconds(3)), now) == "2:00:03", "Hours must be preserved.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddSeconds(3599)), now) == "59:59", "The last minute before an hour must format correctly.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddMilliseconds(100)), now) == "00:01", "A partial final second must remain visible.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddSeconds(-2)), now) == "00:00", "An expired programme must not show a negative countdown.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddHours(26)), now) == "26:00:00", "Long programmes must not wrap at midnight.");
+        Assert(ProgrammeTiming.Remaining(new("guide", "Future", now.AddHours(1), now.AddHours(2)), now) == "—", "A future entry must not act as the current programme.");
+        return Task.CompletedTask;
     }
 
     private static Task GuideClockAsync()

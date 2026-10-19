@@ -40,6 +40,7 @@ public partial class OverlayWindow : Window
         Welcome.Visibility = _main.HasPlayback ? Visibility.Collapsed : Visibility.Visible;
         PauseButton.Content = _main.Player.IsPaused ? "▶" : "Ⅱ";
         MuteButton.Content = _main.Player.IsMuted ? "⊘" : "♪";
+        RemainingTimeValue.Text = ProgrammeTiming.Remaining(_main.Model.Active?.Current, DateTimeOffset.UtcNow);
         UpdateVisibility();
     }
     public void Tick()
@@ -80,8 +81,12 @@ public partial class OverlayWindow : Window
         Grid.SetRow(FullscreenMetadataScroll, stacked ? 1 : 0);
         FullscreenMetadataScroll.Margin = new(0, stacked ? 12 : 0, 0, 0);
         var compact = ActualWidth <= 480;
-        HistoryButton.Visibility = FavoriteButton.Visibility = MiniButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        FavoriteButton.Visibility = MiniButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         VolumeSlider.Visibility = ActualWidth < 340 ? Visibility.Collapsed : Visibility.Visible;
+        bool separateTime = ActualWidth < 700;
+        Grid.SetRow(PlaybackButtons, separateTime ? 2 : 1); Grid.SetRow(PlayerActions, separateTime ? 2 : 1);
+        Grid.SetColumn(RemainingTimeText, separateTime ? 0 : 1); Grid.SetColumnSpan(RemainingTimeText, separateTime ? 3 : 1);
+        RemainingTimeText.Margin = separateTime ? new(8, 2, 8, 6) : new(12, 0, 12, 0);
     }
     private void Overlay_MouseEnter(object sender, MouseEventArgs e)
     {
@@ -138,7 +143,6 @@ public partial class OverlayWindow : Window
         await _main.HandleKeyAsync(e);
     }
     private async void Import_Click(object sender, RoutedEventArgs e) => await _main.ImportPlaylistAsync();
-    private async void Previous_Click(object sender, RoutedEventArgs e) => await _main.PreviousChannelAsync();
     private async void ChannelBack_Click(object sender, RoutedEventArgs e) => await _main.NextChannelAsync(-1);
     private async void ChannelNext_Click(object sender, RoutedEventArgs e) => await _main.NextChannelAsync(1);
     private void Pause_Click(object sender, RoutedEventArgs e) { _main.Player.TogglePause(); RefreshState(); }
@@ -147,7 +151,6 @@ public partial class OverlayWindow : Window
     private async void Favorite_Click(object sender, RoutedEventArgs e) { if (_main.Model.Active is { } c) await _main.Model.ToggleFavoriteAsync(c); }
     private void Mini_Click(object sender, RoutedEventArgs e) => _main.ToggleMini();
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => _main.ToggleFullscreen();
-    private void Channels_Click(object sender, RoutedEventArgs e) => ToggleDrawer();
     public void ToggleDrawer() { Drawer.Visibility = Drawer.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; Reveal(); }
     private async void Drawer_Selected(object sender, SelectionChangedEventArgs e) { if (sender is ListBox { SelectedItem: ChannelItem c }) { await _main.PlayAsync(c); Drawer.Visibility = Visibility.Collapsed; Reveal(); } }
     public void ToggleStatistics() { StatisticsPanel.Visibility = StatisticsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; UpdateStatistics(); Reveal(); }
@@ -167,7 +170,6 @@ public partial class OverlayWindow : Window
             Item(aspect, label, () => { _main.Player.SetAspect(mode); _main.Model.SetSetting("aspect", mode); });
         menu.Items.Add(aspect);
         menu.Items.Add(new Separator());
-        Item(menu, "Предыдущий просмотренный (Backspace)", async () => await _main.PreviousChannelAsync());
         Item(menu, _main.Model.Active?.IsFavorite == true ? "Убрать из избранного (F)" : "Добавить в избранное (F)", async () => { if (_main.Model.Active is { } c) await _main.Model.ToggleFavoriteAsync(c); });
         Item(menu, "Мини-плеер (Ctrl+M)", _main.ToggleMini);
         menu.Items.Add(new Separator());

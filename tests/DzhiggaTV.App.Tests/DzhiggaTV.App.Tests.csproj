@@ -11,6 +11,7 @@
     <ProjectReference Include="../../src/DzhiggaTV.Services/DzhiggaTV.Services.csproj" />
     <Compile Include="$(MainViewModelSource)" Link="MainViewModel.cs" />
     <Compile Include="../../src/DzhiggaTV.App/Infrastructure.cs" Link="Infrastructure.cs" />
+    <Compile Include="../../src/DzhiggaTV.App/ProgrammeTiming.cs" Link="ProgrammeTiming.cs" />
     <Compile Include="../../src/DzhiggaTV.App/GuideTimeline.cs" Link="GuideTimeline.cs" />
     <Compile Include="../../src/DzhiggaTV.App/WindowBoundsGeometry.cs" Link="WindowBoundsGeometry.cs" />
   </ItemGroup>

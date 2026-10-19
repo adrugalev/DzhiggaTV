@@ -18,6 +18,7 @@ public sealed class NavigationIcon : Grid
     private readonly ScaleTransform _scale = new(1, 1);
     private readonly RotateTransform _rotation = new();
     private Button? _button;
+    private bool _suppressHighlight;
     static NavigationIcon()
     {
         WidthProperty.OverrideMetadata(typeof(NavigationIcon), new FrameworkPropertyMetadata(24d, FrameworkPropertyMetadataOptions.AffectsMeasure));
@@ -57,11 +58,17 @@ public sealed class NavigationIcon : Grid
     private static void ActiveChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
     {
         var icon = (NavigationIcon)sender;
+        // A second click must visibly clear the star even while the pointer is still over it.
+        icon._suppressHighlight = !(bool)e.NewValue;
         icon.Animate(icon._button?.IsMouseOver == true || icon._button?.IsKeyboardFocusWithin == true);
     }
-    private void Enter(object sender, System.Windows.Input.MouseEventArgs e) => Animate(true);
+    private void Enter(object sender, System.Windows.Input.MouseEventArgs e) { _suppressHighlight = false; Animate(true); }
     private void Leave(object sender, System.Windows.Input.MouseEventArgs e) => Animate(_button?.IsKeyboardFocusWithin == true);
-    private void FocusChanged(object sender, DependencyPropertyChangedEventArgs e) => Animate(_button?.IsMouseOver == true || _button?.IsKeyboardFocusWithin == true);
+    private void FocusChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if ((bool)e.NewValue) _suppressHighlight = false;
+        Animate(_button?.IsMouseOver == true || _button?.IsKeyboardFocusWithin == true);
+    }
     private void Animate(bool active)
     {
         var owner = Window.GetWindow(this);
@@ -75,8 +82,9 @@ public sealed class NavigationIcon : Grid
             if (target is UIElement element) element.BeginAnimation(property, animation);
             else if (target is Animatable animatable) animatable.BeginAnimation(property, animation);
         }
-        Change(_color, OpacityProperty, active || IsActive ? 1 : 0);
-        Change(_neutral, OpacityProperty, active || IsActive ? 0 : 1);
+        bool highlighted = IsActive || active && !_suppressHighlight;
+        Change(_color, OpacityProperty, highlighted ? 1 : 0);
+        Change(_neutral, OpacityProperty, highlighted ? 0 : 1);
         Change(_scale, ScaleTransform.ScaleXProperty, active && !reduce ? 1.13 : 1);
         Change(_scale, ScaleTransform.ScaleYProperty, active && !reduce ? 1.13 : 1);
         Change(_rotation, RotateTransform.AngleProperty, active && !reduce ? Icon == "settings" ? 18 : Icon == "recent" ? -10 : -4 : 0);

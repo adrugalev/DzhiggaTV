@@ -318,9 +318,12 @@ public sealed class MainViewModel : Observable, IDisposable
     }
     public async Task ToggleFavoriteAsync(ChannelItem item)
     {
-        if (!State.Favorites.Remove(item.Id)) State.Favorites.Add(item.Id);
-        item.IsFavorite = State.Favorites.Contains(item.Id); await SaveAsync();
+        bool favorite = !State.Favorites.Contains(item.Id);
+        State.Favorites.RemoveAll(id => id == item.Id);
+        if (favorite) State.Favorites.Add(item.Id);
+        item.IsFavorite = favorite;
         if (_section == "favorites") RefreshFilter();
+        await SaveAsync();
     }
     public async Task RecordPlaybackAsync(ChannelItem item)
     {
