@@ -79,12 +79,43 @@
     <ListBox x:Name="ChannelList" Grid.Row="3" ItemsSource="{Binding VisibleChannels}" SelectedItem="{Binding SelectedChannel}" ItemTemplate="{StaticResource ChannelTemplate}" SelectionChanged="Channel_Selected" ScrollViewer.ScrollChanged="Channels_Scrolled" PreviewMouseRightButtonDown="Channel_RightClick" PreviewMouseLeftButtonDown="Channel_DragStart" PreviewMouseMove="Channel_DragMove" AllowDrop="True" Drop="Channel_Drop"/>
    </Grid>
    <GridSplitter x:Name="Splitter" Grid.Column="2" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}"/>
-   <Grid Grid.Column="3" x:Name="ViewingPanel" Margin="20,20,24,14"><Grid.RowDefinitions><RowDefinition x:Name="ViewingHeadingRow" Height="Auto"/><RowDefinition Height="*"/><RowDefinition x:Name="ProgrammeRow" Height="170"/></Grid.RowDefinitions>
+   <Grid Grid.Column="3" x:Name="ViewingPanel" Margin="20,20,24,14"><Grid.RowDefinitions><RowDefinition x:Name="ViewingHeadingRow" Height="Auto"/><RowDefinition Height="*"/><RowDefinition x:Name="ProgrammeRow" Height="150"/></Grid.RowDefinitions>
     <Grid x:Name="ViewingHeading" Margin="0,0,0,18"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Border x:Name="ActiveChannelLogo" Width="48" Height="34" Margin="0,0,12,0" VerticalAlignment="Center"><Border.Style><Style TargetType="Border"><Style.Triggers><DataTrigger Binding="{Binding Active.LogoPath}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Border.Style><Image Source="{Binding Active.LogoPath}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Логотип текущего канала"/></Border><TextBlock Grid.Column="1" Text="{Binding ActiveName}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,14,0"/><TextBlock Grid.Column="2" x:Name="ClockText" Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/></Grid>
     <Border x:Name="VideoBorder" Grid.Row="1" Background="#050708" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" ClipToBounds="True"><Grid x:Name="VideoArea"><player:NativeVideoHost x:Name="VideoHost"/></Grid></Border>
-    <Grid Grid.Row="2" x:Name="ProgrammePanel" Margin="0,20,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-     <Border Background="{DynamicResource PanelBrush}" CornerRadius="11" Padding="18"><StackPanel><TextBlock Text="СЕЙЧАС В ЭФИРЕ" FontSize="10" Foreground="{DynamicResource AccentBrush}"/><TextBlock Text="{Binding CurrentTitle}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,12,0,7"/><TextBlock Text="{Binding CurrentTime}" Foreground="{DynamicResource MutedBrush}" FontSize="12"/><ProgressBar Value="{Binding CurrentProgress, Mode=OneWay}" Margin="0,17,0,0"/></StackPanel></Border>
-     <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" CornerRadius="11" Padding="18"><Grid><StackPanel><TextBlock Text="ДАЛЕЕ" FontSize="10" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding NextTitle}" FontSize="18" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,12,0,7"/><TextBlock Text="{Binding NextTime}" Foreground="{DynamicResource MutedBrush}" FontSize="12"/></StackPanel><Button Content="Программа  →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Bottom" Padding="8,5" FontSize="11" Background="Transparent"/></Grid></Border>
+    <Grid Grid.Row="2" x:Name="ProgrammePanel" Margin="0,14,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+     <Grid.Resources>
+      <Style x:Key="ProgrammeDescription" TargetType="TextBlock">
+       <Setter Property="FontSize" Value="13"/><Setter Property="LineHeight" Value="19"/><Setter Property="TextWrapping" Value="Wrap"/>
+       <Setter Property="Foreground" Value="{DynamicResource TextBrush}"/><Setter Property="Margin" Value="0,10,6,0"/>
+       <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
+      </Style>
+     </Grid.Resources>
+     <Border Background="{DynamicResource PanelBrush}" CornerRadius="11" Padding="16">
+      <Grid><Grid.RowDefinitions><RowDefinition Height="22"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <TextBlock Text="СЕЙЧАС В ЭФИРЕ" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
+       <ScrollViewer x:Name="CurrentProgrammeScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False" PanningMode="VerticalOnly">
+        <StackPanel Margin="0,4,0,0">
+         <TextBlock Text="{Binding CurrentTitle}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,6,6"/>
+         <TextBlock Text="{Binding CurrentTime}" Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
+         <TextBlock x:Name="CurrentProgrammeDescription" Text="{Binding CurrentDescription}" Style="{StaticResource ProgrammeDescription}"/>
+        </StackPanel>
+       </ScrollViewer>
+       <ProgressBar Grid.Row="2" Value="{Binding CurrentProgress, Mode=OneWay}" Margin="0,10,0,0"/>
+      </Grid>
+     </Border>
+     <Border Grid.Column="2" Background="{DynamicResource PanelBrush}" CornerRadius="11" Padding="16">
+      <Grid><Grid.RowDefinitions><RowDefinition Height="22"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <Grid><TextBlock Text="ДАЛЕЕ" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/><Button Content="Программа  →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="7,2" Margin="0" FontSize="11" Background="Transparent"/></Grid>
+       <ScrollViewer x:Name="NextProgrammeScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" CanContentScroll="False" PanningMode="VerticalOnly">
+        <StackPanel Margin="0,4,0,0">
+         <TextBlock Text="{Binding NextTitle}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,6,6"/>
+         <TextBlock Text="{Binding NextTime}" Foreground="{DynamicResource MutedBrush}" FontSize="12"/>
+         <TextBlock x:Name="NextProgrammeDescription" Text="{Binding NextDescription}" Style="{StaticResource ProgrammeDescription}"/>
+        </StackPanel>
+       </ScrollViewer>
+       <Border Grid.Row="2" Height="3" Margin="0,10,0,0"/>
+      </Grid>
+     </Border>
     </Grid>
    </Grid>
   </Grid>

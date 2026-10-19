@@ -53,9 +53,11 @@ public sealed class MainViewModel : Observable, IDisposable
     public string? PreviousId { get; set; }
     public string ActiveName => Active?.Name ?? "Сейчас смотрю";
     public string CurrentTitle => Active?.Current?.Title ?? "Программа пока недоступна";
+    public string CurrentDescription => Active?.Current?.Description?.Trim() ?? "";
     public string CurrentTime => Active?.Current is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "Подключите EPG.ONE в настройках";
     public double CurrentProgress => Active?.Progress ?? 0;
     public string NextTitle => Active?.Next?.Title ?? "Нет данных о следующей передаче";
+    public string NextDescription => Active?.Next?.Description?.Trim() ?? "";
     public string NextTime => Active?.Next is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "EPG.ONE · ежедневное обновление";
     private string _status = "Готов к просмотру. Добавьте свой плейлист.";
     public string Status { get => _status; set => Set(ref _status, value); }
@@ -268,7 +270,7 @@ public sealed class MainViewModel : Observable, IDisposable
     public void InvalidateLogo(string id) { _logoVersions[id] = _logoVersions.GetValueOrDefault(id) + 1; _logoLoading.Remove(id); _logoRetry.Remove(id); var c = AllChannels.Find(c => c.Id == id); if (c is not null) { c.LogoPath = null; c.Current = c.Next = null; } }
     public void RaisePlayback()
     {
-        foreach (var name in new[] { nameof(ActiveName), nameof(CurrentTitle), nameof(CurrentTime), nameof(CurrentProgress), nameof(NextTitle), nameof(NextTime) }) Raise(name);
+        foreach (var name in new[] { nameof(ActiveName), nameof(CurrentTitle), nameof(CurrentDescription), nameof(CurrentTime), nameof(CurrentProgress), nameof(NextTitle), nameof(NextDescription), nameof(NextTime) }) Raise(name);
     }
     public async Task ToggleFavoriteAsync(ChannelItem item)
     {

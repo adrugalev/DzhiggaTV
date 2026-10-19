@@ -53,11 +53,17 @@ internal static class Program
 
         await fixture.SeedGuideAsync();
         await fixture.MapAsync("guide-one");
+        var notified = new HashSet<string?>();
+        model.PropertyChanged += (_, e) => notified.Add(e.PropertyName);
         await model.RefreshEpgViewAsync();
 
         Assert(row.Current?.Title == "Передача один", "The current programme was not refreshed on the existing row.");
         Assert(row.Next?.Title == "Следующая один", "The next programme was not refreshed.");
         Assert(model.CurrentTitle == "Передача один", "The playback panel did not receive the current title.");
+        Assert(model.CurrentDescription == "Описание текущей передачи.\nПодробности из телепрограммы." && model.NextDescription == "Описание следующей передачи.",
+            "The playback cards must display both descriptions from SQLite without losing paragraphs.");
+        Assert(notified.Contains(nameof(MainViewModel.CurrentDescription)) && notified.Contains(nameof(MainViewModel.NextDescription)),
+            "EPG refresh must notify both description bindings.");
         await WaitUntilAsync(() => row.LogoPath == fixture.FirstLogo,
             "The first EPG refresh must retry the visible logo without waiting for negative-cache expiry.");
         Assert(DecodeWidth(row.LogoPath!) == 2, "The resulting logo must be decodable by WPF.");
@@ -81,6 +87,7 @@ internal static class Program
         Assert(row.Current?.Title == "Передача два", "Remapping must replace an already populated current programme.");
         Assert(row.Next?.Title == "Следующая два", "Remapping must replace the next programme.");
         Assert(model.CurrentTitle == "Передача два", "Remapping must refresh the playback panel.");
+        Assert(model.CurrentDescription == "Описание передачи два." && model.NextDescription == "", "Remapping must replace the description and clear an unavailable next description.");
         await WaitUntilAsync(() => row.LogoPath == fixture.SecondLogo, "Remapping must replace an already loaded EPG logo.");
     }
 
@@ -105,6 +112,7 @@ internal static class Program
         Assert(row.NowTitle == "Телепрограмма не назначена" && row.EndTime == "" && row.Progress == 0,
             "Removing a mapping must clear all programme details.");
         Assert(model.CurrentTitle == "Программа пока недоступна", "The playback panel retained a removed programme.");
+        Assert(model.CurrentDescription == "" && model.NextDescription == "", "Removing a mapping must clear both descriptions.");
     }
 
     private static async Task ReloadAsync()
@@ -131,6 +139,7 @@ internal static class Program
         Assert(replacement.IsFavorite && replacement.Name == "Мой канал" && replacement.Group == "Мои каналы",
             "Settings reload lost favorites or custom channel labels.");
         Assert(model.CurrentTitle == "Передача один", "The rebound active row did not regain its programme.");
+        Assert(model.CurrentDescription.Contains("Подробности из телепрограммы.") && model.NextDescription == "Описание следующей передачи.", "Reload must restore both programme descriptions.");
         await WaitUntilAsync(() => replacement.LogoPath == fixture.FirstLogo, "The rebound row did not regain its logo.");
         var persisted = await model.Store.LoadUserStateAsync();
         Assert(persisted.Favorites.Contains(replacement.Id) && persisted.History.Contains(replacement.Id),
@@ -236,10 +245,10 @@ internal static class Program
         {
             await addChannel(new("guide-one", "Канал один", FirstLogo));
             await addChannel(new("guide-two", "Канал два", SecondLogo));
-            await addProgramme(new("guide-one", "Передача один", _now.AddMinutes(-20), _now.AddMinutes(20)));
-            await addProgramme(new("guide-one", "Следующая один", _now.AddMinutes(20), _now.AddMinutes(60)));
-            await addProgramme(new("guide-two", "Передача два", _now.AddMinutes(-15), _now.AddMinutes(30)));
-            await addProgramme(new("guide-two", "Следующая два", _now.AddMinutes(30), _now.AddMinutes(90)));
+            await addProgramme(new("guide-one", "Передача один", _now.AddMinutes(-20), _now.AddMinutes(20), "  Описание текущей передачи.\nПодробности из телепрограммы.  "));
+            await addProgramme(new("guide-one", "Следующая один", _now.AddMinutes(20), _now.AddMinutes(60), "Описание следующей передачи."));
+            await addProgramme(new("guide-two", "Передача два", _now.AddMinutes(-15), _now.AddMinutes(30), "Описание передачи два."));
+            await addProgramme(new("guide-two", "Следующая два", _now.AddMinutes(30), _now.AddMinutes(90), "  "));
         });
 
         public Task MapAsync(string epgId, bool manual = false) => Model.Store.SaveMappingsAsync(

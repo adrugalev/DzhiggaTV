@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     private Point _dragOrigin;
     private ChannelItem? _dragItem;
     private long _playGeneration;
+    private DzhiggaTV.Core.Programme? _displayedCurrent, _displayedNext;
     private record WindowSnapshot(double Left, double Top, double Width, double Height, WindowState State);
 
     public MainWindow(string[] args, UpdateCoordinator? updates = null)
@@ -41,6 +42,11 @@ public partial class MainWindow : Window
         var custom = Argument("--data-dir");
         Model = new(custom ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV"));
         InitializeComponent(); ApplyMainWindowChrome(); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
+        ViewingPanel.SizeChanged += (_, _) => UpdateProgrammePanelLayout();
+        Model.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription)) UpdateProgrammePanelLayout();
+        };
         WindowChrome.SetIsHitTestVisibleInChrome(VersionButton, true);
         WindowChrome.SetIsHitTestVisibleInChrome(MinimizeButton, true);
         WindowChrome.SetIsHitTestVisibleInChrome(MaximizeButton, true);
@@ -323,12 +329,22 @@ public partial class MainWindow : Window
         ApplyMainWindowChrome();
         MinWidth = 940; MinHeight = 600;
         Header.Visibility = Navigation.Visibility = ChannelPanel.Visibility = Splitter.Visibility = ViewingHeading.Visibility = ProgrammePanel.Visibility = StatusBar.Visibility = Visibility.Visible;
-        TopRow.Height = new(76); StatusRow.Height = new(32); ViewingHeadingRow.Height = GridLength.Auto; ProgrammeRow.Height = new(170);
+        TopRow.Height = new(76); StatusRow.Height = new(32); ViewingHeadingRow.Height = GridLength.Auto;
         NavigationColumn.MinWidth = 64; SetNavigationCollapsed(_navigationCollapsed); ChannelColumn.Width = new(350); ChannelColumn.MinWidth = 270; SplitterColumn.Width = new(5);
         ViewingPanel.Margin = new(20,20,24,14); VideoBorder.CornerRadius = new(12); VideoBorder.BorderThickness = new(1);
         if (_snapshot is { } s) { Width = s.Width; Height = s.Height; Left = s.Left; Top = s.Top; WindowState = s.State; }
+        UpdateProgrammePanelLayout();
         WindowAppearance.Apply(this);
         _overlay?.Reveal(); QueueOverlayLayout();
+    }
+    private void UpdateProgrammePanelLayout()
+    {
+        if (IsMini || IsFullscreen) return;
+        bool hasDescription = Model.CurrentDescription.Length > 0 || Model.NextDescription.Length > 0;
+        double compactHeight = ViewingPanel.ActualWidth < 650 ? 180 : 150;
+        ProgrammeRow.Height = new(hasDescription ? Math.Clamp(ViewingPanel.ActualHeight * 0.36, 200, 260) : compactHeight);
+        if (_displayedCurrent != Model.Active?.Current) { _displayedCurrent = Model.Active?.Current; CurrentProgrammeScroll.ScrollToHome(); }
+        if (_displayedNext != Model.Active?.Next) { _displayedNext = Model.Active?.Next; NextProgrammeScroll.ScrollToHome(); }
     }
     private void ClampToScreen() { Left = Math.Clamp(Left, SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - Width); Top = Math.Clamp(Top, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Height); }
     private void QueueOverlayLayout()
