@@ -10,6 +10,7 @@ try {
     Invoke-DzhiggaDotnet -Arguments @('run', '--project', (Join-Path $RepositoryRoot 'tests\DzhiggaTV.Transport.Tests\DzhiggaTV.Transport.Tests.csproj'), '-c', $Configuration, '--no-launch-profile')
     Invoke-DzhiggaDotnet -Arguments @('run', '--project', (Join-Path $RepositoryRoot 'tests\DzhiggaTV.App.Tests\DzhiggaTV.App.Tests.csproj'), '-c', $Configuration, '--no-launch-profile')
     Invoke-DzhiggaDotnet -Arguments @('run', '--project', (Join-Path $RepositoryRoot 'tests\DzhiggaTV.Update.Tests\DzhiggaTV.Update.Tests.csproj'), '-c', $Configuration, '--no-launch-profile')
+    Invoke-DzhiggaDotnet -Arguments @('run', '--project', (Join-Path $RepositoryRoot 'tests\DzhiggaTV.Delta.Tests\DzhiggaTV.Delta.Tests.csproj'), '-c', $Configuration, '--no-launch-profile')
 } finally {
     $env:DZHIGGATV_TEST_PLAYLIST = $previousFixture
 }

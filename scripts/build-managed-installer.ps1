@@ -36,10 +36,15 @@ $installerArguments = @('publish', (Join-Path $installerRepoRoot 'src\DzhiggaTV.
 if ($LASTEXITCODE -ne 0) { throw 'Сборка DzhiggaTV Setup завершилась с ошибкой.' }
 $installerFinalPath = [System.IO.Path]::GetFullPath($OutputPath)
 New-Item -ItemType Directory -Path ([System.IO.Path]::GetDirectoryName($installerFinalPath)) -Force | Out-Null
-Copy-Item -LiteralPath (Join-Path $installerPublishPath 'DzhiggaTV.Setup.exe') -Destination $installerFinalPath -Force
+function Copy-InstallerAtomically([string]$Source, [string]$Destination) {
+    $installerTemporaryCopy = Join-Path ([IO.Path]::GetDirectoryName($Destination)) ('.DzhiggaTV-installer-' + [Guid]::NewGuid().ToString('N') + '.tmp')
+    Copy-Item -LiteralPath $Source -Destination $installerTemporaryCopy
+    Move-Item -LiteralPath $installerTemporaryCopy -Destination $Destination -Force
+}
+Copy-InstallerAtomically (Join-Path $installerPublishPath 'DzhiggaTV.Setup.exe') $installerFinalPath
 $installerLatestPath = Join-Path $installerRepoRoot 'DzhiggaTV-Setup-x64.exe'
 if (-not [string]::Equals($installerFinalPath, $installerLatestPath, [StringComparison]::OrdinalIgnoreCase)) {
-    Copy-Item -LiteralPath $installerFinalPath -Destination $installerLatestPath -Force
+    Copy-InstallerAtomically $installerFinalPath $installerLatestPath
 }
 if ((Get-FileHash -LiteralPath $installerLatestPath -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $installerFinalPath -Algorithm SHA256).Hash) {
     throw 'Контрольная сумма установщика в корне проекта не совпадает с результатом сборки.'

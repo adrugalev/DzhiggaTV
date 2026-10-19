@@ -17,3 +17,6 @@ foreach ($verifyFile in @($verifyInstaller, (Join-Path $verifyTarget 'DzhiggaTV.
     if ([version]([Diagnostics.FileVersionInfo]::GetVersionInfo($verifyFile).FileVersion) -ne $verifyExpected) { throw 'Версия установщика или вложенного приложения не совпадает с выпуском.' }
 }
 Write-Host "Проверены установщик, SHA-256 и вложенное приложение версии $($verifyInfo.Version)."
+$verifyUpdates = Join-Path $RepositoryRoot ('outputs\updates-' + $verifyInfo.Version)
+Invoke-DzhiggaDotnet -Arguments @('run', '--project', (Join-Path $RepositoryRoot 'tools\DzhiggaTV.Packaging\DzhiggaTV.Packaging.csproj'), '-c', 'Release', '--', '--verify', (Join-Path $verifyUpdates 'DzhiggaTV-win-x64.manifest.json'), $verifyTarget, (Join-Path $verifyUpdates 'DzhiggaTV-Update-x64.zip'))
+Invoke-DzhiggaDotnet -Arguments @('run', '--project', (Join-Path $RepositoryRoot 'tests\DzhiggaTV.Delta.Tests\DzhiggaTV.Delta.Tests.csproj'), '-c', 'Release', '--', '--published', $verifyTarget)

@@ -7,6 +7,13 @@ if (Test-Path -LiteralPath $OutputDirectory) { throw 'Каталог выпус�
 if (!$SkipTests) { & (Join-Path $PSScriptRoot 'test.ps1') }
 $stage = Join-Path $RepositoryRoot ('work\publish-' + [Guid]::NewGuid().ToString('N'))
 Invoke-DzhiggaDotnet -Arguments @('publish', (Join-Path $RepositoryRoot 'src\DzhiggaTV.App\DzhiggaTV.App.csproj'), '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=false', '-p:PublishTrimmed=false', '-p:DebugType=None', '-o', $stage, '--nologo')
+$runnerStage = Join-Path $RepositoryRoot ('work\update-runner-' + [Guid]::NewGuid().ToString('N'))
+# A payload-free installer shares the player's self-contained runtime. Only four tiny host files are added.
+Invoke-DzhiggaDotnet -Arguments @('publish', (Join-Path $RepositoryRoot 'src\DzhiggaTV.Installer\DzhiggaTV.Installer.csproj'), '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=false', '-p:PortableArchive=', '-p:DebugType=None', '-o', $runnerStage, '--nologo')
+foreach ($runnerFile in @('DzhiggaTV.Setup.exe', 'DzhiggaTV.Setup.dll', 'DzhiggaTV.Setup.deps.json', 'DzhiggaTV.Setup.runtimeconfig.json')) {
+    Copy-Item -LiteralPath (Join-Path $runnerStage $runnerFile) -Destination $stage
+}
+if ((Get-Item -LiteralPath (Join-Path $stage 'DzhiggaTV.Setup.dll')).Length -gt 2MB) { throw 'В локальный updater попал полный установочный архив.' }
 foreach ($required in @('DzhiggaTV.exe', 'DzhiggaTV.dll', 'coreclr.dll', 'native\libmpv-2.dll')) {
     if (!(Test-Path -LiteralPath (Join-Path $stage $required))) { throw "Выпуск неполон: отсутствует $required." }
 }

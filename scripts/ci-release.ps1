@@ -62,6 +62,19 @@ $ciReleaseChecksum = $ciReleaseInstaller + '.sha256'
 if (!(Test-Path -LiteralPath $ciReleaseInstaller -PathType Leaf) -or !(Test-Path -LiteralPath $ciReleaseChecksum -PathType Leaf)) { throw 'Для публикации нужны установщик и его SHA-256.' }
 $ciReleaseHash = (Get-FileHash -LiteralPath $ciReleaseInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
 if ((Get-Content -LiteralPath $ciReleaseChecksum -Raw).Trim() -cne ($ciReleaseHash + '  DzhiggaTV-Setup-x64.exe')) { throw 'Контрольная сумма установщика не совпадает. Выпуск не опубликован.' }
+$ciReleaseFiles = @($ciReleaseInstaller, $ciReleaseChecksum)
+$ciUpdateDirectory = Join-Path $PackageDirectory ('outputs\updates-' + $ciReleaseInfo.Version)
+$ciManifestPath = Join-Path $ciUpdateDirectory 'DzhiggaTV-win-x64.manifest.json'
+if (!(Test-Path -LiteralPath $ciManifestPath -PathType Leaf)) { throw 'Отсутствует манифест файлов нового выпуска.' }
+$ciManifest = Get-Content -LiteralPath $ciManifestPath -Raw | ConvertFrom-Json
+if ($ciManifest.FormatVersion -ne 1 -or $ciManifest.ProductId -cne 'DzhiggaTV.Windows.x64' -or $ciManifest.Version -cne $ciReleaseInfo.Version) { throw 'Манифест обновления относится к другому выпуску.' }
+foreach ($ciUpdateName in @('DzhiggaTV-win-x64.manifest.json', 'DzhiggaTV-Update-x64.zip')) {
+    $ciUpdateFile = Join-Path $ciUpdateDirectory $ciUpdateName
+    if (!(Test-Path -LiteralPath $ciUpdateFile -PathType Leaf)) { continue }
+    $ciUpdateHash = (Get-FileHash -LiteralPath $ciUpdateFile -Algorithm SHA256).Hash.ToLowerInvariant()
+    if (!(Test-Path -LiteralPath ($ciUpdateFile + '.sha256') -PathType Leaf) -or (Get-Content -LiteralPath ($ciUpdateFile + '.sha256') -Raw).Trim() -cne ($ciUpdateHash + '  ' + $ciUpdateName)) { throw 'Неверная контрольная сумма пакета обновления.' }
+    $ciReleaseFiles += @($ciUpdateFile, ($ciUpdateFile + '.sha256'))
+}
 
 $ciReleaseBody = Get-Content -LiteralPath $ciReleaseInfo.NotesPath -Raw
 $ciReleaseDraft = $ciReleasePlan.Existing
@@ -69,7 +82,7 @@ if (!$ciReleaseDraft) {
     $ciReleaseDraft = Invoke-ReleaseApi -Path 'releases' -Method Post -Body @{ tag_name = $ciReleaseInfo.Tag; target_commitish = $env:GITHUB_SHA; name = 'DzhiggaTV ' + $ciReleaseInfo.Version; body = $ciReleaseBody; draft = $true; prerelease = $false }
 }
 if (!$ciReleaseDraft.draft) { throw 'Опубликованный выпуск не будет перезаписан.' }
-foreach ($ciReleaseFile in @($ciReleaseInstaller, $ciReleaseChecksum)) {
+foreach ($ciReleaseFile in $ciReleaseFiles) {
     $ciAssetName = [IO.Path]::GetFileName($ciReleaseFile)
     foreach ($ciExistingAsset in @($ciReleaseDraft.assets)) {
         if ($ciExistingAsset.name -eq $ciAssetName) { $null = Invoke-ReleaseApi -Path ('releases/assets/' + $ciExistingAsset.id) -Method Delete }
@@ -80,7 +93,7 @@ foreach ($ciReleaseFile in @($ciReleaseInstaller, $ciReleaseChecksum)) {
 }
 $ciUploadedRelease = Invoke-ReleaseApi -Path ('releases/' + $ciReleaseDraft.id)
 if (!$ciUploadedRelease.draft) { throw 'Выпуск был опубликован до завершения загрузки.' }
-foreach ($ciReleaseFile in @($ciReleaseInstaller, $ciReleaseChecksum)) {
+foreach ($ciReleaseFile in $ciReleaseFiles) {
     $ciAssetName = [IO.Path]::GetFileName($ciReleaseFile)
     $ciUploadedAssets = @($ciUploadedRelease.assets | Where-Object { $_.name -eq $ciAssetName -and $_.state -eq 'uploaded' })
     if ($ciUploadedAssets.Count -ne 1 -or $ciUploadedAssets[0].size -ne (Get-Item -LiteralPath $ciReleaseFile).Length) { throw "Не подтверждена полная загрузка $ciAssetName. Выпуск остался черновиком." }
@@ -88,4 +101,4 @@ foreach ($ciReleaseFile in @($ciReleaseInstaller, $ciReleaseChecksum)) {
     if ($ciUploadedAssets[0].digest -and $ciUploadedAssets[0].digest -cne $ciExpectedDigest) { throw "GitHub вернул неверную SHA-256 для $ciAssetName. Выпуск остался черновиком." }
 }
 $null = Invoke-ReleaseApi -Path ('releases/' + $ciReleaseDraft.id) -Method Patch -Body @{ draft = $false; prerelease = $false; make_latest = 'true'; name = 'DzhiggaTV ' + $ciReleaseInfo.Version; body = $ciReleaseBody }
-Write-ReleaseSummary "Опубликован [DzhiggaTV $($ciReleaseInfo.Version)](https://github.com/$ciReleaseRepository/releases/tag/$($ciReleaseInfo.Tag)) с установщиком и SHA-256."
+Write-ReleaseSummary "Опубликован [DzhiggaTV $($ciReleaseInfo.Version)](https://github.com/$ciReleaseRepository/releases/tag/$($ciReleaseInfo.Tag)) с установщиком, манифестом обновлений и SHA-256 ($($ciReleaseFiles.Count) вложений)."

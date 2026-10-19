@@ -41,17 +41,19 @@ public sealed class AutomaticUpdateWindow : Window
         {
             _status.Text = "Проверяем папку приложения…";
             await InstallEngine.ValidateUpdateTargetAsync(_request.Target, _cancellation.Token);
+            Version expectedVersion = _request.TargetVersion is { } targetVersion ? DzhiggaTV.Updating.DeltaPackage.VersionOf(targetVersion) : typeof(App).Assembly.GetName().Version!;
             string installedExe = System.IO.Path.Combine(_request.Target, "DzhiggaTV.exe");
             if (System.IO.File.Exists(installedExe) && Version.TryParse(System.Diagnostics.FileVersionInfo.GetVersionInfo(installedExe).FileVersion, out var installedVersion) &&
-                installedVersion > typeof(AutomaticUpdateWindow).Assembly.GetName().Version)
+                installedVersion > expectedVersion)
                 throw new InstallException("В этой папке уже установлена более новая версия. Откройте плеер.");
             bool fresh = !System.IO.Directory.Exists(_request.Target) || !System.IO.Directory.EnumerateFileSystemEntries(_request.Target).Any();
             _status.Text = "Сохраняем настройки и ждём закрытия плеера…";
             await _request.WaitForPlayerAsync(_cancellation.Token);
             _progress.IsIndeterminate = false;
-            using var archive = App.OpenArchive() ?? throw new InstallException("В установщике отсутствует архив приложения.");
+            using var archive = _request.Payload is not null ? await _request.OpenPayloadAsync(_cancellation.Token) :
+                App.OpenArchive() ?? throw new InstallException("В установщике отсутствует архив приложения.");
             var progress = new Progress<InstallProgress>(p => { _progress.Value = p.Percent; _status.Text = p.Message; });
-            await InstallEngine.InstallAsync(archive, _request.Target, progress, _cancellation.Token);
+            await InstallEngine.InstallAsync(archive, _request.Target, progress, _cancellation.Token, expectedVersion);
             _progress.Value = 100; _status.Text = "Готово. Открываем обновлённый плеер…";
             string defaultTarget = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "DzhiggaTV");
             if (fresh && System.IO.Path.GetFullPath(_request.Target).Equals(defaultTarget, StringComparison.OrdinalIgnoreCase))

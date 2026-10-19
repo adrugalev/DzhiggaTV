@@ -17,7 +17,7 @@ public sealed class AppUpdateWindow : Window
     private readonly Button _primary, _later;
     private readonly ProgressBar _progress;
     private bool _downloading;
-    public string? PreparedInstaller { get; private set; }
+    public PreparedAppUpdate? PreparedUpdate { get; private set; }
     public AppRelease? SelectedRelease { get; private set; }
 
     public AppUpdateWindow(Window owner, UpdateCoordinator updates, string cache, bool checkNow)
@@ -65,7 +65,9 @@ public sealed class AppUpdateWindow : Window
         if (SelectedRelease is { } release)
         {
             _heading.Text = $"Доступна версия {release.Tag}";
-            _detail.Text = $"Сейчас {App.DisplayVersion}  ·  Загрузка {release.Size / 1024d / 1024d:N0} МБ";
+            bool delta = release.Delta is not null && UpdateLauncher.CanUseDelta;
+            long size = delta ? release.Delta!.Size : release.Size;
+            _detail.Text = $"Сейчас {App.DisplayVersion}  ·  Загрузка {size / 1024d / 1024d:N1} МБ";
             _primary.Content = "Обновить и перезапустить";
             _status.Text = "Плейлисты, избранное и настройки сохранятся. Загрузка не прерывает просмотр.";
             AddNotes(release.Notes);
@@ -100,13 +102,31 @@ public sealed class AppUpdateWindow : Window
         try
         {
             var progress = new Progress<UpdateDownloadProgress>(p => { if (!IsVisible) return; _progress.Value = p.Percent; _status.Text = $"Загрузка обновления · {p.Percent:N0}%  ({p.Received / 1024d / 1024d:N1} из {p.Total / 1024d / 1024d:N1} МБ)"; });
+            if (release.Delta is not null && UpdateLauncher.CanUseDelta)
+            {
+                try
+                {
+                    var package = await _updates.Service.DownloadDeltaAsync(release, _cache, progress, _lifetime.Token);
+                    var preparing = new Progress<DzhiggaTV.Installer.InstallProgress>(p => { if (!IsVisible) return; _progress.Value = p.Percent; _status.Text = p.Message; });
+                    PreparedUpdate = await UpdateLauncher.PrepareDeltaAsync(package, release.Version, _cache, preparing, _lifetime.Token);
+                    if (IsVisible) DialogResult = true;
+                    return;
+                }
+                catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { throw; }
+                catch
+                {
+                    if (!IsVisible) return;
+                    _status.Text = "Подготовим полный пакет обновления…"; _progress.Value = 0;
+                    _detail.Text = $"Сейчас {App.DisplayVersion}  ·  Загрузка {release.Size / 1024d / 1024d:N1} МБ";
+                }
+            }
             var installer = await _updates.Service.DownloadAsync(release, _cache, progress, _lifetime.Token);
             if (!IsVisible) return;
             // Validate the embedded executable version before asking the running player to close.
             var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(installer);
             if (info.ProductName != "DzhiggaTV" || !Version.TryParse(info.FileVersion, out var version) || GitHubUpdateService.Normalize(version) != release.Version)
                 throw new UpdateException("Версия установщика не совпадает с выпуском. Обновление не запущено.");
-            PreparedInstaller = installer; DialogResult = true;
+            PreparedUpdate = new(installer); DialogResult = true;
         }
         catch (OperationCanceledException) { if (IsVisible) _status.Text = "Загрузка отменена. Можно повторить."; }
         catch (UpdateException error) { if (IsVisible) _status.Text = error.Message; }

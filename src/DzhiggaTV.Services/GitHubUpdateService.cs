@@ -9,7 +9,8 @@ namespace DzhiggaTV.Services;
 
 public sealed class UpdateException(string message) : Exception(message);
 public sealed record AppRelease(Version Version, string Tag, string Notes, Uri Page, string AssetName,
-    Uri Download, long Size, string? Sha256, Uri? ChecksumDownload);
+    Uri Download, long Size, string? Sha256, Uri? ChecksumDownload, UpdateAsset? Delta = null);
+public sealed record UpdateAsset(string Name, Uri Download, long Size, string? Sha256, Uri? ChecksumDownload);
 public sealed record UpdateDownloadProgress(long Received, long Total)
 {
     public double Percent => Total > 0 ? Math.Min(100, Received * 100d / Total) : 0;
@@ -20,6 +21,7 @@ public sealed class GitHubUpdateService : IDisposable
 {
     public const string Repository = "adrugalev/DzhiggaTV";
     public const string InstallerName = "DzhiggaTV-Setup-x64.exe";
+    public const string DeltaName = "DzhiggaTV-Update-x64.zip";
     public const long MaximumInstallerSize = 512L * 1024 * 1024;
     private static readonly Uri Latest = new($"https://api.github.com/repos/{Repository}/releases/latest");
     private readonly HttpClient _http;
@@ -93,12 +95,37 @@ public sealed class GitHubUpdateService : IDisposable
         if (hash is null && checksum is null) throw new UpdateException("Для обновления нужна контрольная сумма установщика. Она ещё не опубликована.");
         string notes = Text(root, "body") ?? "Описание изменений пока не добавлено.";
         if (notes.Length > 64000) notes = notes[..64000] + "\n…";
-        return new(version, tag, notes, new($"https://github.com/{Repository}/releases/tag/{Uri.EscapeDataString(tag)}"), name, download, size, hash, checksum);
+        UpdateAsset? delta = null;
+        // Optional optimization: a malformed delta must never hide a valid full installer.
+        try
+        {
+            var matches = assets.EnumerateArray().Where(a => Text(a, "name") == DeltaName && Text(a, "state") == "uploaded").ToArray();
+            if (matches.Length == 1 && matches[0].TryGetProperty("size", out var deltaSize) && deltaSize.TryGetInt64(out long bytes) && bytes > 0 && bytes < size)
+            {
+                var deltaUri = AssetUri(Text(matches[0], "browser_download_url"), tag, DeltaName);
+                string? deltaDigest = Text(matches[0], "digest");
+                string? deltaHash = deltaDigest is not null && Regex.IsMatch(deltaDigest, "^sha256:[0-9a-fA-F]{64}$") ? deltaDigest[7..].ToLowerInvariant() : null;
+                Uri? deltaChecksum = null;
+                var sidecars = assets.EnumerateArray().Where(a => Text(a, "name") == DeltaName + ".sha256" && Text(a, "state") == "uploaded").ToArray();
+                if (sidecars.Length == 1) deltaChecksum = AssetUri(Text(sidecars[0], "browser_download_url"), tag, DeltaName + ".sha256");
+                if (deltaHash is not null || deltaChecksum is not null) delta = new(DeltaName, deltaUri, bytes, deltaHash, deltaChecksum);
+            }
+        }
+        catch (UpdateException) { }
+        return new(version, tag, notes, new($"https://github.com/{Repository}/releases/tag/{Uri.EscapeDataString(tag)}"), name, download, size, hash, checksum, delta);
+    }
+
+    public Task<string> DownloadDeltaAsync(AppRelease release, string cacheDirectory, IProgress<UpdateDownloadProgress>? progress, CancellationToken token)
+    {
+        var delta = release.Delta ?? throw new UpdateException("Пакет изменений отсутствует.");
+        return DownloadAsync(release with { AssetName = delta.Name, Download = delta.Download, Size = delta.Size, Sha256 = delta.Sha256, ChecksumDownload = delta.ChecksumDownload, Delta = null }, cacheDirectory, progress, token);
     }
 
     public async Task<string> DownloadAsync(AppRelease release, string cacheDirectory, IProgress<UpdateDownloadProgress>? progress, CancellationToken cancellationToken)
     {
         _ = AssetUri(release.Download.AbsoluteUri, release.Tag, release.AssetName);
+        if (release.AssetName != InstallerName && release.AssetName != DeltaName && release.AssetName != $"DzhiggaTV-{release.Tag.TrimStart('v', 'V')}-Setup-x64.exe")
+            throw new UpdateException("Недопустимое имя пакета обновления.");
         if (release.Size is <= 0 or > MaximumInstallerSize) throw new UpdateException("Недопустимый размер обновления.");
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(20));
@@ -115,7 +142,7 @@ public sealed class GitHubUpdateService : IDisposable
         if (expected is null || !Regex.IsMatch(expected, "^[0-9a-fA-F]{64}$")) throw new UpdateException("Не удалось проверить контрольную сумму обновления.");
         string directory = Path.Combine(Path.GetFullPath(cacheDirectory), release.Version.ToString(4));
         Directory.CreateDirectory(directory);
-        string final = Path.Combine(directory, InstallerName), partial = final + ".part";
+        string final = Path.Combine(directory, release.AssetName), partial = final + ".part";
         if (File.Exists(final) && new FileInfo(final).Length == release.Size && await HasHashAsync(final, expected, token).ConfigureAwait(false))
         { progress?.Report(new(release.Size, release.Size)); return final; }
         try

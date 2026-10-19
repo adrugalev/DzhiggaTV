@@ -32,7 +32,6 @@ public partial class MainWindow : Window
     private Point _dragOrigin;
     private ChannelItem? _dragItem;
     private long _playGeneration;
-    private DzhiggaTV.Core.Programme? _displayedCurrent, _displayedNext;
     private record WindowSnapshot(double Left, double Top, double Width, double Height, WindowState State);
 
     public MainWindow(string[] args, UpdateCoordinator? updates = null)
@@ -185,11 +184,11 @@ public partial class MainWindow : Window
     {
         var dialog = new AppUpdateWindow(owner, Updates, Path.Combine(Model.DataDirectory, "updates"), checkNow);
         dialog.ShowDialog();
-        if (dialog.PreparedInstaller is { } installer && dialog.SelectedRelease is { } release)
+        if (dialog.PreparedUpdate is { } prepared && dialog.SelectedRelease is { } release)
         {
             try
             {
-                UpdateLauncher.Start(installer, release.Version, Model.DataDirectory);
+                UpdateLauncher.Start(prepared, release.Version, Model.DataDirectory);
                 if (owner != this) owner.Close();
                 Close();
             }
@@ -341,10 +340,8 @@ public partial class MainWindow : Window
     {
         if (IsMini || IsFullscreen) return;
         bool hasDescription = Model.CurrentDescription.Length > 0 || Model.NextDescription.Length > 0;
-        double compactHeight = ViewingPanel.ActualWidth < 650 ? 180 : 150;
-        ProgrammeRow.Height = new(hasDescription ? Math.Clamp(ViewingPanel.ActualHeight * 0.36, 200, 260) : compactHeight);
-        if (_displayedCurrent != Model.Active?.Current) { _displayedCurrent = Model.Active?.Current; CurrentProgrammeScroll.ScrollToHome(); }
-        if (_displayedNext != Model.Active?.Next) { _displayedNext = Model.Active?.Next; NextProgrammeScroll.ScrollToHome(); }
+        double compactHeight = ViewingPanel.ActualWidth < 650 ? 150 : 130;
+        ProgrammeRow.Height = new(hasDescription ? 180 : compactHeight);
     }
     private void ClampToScreen() { Left = Math.Clamp(Left, SystemParameters.VirtualScreenLeft, SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth - Width); Top = Math.Clamp(Top, SystemParameters.VirtualScreenTop, SystemParameters.VirtualScreenTop + SystemParameters.VirtualScreenHeight - Height); }
     private void QueueOverlayLayout()

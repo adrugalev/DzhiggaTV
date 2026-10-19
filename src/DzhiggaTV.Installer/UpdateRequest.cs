@@ -4,7 +4,8 @@ using System.IO;
 
 namespace DzhiggaTV.Installer;
 
-public sealed record UpdateRequest(string Target, int WaitPid, long WaitStartTicks, string DataDirectory)
+public sealed record UpdateRequest(string Target, int WaitPid, long WaitStartTicks, string DataDirectory,
+    string? Payload = null, string? PayloadSha256 = null, string? TargetVersion = null)
 {
     public static UpdateRequest Parse(string[] args)
     {
@@ -20,7 +21,14 @@ public sealed record UpdateRequest(string Target, int WaitPid, long WaitStartTic
         if (!int.TryParse(Required("--wait-pid"), NumberStyles.None, CultureInfo.InvariantCulture, out int pid) || pid <= 0 ||
             !long.TryParse(Required("--wait-start"), NumberStyles.None, CultureInfo.InvariantCulture, out long ticks) || ticks <= 0)
             throw new InstallException("Неверные параметры ожидания плеера.");
-        return new(target, pid, ticks, data);
+        string? payload = null, hash = null, version = null;
+        if (args.Any(a => a is "--update-payload" or "--payload-sha256" or "--target-version"))
+        {
+            payload = Path.GetFullPath(Required("--update-payload")); hash = Required("--payload-sha256"); version = Required("--target-version");
+            if (hash.Length != 64 || hash.Any(c => !Uri.IsHexDigit(c))) throw new InstallException("Неверная контрольная сумма обновления.");
+            _ = DzhiggaTV.Updating.DeltaPackage.VersionOf(version);
+        }
+        return new(target, pid, ticks, data, payload, hash, version);
     }
     public async Task WaitForPlayerAsync(CancellationToken token)
     {
@@ -44,5 +52,18 @@ public sealed record UpdateRequest(string Target, int WaitPid, long WaitStartTic
         start.ArgumentList.Add("--data-dir"); start.ArgumentList.Add(DataDirectory);
         start.ArgumentList.Add("--resume");
         using var process = Process.Start(start) ?? throw new InstallException("Не удалось открыть плеер. Запустите DzhiggaTV из меню «Пуск».");
+    }
+    public async Task<Stream> OpenPayloadAsync(CancellationToken token)
+    {
+        if (Payload is null || PayloadSha256 is null) throw new InstallException("Не указан подготовленный пакет обновления.");
+        var stream = new FileStream(Payload, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, true);
+        try
+        {
+            if (stream.Length is <= 0 or > 2L * 1024 * 1024 * 1024 ||
+                !Convert.ToHexStringLower(await System.Security.Cryptography.SHA256.HashDataAsync(stream, token)).Equals(PayloadSha256, StringComparison.OrdinalIgnoreCase))
+                throw new InstallException("Подготовленный пакет обновления повреждён. Откройте плеер и повторите загрузку.");
+            stream.Position = 0; return stream;
+        }
+        catch { await stream.DisposeAsync(); throw; }
     }
 }

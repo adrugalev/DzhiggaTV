@@ -8,6 +8,17 @@ $ciTestInstaller = Join-Path $ciTestWork 'DzhiggaTV-Setup-x64.exe'
 $ciTestHash = (Get-FileHash -LiteralPath $ciTestInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
 $ciTestChecksum = $ciTestInstaller + '.sha256'
 ($ciTestHash + '  DzhiggaTV-Setup-x64.exe') | Set-Content -LiteralPath $ciTestChecksum -Encoding ascii
+$ciTestInfo = & (Join-Path $PSScriptRoot 'get-release-info.ps1')
+$ciTestUpdateDirectory = Join-Path $ciTestWork ('outputs\updates-' + $ciTestInfo.Version)
+New-Item -ItemType Directory -Path $ciTestUpdateDirectory -Force | Out-Null
+foreach ($ciTestArtifact in @('DzhiggaTV-win-x64.manifest.json', 'DzhiggaTV-Update-x64.zip')) {
+    $ciTestArtifactPath = Join-Path $ciTestUpdateDirectory $ciTestArtifact
+    if ($ciTestArtifact.EndsWith('.json')) {
+        @{ FormatVersion = 1; ProductId = 'DzhiggaTV.Windows.x64'; Version = $ciTestInfo.Version; Files = @() } | ConvertTo-Json | Set-Content -LiteralPath $ciTestArtifactPath -Encoding utf8
+    } else { [IO.File]::WriteAllText($ciTestArtifactPath, 'mock delta; not an archive') }
+    $ciTestArtifactHash = (Get-FileHash -LiteralPath $ciTestArtifactPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    ($ciTestArtifactHash + '  ' + $ciTestArtifact) | Set-Content -LiteralPath ($ciTestArtifactPath + '.sha256') -Encoding ascii
+}
 $ciTestEnvNames = @('GH_TOKEN', 'GITHUB_REPOSITORY', 'GITHUB_SHA', 'GITHUB_OUTPUT', 'GITHUB_STEP_SUMMARY')
 $ciTestPrevious = @{}
 foreach ($ciTestName in $ciTestEnvNames) { $ciTestPrevious[$ciTestName] = [Environment]::GetEnvironmentVariable($ciTestName) }
@@ -17,6 +28,7 @@ $env:GITHUB_SHA = 'a' * 40
 $env:GITHUB_OUTPUT = Join-Path $ciTestWork 'outputs.txt'
 $env:GITHUB_STEP_SUMMARY = Join-Path $ciTestWork 'summary.md'
 $script:ciTestPassed = 0
+$script:ciExpectedAssets = 6
 function Assert-CiRelease([bool]$Condition, [string]$Name) { if (!$Condition) { throw $Name }; $script:ciTestPassed++; Write-Host "PASS $Name" }
 function Reset-CiReleaseMock {
     $script:ciMock = @{ Existing = $null; Latest = $null; Published = $false; Created = $false; FailChecksumUpload = $false; Deny = $false; Stale = $false; Assets = [Collections.Generic.List[object]]::new(); Mutations = [Collections.Generic.List[string]]::new() }
@@ -51,7 +63,7 @@ function Invoke-RestMethod {
     }
     if ($Method -eq 'Patch' -and $path -eq 'releases/42') {
         $patch = ConvertFrom-Json -InputObject $Body
-        Assert-CiRelease ($script:ciMock.Assets.Count -eq 2 -and !$patch.draft -and $patch.make_latest -eq 'true') 'publish only after both verified uploads'
+        Assert-CiRelease ($script:ciMock.Assets.Count -eq $script:ciExpectedAssets -and !$patch.draft -and $patch.make_latest -eq 'true') 'publish only after all required verified uploads'
         $script:ciMock.Published = $true; $script:ciMock.Mutations.Add('publish'); return [PSCustomObject]@{ id = 42 }
     }
     throw "Unexpected mocked request: $Method $path"
@@ -78,10 +90,26 @@ try {
     . (Join-Path $PSScriptRoot 'ci-release.ps1') -Mode Publish -PackageDirectory $ciTestWork
     Assert-CiRelease $script:ciMock.Published 'complete uploads publish the stable release'
     Reset-CiReleaseMock
+    $ciTestDeltaFile = Join-Path $ciTestUpdateDirectory 'DzhiggaTV-Update-x64.zip'
+    Move-Item -LiteralPath $ciTestDeltaFile -Destination ($ciTestDeltaFile + '.saved')
+    $script:ciExpectedAssets = 4
+    . (Join-Path $PSScriptRoot 'ci-release.ps1') -Mode Publish -PackageDirectory $ciTestWork
+    Assert-CiRelease $script:ciMock.Published 'first bridge release publishes a manifest without requiring an older delta baseline'
+    Move-Item -LiteralPath ($ciTestDeltaFile + '.saved') -Destination $ciTestDeltaFile
+    $script:ciExpectedAssets = 6
+    Reset-CiReleaseMock
     $script:ciMock.FailChecksumUpload = $true
     $failed = $false
     try { . (Join-Path $PSScriptRoot 'ci-release.ps1') -Mode Publish -PackageDirectory $ciTestWork } catch { $failed = $true }
     Assert-CiRelease ($failed -and $script:ciMock.Created -and !$script:ciMock.Published) 'interrupted uploads leave an unpublished draft'
+    Reset-CiReleaseMock
+    $ciTestDeltaChecksum = Join-Path $ciTestUpdateDirectory 'DzhiggaTV-Update-x64.zip.sha256'
+    $ciTestOriginalChecksum = Get-Content -LiteralPath $ciTestDeltaChecksum -Raw
+    Set-Content -LiteralPath $ciTestDeltaChecksum -Value ('0' * 64 + '  DzhiggaTV-Update-x64.zip') -Encoding ascii
+    $failed = $false
+    try { . (Join-Path $PSScriptRoot 'ci-release.ps1') -Mode Publish -PackageDirectory $ciTestWork } catch { $failed = $true }
+    Assert-CiRelease ($failed -and $script:ciMock.Mutations.Count -eq 0) 'corrupt delta blocks publication before creating a release'
+    Set-Content -LiteralPath $ciTestDeltaChecksum -Value $ciTestOriginalChecksum -Encoding ascii
     Reset-CiReleaseMock
     Set-Content -LiteralPath $ciTestChecksum -Value ('0' * 64 + '  DzhiggaTV-Setup-x64.exe') -Encoding ascii
     $failed = $false

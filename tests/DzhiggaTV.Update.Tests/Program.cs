@@ -47,6 +47,33 @@ internal static class Program
             using (var service = Service(_ => { ++rateRequests; return new(HttpStatusCode.TooManyRequests); }))
             { await Reject(async () => { await service.CheckAsync(); }, "handle GitHub rate limit"); await Reject(async () => { await service.CheckAsync(); }, "back off after rate limit"); Assert(rateRequests == 1, "do not retry a rate-limited server immediately"); }
             var release = GitHubUpdateService.ParseRelease(Metadata())!;
+            byte[] deltaBytes = Encoding.UTF8.GetBytes("delta");
+            string deltaHash = Convert.ToHexStringLower(SHA256.HashData(deltaBytes));
+            string WithDelta(string? url = null, string? digest = "auto", long? size = null, bool duplicate = false)
+            {
+                var node = System.Text.Json.Nodes.JsonNode.Parse(Metadata())!;
+                var asset = new { name = GitHubUpdateService.DeltaName, state = "uploaded", size = size ?? deltaBytes.Length,
+                    digest = digest == "auto" ? "sha256:" + deltaHash : digest,
+                    browser_download_url = url ?? "https://github.com/adrugalev/DzhiggaTV/releases/download/v1.0.14/DzhiggaTV-Update-x64.zip" };
+                node["assets"]!.AsArray().Add(JsonSerializer.SerializeToNode(asset));
+                if (duplicate) node["assets"]!.AsArray().Add(JsonSerializer.SerializeToNode(asset));
+                return node.ToJsonString();
+            }
+            var deltaRelease = GitHubUpdateService.ParseRelease(WithDelta())!;
+            Assert(deltaRelease.Delta?.Size == deltaBytes.Length, "discover a smaller verified delta alongside the full installer");
+            Assert(GitHubUpdateService.ParseRelease(WithDelta(url: "https://example.com/delta.zip"))!.Delta is null, "ignore a delta outside the exact release without hiding the full installer");
+            Assert(GitHubUpdateService.ParseRelease(WithDelta(digest: null))!.Delta is null, "do not use a delta without a checksum");
+            Assert(GitHubUpdateService.ParseRelease(WithDelta(size: Payload.Length))!.Delta is null, "prefer the full installer when a delta saves no bandwidth");
+            Assert(GitHubUpdateService.ParseRelease(WithDelta(duplicate: true))!.Delta is null, "ignore ambiguous duplicate delta assets");
+            using (var service = Service(r => new(HttpStatusCode.OK) { Content = new ByteArrayContent(r.RequestUri!.AbsolutePath.EndsWith(".zip") ? deltaBytes : Payload) }))
+            {
+                string cache = Path.Combine(scratch, "delta");
+                string deltaPath = await service.DownloadDeltaAsync(deltaRelease, cache, null, default);
+                string fullPath = await service.DownloadAsync(deltaRelease, cache, null, default);
+                Assert(deltaPath != fullPath && File.ReadAllBytes(deltaPath).SequenceEqual(deltaBytes) && File.ReadAllBytes(fullPath).SequenceEqual(Payload), "delta and full installer caches cannot overwrite one another");
+            }
+            using (var service = Service(_ => new(HttpStatusCode.OK) { Content = new ByteArrayContent(new byte[deltaBytes.Length]) }))
+                await Reject(async () => { await service.DownloadDeltaAsync(deltaRelease, Path.Combine(scratch, "bad-delta"), null, default); }, "reject a damaged delta download");
             int downloads = 0;
             using (var service = Service(_ => { ++downloads; return new(HttpStatusCode.OK) { Content = new ByteArrayContent(Payload) }; }))
             {

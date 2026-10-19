@@ -14,6 +14,7 @@
     <Resource Include="Assets\DzhiggaTV.ico" />
     <ProjectReference Include="..\DzhiggaTV.Core\DzhiggaTV.Core.csproj" />
     <ProjectReference Include="..\DzhiggaTV.Services\DzhiggaTV.Services.csproj" />
+    <ProjectReference Include="..\DzhiggaTV.UpdateCore\DzhiggaTV.UpdateCore.csproj" />
     <ProjectReference Include="..\DzhiggaTV.Player\DzhiggaTV.Player.csproj" />
     <Content Include="..\..\native\*.dll" Link="native\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

@@ -11,7 +11,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        if (e.Args.Contains("--update-target"))
+        if (e.Args.Contains("--update-target") && !e.Args.Contains("--extract-to"))
         {
             try { MainWindow = new AutomaticUpdateWindow(UpdateRequest.Parse(e.Args)); MainWindow.Show(); }
             catch { MessageBox.Show("Не удалось подготовить обновление. Запустите плеер и повторите попытку.", "DzhiggaTV"); Shutdown(1); }
@@ -26,8 +26,10 @@ public partial class App : Application
             try
             {
                 if (extraction + 1 >= e.Args.Length) throw new InstallException("Не указана папка установки.");
-                using var archive = OpenArchive() ?? throw new InstallException("В этой сборке отсутствует установочный архив.");
-                var installed = await InstallEngine.InstallAsync(archive, e.Args[extraction + 1], null, CancellationToken.None);
+                var external = e.Args.Contains("--update-payload") ? UpdateRequest.Parse(e.Args) : null;
+                using var archive = external is not null ? await external.OpenPayloadAsync(CancellationToken.None) : OpenArchive() ?? throw new InstallException("В этой сборке отсутствует установочный архив.");
+                var installed = await InstallEngine.InstallAsync(archive, e.Args[extraction + 1], null, CancellationToken.None,
+                    external?.TargetVersion is { } version ? DzhiggaTV.Updating.DeltaPackage.VersionOf(version) : null);
                 // Headless extraction never writes shortcuts, registry keys, or user settings.
                 result = new { success = true, installed.Directory, installed.FileCount, installed.PreviousVersionBackup };
                 exit = 0;

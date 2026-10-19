@@ -21,8 +21,8 @@ public static class InstallEngine
     private sealed record Manifest(int FormatVersion, string ProductId, string InstallRoot, string ApplicationHash, DateTimeOffset InstalledAt, List<InstalledFile> Files);
     private sealed record PayloadEntry(ZipArchiveEntry Entry, string RelativePath);
 
-    public static Task<InstallResult> InstallAsync(Stream zip, string destination, IProgress<InstallProgress>? progress, CancellationToken cancellationToken)
-        => Task.Run(() => InstallCoreAsync(zip, destination, progress, cancellationToken), cancellationToken);
+    public static Task<InstallResult> InstallAsync(Stream zip, string destination, IProgress<InstallProgress>? progress, CancellationToken cancellationToken, Version? expectedVersion = null)
+        => Task.Run(() => InstallCoreAsync(zip, destination, progress, cancellationToken, expectedVersion), cancellationToken);
 
     public static async Task ValidateUpdateTargetAsync(string destination, CancellationToken token)
     {
@@ -30,7 +30,7 @@ public static class InstallEngine
         _ = await ValidateExistingAsync(root, token);
     }
 
-    private static async Task<InstallResult> InstallCoreAsync(Stream source, string destination, IProgress<InstallProgress>? progress, CancellationToken token)
+    private static async Task<InstallResult> InstallCoreAsync(Stream source, string destination, IProgress<InstallProgress>? progress, CancellationToken token, Version? expectedVersion)
     {
         string root = ValidateDestination(destination);
         string parent = Path.GetDirectoryName(root)!;
@@ -87,6 +87,12 @@ public static class InstallEngine
             await File.WriteAllTextAsync(guidePath, guide, token);
             files.Add(await DescribeAsync(stage, RemovalGuide, token));
             string applicationHash = files.Single(file => file.RelativePath.Equals("DzhiggaTV.exe", StringComparison.OrdinalIgnoreCase)).Sha256;
+            if (expectedVersion is not null)
+            {
+                var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(SafePath(stage, "DzhiggaTV.exe"));
+                if (info.ProductName != "DzhiggaTV" || !Version.TryParse(info.FileVersion, out var actualVersion) || actualVersion != expectedVersion)
+                    throw new InstallException("Версия подготовленного приложения не совпадает с выпуском.");
+            }
             var manifest = new Manifest(1, Product, root, applicationHash, DateTimeOffset.UtcNow, files);
             written.Add(Marker);
             await File.WriteAllTextAsync(SafePath(stage, Marker), JsonSerializer.Serialize(manifest, Json), token);
@@ -168,7 +174,7 @@ public static class InstallEngine
         return result;
     }
 
-    private static string ValidateRelative(string relative)
+    internal static string ValidateRelative(string relative)
     {
         relative = relative.Replace('\\', '/');
         if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Length > 220) throw new InstallException("Недопустимый путь в установочном архиве.");
@@ -182,7 +188,7 @@ public static class InstallEngine
         }
         return relative;
     }
-    private static string SafePath(string root, string relative)
+    internal static string SafePath(string root, string relative)
     {
         string path = Path.GetFullPath(Path.Combine(root, ValidateRelative(relative).Replace('/', Path.DirectorySeparatorChar)));
         if (!IsInside(path, root)) throw new InstallException("Путь выходит за пределы папки установки.");
@@ -194,7 +200,7 @@ public static class InstallEngine
         if (!string.Equals(Path.GetDirectoryName(Path.GetFullPath(path)), Path.GetFullPath(parent), StringComparison.OrdinalIgnoreCase)) throw new InstallException("Неверная временная папка установки.");
         EnsureNoReparseAncestors(parent);
     }
-    private static void EnsureNoReparseAncestors(string path)
+    internal static void EnsureNoReparseAncestors(string path)
     {
         for (string? current = Path.GetFullPath(path); !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
             if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) throw new InstallException("Папка установки не должна проходить через символические ссылки или junction.");
