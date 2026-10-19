@@ -301,11 +301,25 @@ public sealed class GuideWindow : Window
         var row = visible.FirstOrDefault(r => r.Channel.Id == (_preferredChannelId ?? _main.Model.Active?.Id)) ?? visible.FirstOrDefault(r => r.At(reference) is not null) ?? visible.FirstOrDefault();
         if (row is null) { ShowEmptySelection(); return; }
         Select(row, row.At(reference) ?? row.Programmes.FirstOrDefault(p => p.Start >= reference) ?? row.Programmes.FirstOrDefault());
+        CenterChannel(row);
     }
     private void Select(GuideRow row, Programme? programme)
     {
         _changingSelection = true; _rows.SelectedItem = row; _changingSelection = false;
         _viewport.Selection.Select(row, programme); _rows.ScrollIntoView(row);
+    }
+    private void CenterChannel(GuideRow row)
+    {
+        // ScrollIntoView only reveals the row at an edge. Center it after virtualization has laid it out.
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            if (_closed || !ReferenceEquals(_rows.SelectedItem, row)) return;
+            _rows.UpdateLayout();
+            if (_rows.Template.FindName("PART_ScrollViewer", _rows) is not ScrollViewer scroll || scroll.ViewportHeight <= 0 ||
+                _rows.ItemContainerGenerator.ContainerFromItem(row) is not FrameworkElement item) return;
+            double center = item.TranslatePoint(new(0, item.ActualHeight / 2), scroll).Y;
+            scroll.ScrollToVerticalOffset(Math.Clamp(scroll.VerticalOffset + center - scroll.ViewportHeight / 2, 0, scroll.ScrollableHeight));
+        });
     }
     private void ShowEmptySelection()
     {
