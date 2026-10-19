@@ -80,11 +80,12 @@ internal static class Program
         var now = new DateTimeOffset(2026, 10, 19, 22, 0, 0, TimeSpan.FromHours(3));
         Programme ProgrammeUntil(DateTimeOffset end) => new("guide", "Film", now.AddHours(-1), end);
         Assert(ProgrammeTiming.Remaining(null, now) == "—", "Missing EPG must never invent a duration.");
-        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddHours(2).AddSeconds(3)), now) == "2:00:03", "Hours must be preserved.");
-        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddSeconds(3599)), now) == "59:59", "The last minute before an hour must format correctly.");
-        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddMilliseconds(100)), now) == "00:01", "A partial final second must remain visible.");
-        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddSeconds(-2)), now) == "00:00", "An expired programme must not show a negative countdown.");
-        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddHours(26)), now) == "26:00:00", "Long programmes must not wrap at midnight.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddHours(2).AddMinutes(3)), now) == "2 ч 3 мин", "Hours and whole minutes must be preserved without seconds.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddSeconds(3599)), now) == "1 ч 0 мин", "A partial minute must round up across an hour boundary.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddMinutes(14).AddSeconds(20)), now) == "15 мин", "Minute rounding must not expose seconds.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddMilliseconds(100)), now) == "1 мин", "A partial final minute must remain visible.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddSeconds(-2)), now) == "0 мин", "An expired programme must not show a negative countdown.");
+        Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddHours(26)), now) == "26 ч 0 мин", "Long programmes must not wrap at midnight.");
         Assert(ProgrammeTiming.Remaining(new("guide", "Future", now.AddHours(1), now.AddHours(2)), now) == "—", "A future entry must not act as the current programme.");
         return Task.CompletedTask;
     }

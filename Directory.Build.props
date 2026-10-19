@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <Deterministic>true</Deterministic>
-    <Version>1.0.33</Version>
+    <Version>1.0.34</Version>
     <Authors>DzhiggaTV contributors</Authors>
   </PropertyGroup>
 </Project>
