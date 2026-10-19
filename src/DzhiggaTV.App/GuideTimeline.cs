@@ -25,7 +25,7 @@ public sealed record GuideRow(ChannelItem Channel, IReadOnlyList<Programme> Prog
 
 public static class GuideLayout
 {
-    public const double ChannelWidth = 172;
+    public const double ChannelWidth = 212;
     public const double PixelsPerHour = 240;
     public const double RowHeight = 76;
     public const double HeaderHeight = 42;
@@ -69,9 +69,32 @@ public sealed class GuideSelection
 
 public sealed class GuideViewport
 {
+    public Action<ChannelItem>? RequestLogo { get; set; }
     public GuideRange Range { get; set; } = GuideRange.ForDay(DateTime.Today, TimeZoneInfo.Local);
     public double Offset { get; set; }
     public double Width { get; set; }
     public DateTimeOffset Now { get; set; } = DateTimeOffset.Now;
     public GuideSelection Selection { get; } = new();
+}
+
+public sealed record GuidePlaylistChoice(string? Id, string Name)
+{
+    public override string ToString() => Name;
+}
+
+public static class GuideFiltering
+{
+    public static List<GuideRow> Filter(IEnumerable<GuideRow> rows, string? playlistId, string? category, string query)
+    {
+        var filtered = rows.Where(row => (playlistId is null || row.Channel.Channel.PlaylistId == playlistId) &&
+            (category is null || row.Channel.Group == category));
+        query = query.Trim();
+        if (query.Length == 0) return filtered.ToList();
+        return filtered.Select(row => row.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ? row :
+            row with { Programmes = row.Programmes.Where(p => p.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray() })
+            .Where(row => row.Programmes.Count > 0 || row.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+    }
+    public static string[] Categories(IEnumerable<GuideRow> rows, string? playlistId) => rows
+        .Where(row => playlistId is null || row.Channel.Channel.PlaylistId == playlistId).Select(row => row.Channel.Group)
+        .Distinct().OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase).ToArray();
 }

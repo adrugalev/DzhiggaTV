@@ -2,6 +2,8 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.ComponentModel;
 using DzhiggaTV.Core;
 
 namespace DzhiggaTV.App;
@@ -26,10 +28,15 @@ public sealed class TimelineItem : FrameworkElement
     public static readonly DependencyProperty ViewportProperty = DependencyProperty.Register(nameof(Viewport), typeof(GuideViewport), typeof(TimelineItem), new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
     public GuideViewport Viewport { get => (GuideViewport)GetValue(ViewportProperty); set => SetValue(ViewportProperty, value); }
     private Programme? _hover;
+    private ChannelItem? _channel;
+    private ImageSource? _logo;
+    private string? _logoPath;
     public TimelineItem()
     {
         Height = GuideLayout.RowHeight;
-        DataContextChanged += (_, _) => { _hover = null; InvalidateVisual(); };
+        DataContextChanged += (_, _) => { _hover = null; BindChannel(); InvalidateVisual(); };
+        Loaded += (_, _) => BindChannel();
+        Unloaded += (_, _) => { if (_channel is not null) _channel.PropertyChanged -= ChannelChanged; _channel = null; _logo = null; _logoPath = null; };
         MouseMove += (_, e) =>
         {
             var programme = ProgrammeAt(e.GetPosition(this));
@@ -37,6 +44,29 @@ public sealed class TimelineItem : FrameworkElement
             _hover = programme; Cursor = programme is null ? Cursors.Arrow : Cursors.Hand; InvalidateVisual();
         };
         MouseLeave += (_, _) => { _hover = null; InvalidateVisual(); };
+    }
+    private void BindChannel()
+    {
+        if (_channel is not null) _channel.PropertyChanged -= ChannelChanged;
+        _channel = IsLoaded && DataContext is GuideRow row ? row.Channel : null;
+        if (_channel is not null) { _channel.PropertyChanged += ChannelChanged; Viewport?.RequestLogo?.Invoke(_channel); }
+        _logoPath = null; _logo = null; InvalidateVisual();
+    }
+    private void ChannelChanged(object? sender, PropertyChangedEventArgs e)
+    { if (e.PropertyName is nameof(ChannelItem.LogoPath) or nameof(ChannelItem.Name)) InvalidateVisual(); }
+    private ImageSource? Logo()
+    {
+        var path = _channel?.LogoPath;
+        if (_logoPath == path) return _logo;
+        _logoPath = path; _logo = null;
+        if (path is null) return null;
+        try
+        {
+            var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad; bitmap.DecodePixelWidth = 80;
+            bitmap.UriSource = new Uri(path, UriKind.Absolute); bitmap.EndInit(); bitmap.Freeze(); _logo = bitmap;
+        }
+        catch { }
+        return _logo;
     }
     public Programme? ProgrammeAt(Point point) => DataContext is GuideRow row && Viewport is { } state ?
         GuideLayout.Hit(row, state.Range, state.Offset, ActualWidth, point) : null;
@@ -75,7 +105,16 @@ public sealed class TimelineItem : FrameworkElement
         dc.DrawRectangle(GuideDrawing.Brush("PanelBrush"), null, new Rect(0, 0, Math.Min(width, GuideLayout.ChannelWidth - 8), ActualHeight));
         bool channelSelected = state.Selection.Row?.Channel.Id == row.Channel.Id;
         if (channelSelected) dc.DrawRoundedRectangle(GuideDrawing.Brush("AccentBrush"), null, new Rect(0, 21, 3, 34), 1.5, 1.5);
-        GuideDrawing.Text(dc, row.Channel.Name, new(13, 15), 12.5, GuideDrawing.Brush(channelSelected ? "AccentBrush" : "TextBrush"), GuideLayout.ChannelWidth - 34, 43, dpi, true);
+        var logoRect = new Rect(12, 20, 36, 36);
+        dc.DrawRoundedRectangle(GuideDrawing.Brush("CardBrush"), null, logoRect, 7, 7);
+        if (Logo() is { } logo)
+        {
+            double scale = Math.Min(30 / logo.Width, 30 / logo.Height);
+            var target = new Rect(logoRect.X + (36 - logo.Width * scale) / 2, logoRect.Y + (36 - logo.Height * scale) / 2, logo.Width * scale, logo.Height * scale);
+            dc.DrawImage(logo, target);
+        }
+        else GuideDrawing.Text(dc, row.Channel.Initials, new(logoRect.X + 5, logoRect.Y + 10), 10, GuideDrawing.Brush("MutedBrush"), 28, 17, dpi, true);
+        GuideDrawing.Text(dc, row.Channel.Name, new(58, 15), 12.5, GuideDrawing.Brush(channelSelected ? "AccentBrush" : "TextBrush"), GuideLayout.ChannelWidth - 76, 43, dpi, true);
     }
 }
 

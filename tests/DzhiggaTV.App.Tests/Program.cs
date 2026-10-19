@@ -35,7 +35,10 @@ internal static class Program
             ("Guide hit testing agrees with scrolled, clipped cells and frozen channel names", GuideHitTestingAsync),
             ("Guide selection shows complete details without playback until double click", GuideSelectionAsync),
             ("Guide day ranges follow daylight-saving offsets", GuideDaylightSavingAsync),
-            ("Guide reads only allowed EPG IDs across multiple parameter batches", GuideBatchAsync)
+            ("Guide reads only allowed EPG IDs across multiple parameter batches", GuideBatchAsync),
+            ("Guide playlist, category and programme search compose without leaking other rows", GuideFiltersAsync),
+            ("Playing a guide channel selects it and reveals it through conflicting library filters", PlaybackSelectionAsync),
+            ("Maximized bounds respect taskbars and secondary monitors while F11 fills the monitor", WindowBoundsAsync)
         ];
         var failed = 0;
         foreach (var (name, test) in cases)
@@ -57,6 +60,45 @@ internal static class Program
         Assert(range.Start == new DateTimeOffset(day, TimeSpan.FromHours(3)) && range.Contains(now) && !range.Contains(range.End), "The day must use the local timezone with an exclusive end.");
         Assert(range.FocusOffset(range.Start, 720) == 0 && range.FocusOffset(range.End.AddSeconds(-1), 720) == range.Width - 720, "Focus must not scroll outside the day.");
         Assert(range.FocusOffset(now, range.Width + 100) == 0, "A wide viewport must not produce a negative offset.");
+        return Task.CompletedTask;
+    }
+    private static Task GuideFiltersAsync()
+    {
+        var now = DateTimeOffset.Now;
+        var news = new Programme("epg", "Новости", now, now.AddHours(1), "Полное описание");
+        var film = news with { Title = "Кино", Description = "Всё описание фильма" };
+        GuideRow Row(string id, string playlist, string category) => new(new(new(id, playlist, "Канал " + id, category, "https://example.invalid/unused")), [news, film]);
+        var rows = new[] { Row("one", "a", "Новости"), Row("two", "a", "Кино"), Row("three", "b", "Новости"), Row("four", "b", "Спорт") };
+        var selected = GuideFiltering.Filter(rows, "a", "Новости", "ново");
+        Assert(selected.Count == 1 && selected[0].Channel.Id == "one" && selected[0].Programmes.Single() == news, "All three filters must apply together and retain the full programme.");
+        Assert(GuideFiltering.Filter(rows, "b", "Кино", "").Count == 0, "A category from another playlist must not show unrelated channels.");
+        Assert(GuideFiltering.Categories(rows, "a").SequenceEqual(new[] { "Кино", "Новости" }), "Category options must only contain the selected playlist's categories.");
+        Assert(GuideFiltering.Filter(rows, null, null, "").Count == 4 && rows[0].Programmes.Count == 2, "Reset must restore all rows without mutating cached programmes.");
+        return Task.CompletedTask;
+    }
+    private static async Task PlaybackSelectionAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        var first = model.AllChannels[0]; first.IsFavorite = true; model.State.Favorites.Add(first.Id);
+        var target = new ChannelItem(new("play-target", "another-playlist", "Новый канал", "Другая категория", "https://example.invalid/unused")); model.AllChannels.Add(target);
+        model.SelectedGroup = first.Group; model.SetSection("favorites"); model.Search = first.Name; model.RefreshFilter();
+        Assert(!model.VisibleChannels.Contains(target), "The fixture must initially hide the guide's selected channel.");
+        await model.RecordPlaybackAsync(target);
+        Assert(model.Active == target && model.SelectedChannel == target && model.VisibleChannels.Contains(target), "The playing channel must be selected and visible in the main list.");
+        Assert(model.Search == "" && model.SelectedGroup == "Все категории", "Conflicting search and category filters must be reset.");
+        model.SelectedGroup = target.Group; model.RefreshFilter(); model.SelectPlaybackChannel(target);
+        Assert(model.SelectedGroup == target.Group && model.SelectedChannel == target, "Compatible filters must remain intact.");
+        model.State.Hidden.Add(first.Id); model.SelectPlaybackChannel(first);
+        Assert(model.SelectedChannel == target, "A hidden channel must never be revealed by selection synchronization.");
+    }
+    private static Task WindowBoundsAsync()
+    {
+        var primary = new System.Windows.Rect(0, 0, 1920, 1080);
+        Assert(WindowBoundsGeometry.Maximized(primary, new(0, 0, 1920, 1032), false) == new System.Windows.Rect(0, 0, 1920, 1032), "Bottom taskbar must remain outside the maximized application.");
+        var secondary = new System.Windows.Rect(-2560, -180, 2560, 1440);
+        Assert(WindowBoundsGeometry.Maximized(secondary, new(-2500, -180, 2500, 1440), false) == new System.Windows.Rect(60, 0, 2500, 1440), "A left taskbar on a secondary monitor must use monitor-relative physical coordinates.");
+        Assert(WindowBoundsGeometry.Maximized(secondary, new(-2560, -120, 2560, 1380), false) == new System.Windows.Rect(0, 60, 2560, 1380), "A top taskbar and negative monitor origin must be respected.");
+        Assert(WindowBoundsGeometry.Maximized(primary, new(0, 0, 1920, 1032), true) == primary, "F11 must use the complete monitor, including the taskbar area.");
         return Task.CompletedTask;
     }
     private static Task GuideHitTestingAsync()

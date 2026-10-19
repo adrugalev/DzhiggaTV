@@ -251,6 +251,13 @@ public sealed class MainViewModel : Observable, IDisposable
                 item.EndTime = guide.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
                 if (guide.Current is { } p) item.Progress = Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100);
             }
+        }
+        LoadLogos(snapshot);
+    }
+    public void LoadLogos(IEnumerable<ChannelItem> items)
+    {
+        foreach (var item in items.Where(IsAllowed))
+        {
             if (item.LogoPath is not null || _logoRetry.GetValueOrDefault(item.Id) > DateTimeOffset.UtcNow || !_logoLoading.Add(item.Id)) continue;
             _ = LoadLogoAsync(item, _catalogGeneration, _logoVersions.GetValueOrDefault(item.Id));
         }
@@ -282,8 +289,19 @@ public sealed class MainViewModel : Observable, IDisposable
     public async Task RecordPlaybackAsync(ChannelItem item)
     {
         if (Active?.Id != item.Id) PreviousId = Active?.Id;
-        Active = item; State.RecordWatched(item.Id); SetSetting("last.channel", item.Id); await SaveAsync();
+        Active = item; SelectPlaybackChannel(item); State.RecordWatched(item.Id); SetSetting("last.channel", item.Id); await SaveAsync();
         await LoadViewportAsync([item]); RaisePlayback();
+    }
+    public void SelectPlaybackChannel(ChannelItem item)
+    {
+        if (!IsAllowed(item) || !AllChannels.Contains(item)) return;
+        if (!VisibleChannels.Contains(item))
+        {
+            _searchCancellation?.Cancel();
+            _search = ""; _selectedGroup = "Все категории"; _section = "all";
+            Raise(nameof(Search)); Raise(nameof(SelectedGroup)); Raise(nameof(SectionTitle)); RefreshFilter();
+        }
+        SelectedChannel = item;
     }
     public async Task MoveAsync(string fromId, string toId)
     {

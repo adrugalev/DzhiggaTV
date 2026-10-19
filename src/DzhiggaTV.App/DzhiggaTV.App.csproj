@@ -12,6 +12,7 @@
   <ItemGroup>
     <Resource Include="Assets\DzhiggaTV-logo.png" />
     <Resource Include="Assets\DzhiggaTV.ico" />
+    <Resource Include="Assets\Navigation\*.png" />
     <ProjectReference Include="..\DzhiggaTV.Core\DzhiggaTV.Core.csproj" />
     <ProjectReference Include="..\DzhiggaTV.Services\DzhiggaTV.Services.csproj" />
     <ProjectReference Include="..\DzhiggaTV.UpdateCore\DzhiggaTV.UpdateCore.csproj" />

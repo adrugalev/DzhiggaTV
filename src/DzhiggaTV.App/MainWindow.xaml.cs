@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     public bool IsMini { get; private set; }
     public bool HasPlayback { get; private set; }
     private OverlayWindow? _overlay;
+    private readonly ProgrammePreview _programmePreview;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private CancellationTokenSource? _playCancellation;
     private readonly string[] _args;
@@ -40,11 +41,15 @@ public partial class MainWindow : Window
         _args = args;
         var custom = Argument("--data-dir");
         Model = new(custom ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV"));
-        InitializeComponent(); ApplyMainWindowChrome(); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
+        InitializeComponent(); ApplyMainWindowChrome(); WindowBounds.Attach(this); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
+        _programmePreview = new(this, CurrentProgrammeCard, NextProgrammeCard);
+        Grid.SetColumn(_programmePreview.Panel, 1); Panel.SetZIndex(_programmePreview.Panel, 5); Workspace.Children.Add(_programmePreview.Panel);
         ViewingPanel.SizeChanged += (_, _) => UpdateProgrammePanelLayout();
         Model.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription)) UpdateProgrammePanelLayout();
+            if (e.PropertyName == nameof(MainViewModel.SelectedChannel) && Model.SelectedChannel is { } selected)
+                Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => { if (Model.SelectedChannel == selected && Model.VisibleChannels.Contains(selected)) ChannelList.ScrollIntoView(selected); });
         };
         WindowChrome.SetIsHitTestVisibleInChrome(VersionButton, true);
         WindowChrome.SetIsHitTestVisibleInChrome(MinimizeButton, true);
@@ -208,6 +213,7 @@ public partial class MainWindow : Window
     public async Task ShowGuideAsync() => await WithModalAsync(() => { new GuideWindow(this).ShowDialog(); return Task.CompletedTask; });
     public async Task WithModalAsync(Func<Task> action)
     {
+        _programmePreview.Hide();
         _modal = true; _overlay?.Hide();
         try { await action(); } finally { _modal = false; if (!_closing && WindowState != WindowState.Minimized) { _overlay?.Show(); SyncOverlay(); } }
     }
@@ -315,6 +321,7 @@ public partial class MainWindow : Window
     private void RememberWindow() => _snapshot = new(Left, Top, ActualWidth, ActualHeight, WindowState);
     private void CollapseChrome()
     {
+        _programmePreview.Hide();
         Header.Visibility = Navigation.Visibility = ChannelPanel.Visibility = Splitter.Visibility = ViewingHeading.Visibility = ProgrammePanel.Visibility = StatusBar.Visibility = Visibility.Collapsed;
         TopRow.Height = StatusRow.Height = ViewingHeadingRow.Height = ProgrammeRow.Height = new(0);
         NavigationColumn.MinWidth = ChannelColumn.MinWidth = 0;
@@ -362,6 +369,7 @@ public partial class MainWindow : Window
     public async Task HandleKeyAsync(KeyEventArgs e)
     {
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (key == Key.Escape && _programmePreview.Panel.IsVisible) { _programmePreview.Hide(); e.Handled = true; return; }
         if (key == Key.Escape && (IsFullscreen || IsMini)) { RestoreWindow(); e.Handled = true; return; }
         if (key == Key.F11 || key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) { ToggleFullscreen(); e.Handled = true; return; }
         if (key == Key.M && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleMini(); e.Handled = true; return; }

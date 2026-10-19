@@ -21,6 +21,11 @@ public sealed class GuideWindow : Window
     private readonly TextBox _search = new() { Height = 34, FontSize = 12, Padding = new(30, 7, 29, 6), MaxLength = 128 };
     private readonly TextBlock _searchHint = new() { Text = "Канал или передача", FontSize = 12, Margin = new(30, 0, 26, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
     private readonly Button _clearSearch;
+    private readonly ComboBox _playlist = new() { Width = 220, Height = 32, FontSize = 12, Margin = new(0), DisplayMemberPath = "Name", ToolTip = "Плейлист" };
+    private readonly ComboBox _categoryFilter = new() { Width = 220, Height = 32, FontSize = 12, Margin = new(0), ToolTip = "Категория" };
+    private readonly Button _resetFilters;
+    private bool _changingFilters;
+    private IReadOnlyList<PlaylistSource> _playlistSources = [];
     private readonly ScrollBar _horizontal = new() { Orientation = Orientation.Horizontal, Minimum = 0, SmallChange = 60, Height = 20 };
     private readonly GuideAxis _axis;
     private readonly GuideNowLine _nowLine;
@@ -51,6 +56,7 @@ public sealed class GuideWindow : Window
     public GuideWindow(MainWindow main, Func<ChannelItem, Task>? play = null, Func<DateTimeOffset>? clock = null)
     {
         _main = main; _play = play ?? main.PlayAsync; _clock = clock ?? (() => DateTimeOffset.Now);
+        _viewport.RequestLogo = channel => _main.Model.LoadLogos([channel]);
         Theme.Window(this); Owner = main; Title = "DzhiggaTV · Телепрограмма";
         Width = Math.Min(1280, SystemParameters.WorkArea.Width - 32); Height = Math.Min(800, SystemParameters.WorkArea.Height - 40);
         MinWidth = 900; MinHeight = Math.Min(560, Height); WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -74,7 +80,18 @@ public sealed class GuideWindow : Window
         searchBox.Children.Add(new TextBlock { Text = "⌕", FontSize = 19, Margin = new(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false });
         _clearSearch = CompactButton("×", "Очистить поиск", 25); _clearSearch.Height = 28; _clearSearch.FontSize = 17;
         _clearSearch.HorizontalAlignment = HorizontalAlignment.Right; _clearSearch.Margin = new(0, 0, 3, 0); _clearSearch.BorderThickness = new(0); _clearSearch.Background = Brushes.Transparent;
-        searchBox.Children.Add(_clearSearch); root.Children.Add(toolbar);
+        searchBox.Children.Add(_clearSearch);
+        var controls = new StackPanel(); controls.Children.Add(toolbar); root.Children.Add(controls);
+        var filters = new StackPanel { Orientation = Orientation.Horizontal, Margin = new(0, 10, 0, 0) };
+        filters.Children.Add(FilterLabel("Плейлист")); filters.Children.Add(_playlist);
+        var categoryLabel = FilterLabel("Категория"); categoryLabel.Margin = new(20, 0, 9, 0); filters.Children.Add(categoryLabel); filters.Children.Add(_categoryFilter);
+        _resetFilters = CompactButton("Сбросить", "Показать все плейлисты и категории", 82); _resetFilters.Height = 32; _resetFilters.Margin = new(12, 0, 0, 0);
+        filters.Children.Add(_resetFilters); controls.Children.Add(filters);
+        System.Windows.Automation.AutomationProperties.SetName(_playlist, "Плейлист телепрограммы");
+        System.Windows.Automation.AutomationProperties.SetName(_categoryFilter, "Категория телепрограммы");
+        _playlist.SelectionChanged += (_, _) => { if (!_changingFilters) { UpdateCategories(); ApplyFilter(true); } };
+        _categoryFilter.SelectionChanged += (_, _) => { if (!_changingFilters) ApplyFilter(true); };
+        _resetFilters.Click += (_, _) => { _changingFilters = true; _playlist.SelectedIndex = 0; _changingFilters = false; UpdateCategories(false); ApplyFilter(true); };
         System.Windows.Automation.AutomationProperties.SetName(_search, "Поиск по каналам и передачам");
         _search.ToolTip = "Поиск по каналам и передачам выбранного дня (Ctrl+F)";
         Grid.SetRow(_body, 1); _body.Margin = new(0, 14, 0, 0); _body.ColumnDefinitions.Add(new()); _body.ColumnDefinitions.Add(_detailsColumn);
@@ -128,6 +145,28 @@ public sealed class GuideWindow : Window
 
     private static Button CompactButton(string label, string tip, double width) => new()
     { Content = label, ToolTip = tip, Width = width, Height = 34, FontSize = 12, Padding = new(8, 3, 8, 3), Margin = new(0) };
+    private static TextBlock FilterLabel(string text)
+    {
+        var label = new TextBlock { Text = text, FontSize = 11, Margin = new(0, 0, 9, 0), VerticalAlignment = VerticalAlignment.Center };
+        label.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); return label;
+    }
+    private string? SelectedPlaylist => (_playlist.SelectedItem as GuidePlaylistChoice)?.Id;
+    private string? SelectedCategory => _categoryFilter.SelectedIndex > 0 ? _categoryFilter.SelectedItem as string : null;
+    private void UpdateFilters()
+    {
+        var selected = SelectedPlaylist;
+        var ids = _allRows.Select(row => row.Channel.Channel.PlaylistId).Distinct().ToArray();
+        var choices = new List<GuidePlaylistChoice> { new(null, "Все плейлисты") };
+        choices.AddRange(ids.Select((id, index) => new GuidePlaylistChoice(id, _playlistSources.FirstOrDefault(source => source.Id == id)?.Name ?? $"Плейлист {index + 1}")));
+        _changingFilters = true; _playlist.ItemsSource = choices; _playlist.SelectedItem = choices.FirstOrDefault(choice => choice.Id == selected) ?? choices[0]; _changingFilters = false;
+        UpdateCategories();
+    }
+    private void UpdateCategories(bool preserve = true)
+    {
+        var selected = preserve ? SelectedCategory : null;
+        var categories = new[] { "Все категории" }.Concat(GuideFiltering.Categories(_allRows, SelectedPlaylist)).ToArray();
+        _changingFilters = true; _categoryFilter.ItemsSource = categories; _categoryFilter.SelectedItem = categories.Contains(selected) ? selected : categories[0]; _changingFilters = false;
+    }
 
     private void ConfigureDatePicker()
     {
@@ -219,8 +258,11 @@ public sealed class GuideWindow : Window
         try
         {
             var programmes = await Task.Run(() => _main.Model.Store.GetGuideAsync(channels.Where(c => c.EpgId is not null).Select(c => c.EpgId!), range.Start, range.End, token), token);
+            var sources = await _main.Model.Store.GetPlaylistSourcesAsync(token);
             if (_closed || generation != _generation) return;
+            _playlistSources = sources;
             _allRows = channels.Select(c => new GuideRow(c.Channel, c.EpgId is not null && programmes.TryGetValue(c.EpgId, out var entries) ? entries : [])).ToList();
+            UpdateFilters();
             ApplyFilter(_search.Text.Trim().Length > 0); if (_search.Text.Trim().Length == 0) SelectInitial();
         }
         catch (OperationCanceledException) { }
@@ -234,12 +276,11 @@ public sealed class GuideWindow : Window
     private void ApplyFilter(bool focusMatch)
     {
         string query = _search.Text.Trim();
-        var visible = query.Length == 0 ? _allRows : _allRows.Select(row => row.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ? row :
-            row with { Programmes = row.Programmes.Where(p => p.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray() }).Where(row =>
-            row.Programmes.Count > 0 || row.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
+        var visible = GuideFiltering.Filter(_allRows, SelectedPlaylist, SelectedCategory, query);
+        _resetFilters.Visibility = SelectedPlaylist is not null || SelectedCategory is not null ? Visibility.Visible : Visibility.Collapsed;
         _changingSelection = true; _rows.ItemsSource = visible; _changingSelection = false;
-        _count.Text = query.Length == 0 ? $"{visible.Count:N0} каналов" : $"{visible.Count:N0} из {_allRows.Count:N0} каналов";
-        _empty.Text = query.Length == 0 ? "В библиотеке пока нет каналов" : "Ничего не найдено";
+        _count.Text = visible.Count == _allRows.Count ? $"{visible.Count:N0} каналов" : $"{visible.Count:N0} из {_allRows.Count:N0} каналов";
+        _empty.Text = _allRows.Count == 0 ? "В библиотеке пока нет каналов" : "Ничего не найдено";
         _empty.Visibility = visible.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (focusMatch && query.Length == 0 && visible.Count > 0)
         {
