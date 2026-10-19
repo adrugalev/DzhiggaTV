@@ -32,7 +32,16 @@ public sealed class ChannelItem(Channel channel) : Observable
     private string? _logoPath;
     public string? LogoPath { get => _logoPath; set => Set(ref _logoPath, value); }
     private string _nowTitle = "Телепрограмма не назначена";
-    public string NowTitle { get => _nowTitle; set => Set(ref _nowTitle, value); }
+    public string NowTitle { get => _nowTitle; set { if (Set(ref _nowTitle, value)) Raise(nameof(ProgrammeSummary)); } }
+    private Programme? _searchProgramme;
+    public Programme? SearchProgramme
+    {
+        get => _searchProgramme;
+        set { if (Set(ref _searchProgramme, value)) { Raise(nameof(ProgrammeSummary)); Raise(nameof(HasSearchProgramme)); } }
+    }
+    public bool HasSearchProgramme => SearchProgramme is not null;
+    public string ProgrammeSummary => SearchProgramme is { } programme ?
+        $"{programme.Start.ToLocalTime().ToString(programme.Start.ToLocalTime().Date == DateTime.Today ? "HH:mm" : "dd.MM HH:mm")} · {programme.Title}" : NowTitle;
     private string _endTime = "";
     public string EndTime { get => _endTime; set => Set(ref _endTime, value); }
     private double _progress;

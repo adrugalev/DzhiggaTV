@@ -22,6 +22,8 @@ public sealed class MainViewModel : Observable, IDisposable
     public string DataDirectory { get; }
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _searchCancellation;
+    private string _programmeSearchQuery = "";
+    private IReadOnlyDictionary<string, Programme> _programmeMatches = new Dictionary<string, Programme>();
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(45) };
     private readonly HashSet<string> _logoLoading = [];
     private readonly Dictionary<string, DateTimeOffset> _logoRetry = [];
@@ -108,8 +110,34 @@ public sealed class MainViewModel : Observable, IDisposable
     public bool IsAllowed(ChannelItem item) => !State.Hidden.Contains(item.Id) && (Flag("adult.enabled") || !IsAdult(item.Channel.Group) && !IsAdult(item.Group));
     public static bool IsAdult(string name) => new[] { "взрос", "adult", "xxx", "18+", "эроти", "porn" }.Any(x => name.Contains(x, StringComparison.OrdinalIgnoreCase));
     public void SetSection(string section) { _section = section; Raise(nameof(SectionTitle)); RefreshFilter(); }
-    public void RefreshFilter()
+    public void RefreshFilter() => _ = RefreshFilterAsync();
+    public Task RefreshFilterAsync() => RefreshFilterAsync(false);
+    private async Task RefreshFilterAsync(bool debounce)
     {
+        _searchCancellation?.Cancel(); _searchCancellation?.Dispose();
+        var cancellation = _searchCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        var token = cancellation.Token;
+        try
+        {
+            if (debounce) await Task.Delay(130, token);
+            string query = Search.Trim();
+            if (query.Length == 0) { _programmeSearchQuery = ""; _programmeMatches = new Dictionary<string, Programme>(); }
+            ApplyFilter(query, _programmeSearchQuery == query ? _programmeMatches : new Dictionary<string, Programme>());
+            if (query.Length == 0) return;
+            var mappings = Mappings; int generation = _catalogGeneration;
+            var ids = AllChannels.Where(IsAllowed).Select(c => mappings.GetValueOrDefault(c.Id)?.EpgId).OfType<string>().ToArray();
+            var matches = await Task.Run(() => Store.SearchUpcomingProgrammesAsync(query, ids, DateTimeOffset.UtcNow, token), token);
+            if (token.IsCancellationRequested || !ReferenceEquals(_searchCancellation, cancellation) || generation != _catalogGeneration || !ReferenceEquals(mappings, Mappings)) return;
+            _programmeSearchQuery = query; _programmeMatches = matches;
+            ApplyFilter(query, matches);
+        }
+        catch (OperationCanceledException) { }
+        catch { Status = "Поиск передач временно недоступен. Показаны совпадения по названию каналов."; }
+    }
+    private void ApplyFilter(string query, IReadOnlyDictionary<string, Programme> matches)
+    {
+        foreach (var channel in AllChannels)
+            channel.SearchProgramme = query.Length > 0 && Mappings.TryGetValue(channel.Id, out var mapping) && matches.TryGetValue(mapping.EpgId, out var programme) ? programme : null;
         IEnumerable<ChannelItem> items = AllChannels.Where(IsAllowed);
         List<string>? order = null;
         if (_section == "favorites") { order = State.Favorites; items = items.Where(c => order.Contains(c.Id)); }
@@ -117,15 +145,15 @@ public sealed class MainViewModel : Observable, IDisposable
         else if (_section == "watch") items = items.Where(c => c.Id == Active?.Id);
         else if (_section.StartsWith("collection:")) { order = State.Collections.GetValueOrDefault(_section[11..]) ?? []; items = items.Where(c => order.Contains(c.Id)); }
         if (SelectedGroup != "Все категории") items = items.Where(c => c.Group == SelectedGroup);
-        if (!string.IsNullOrWhiteSpace(Search)) items = items.Where(c => ChannelMatcher.MatchesSearch(c.Name, Search));
+        if (query.Length > 0) items = items.Where(c => ChannelMatcher.MatchesSearch(c.Name, query) || c.HasSearchProgramme);
         if (order is not null) items = items.OrderBy(c => order.IndexOf(c.Id));
-        VisibleChannels.Clear(); foreach (var c in items) VisibleChannels.Add(c);
+        var result = items.ToArray();
+        if (!VisibleChannels.SequenceEqual(result)) { VisibleChannels.Clear(); foreach (var c in result) VisibleChannels.Add(c); }
         Raise(nameof(ChannelCountText));
     }
     private async void DebounceFilter()
     {
-        _searchCancellation?.Cancel(); _searchCancellation?.Dispose(); _searchCancellation = new();
-        try { await Task.Delay(130, _searchCancellation.Token); RefreshFilter(); } catch (OperationCanceledException) { }
+        await RefreshFilterAsync(true);
     }
     public async Task ImportAsync(string location, string? existingId = null)
     {
@@ -238,6 +266,7 @@ public sealed class MainViewModel : Observable, IDisposable
             }
         }
         RaisePlayback();
+        if (!string.IsNullOrWhiteSpace(Search)) await RefreshFilterAsync();
     }
     public async Task LoadViewportAsync(IEnumerable<ChannelItem> items, bool updateViewport = false)
     {

@@ -414,6 +414,38 @@ public sealed class SqliteStore : IDisposable
             [("$query", expression), ("$limit", Math.Clamp(limit, 1, 1000))], cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Earliest current or future title match per allowed EPG channel, including channels outside the viewport.</summary>
+    public async Task<IReadOnlyDictionary<string, Programme>> SearchUpcomingProgrammesAsync(string query,
+        IEnumerable<string> epgChannelIds, DateTimeOffset from, CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<string, Programme>(StringComparer.Ordinal);
+        var terms = System.Text.RegularExpressions.Regex.Matches(query, @"[\p{L}\p{Nd}]+")
+            .Select(match => "\"" + match.Value + "\"*").ToArray();
+        var ids = epgChannelIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToArray();
+        if (terms.Length == 0 || ids.Length == 0) return result;
+        var expression = string.Join(" AND ", terms);
+        await InitializeAsync(cancellationToken).ConfigureAwait(false);
+        await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        using var transaction = connection.BeginTransaction(deferred: true);
+        foreach (var batch in ids.Chunk(400))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await using var command = connection.CreateCommand(); command.Transaction = transaction;
+            var parameters = batch.Select((_, index) => "$channel" + index).ToArray();
+            command.CommandText = "SELECT p.channel_id,p.title,p.start,p.end,NULL,NULL FROM programme_titles f JOIN programmes p ON p.id=f.rowid " +
+                "WHERE programme_titles MATCH $query AND p.end>$from AND p.channel_id IN (" + string.Join(',', parameters) + ") ORDER BY p.start,p.id";
+            command.Parameters.AddWithValue("$query", expression); command.Parameters.AddWithValue("$from", from.ToUnixTimeSeconds());
+            for (int i = 0; i < batch.Length; i++) command.Parameters.AddWithValue(parameters[i], batch[i]);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                var programme = ReadProgramme(reader);
+                result.TryAdd(programme.ChannelId, programme);
+            }
+        }
+        transaction.Commit(); return result;
+    }
+
     public async Task<long> GetProgrammeCountAsync(CancellationToken cancellationToken = default)
     {
         await InitializeAsync(cancellationToken).ConfigureAwait(false);
