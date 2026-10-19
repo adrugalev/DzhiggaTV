@@ -9,7 +9,6 @@
     <Product>DzhiggaTV</Product>
     <Description>Установка DzhiggaTV для текущего пользователя</Description>
     <Company>DzhiggaTV</Company>
-    <Version>1.0.10</Version>
     <PlatformTarget>x64</PlatformTarget>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon Condition="Exists('..\DzhiggaTV.App\Assets\DzhiggaTV.ico')">..\DzhiggaTV.App\Assets\DzhiggaTV.ico</ApplicationIcon>

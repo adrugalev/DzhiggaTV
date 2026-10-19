@@ -11,6 +11,12 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (e.Args.Contains("--update-target"))
+        {
+            try { MainWindow = new AutomaticUpdateWindow(UpdateRequest.Parse(e.Args)); MainWindow.Show(); }
+            catch { MessageBox.Show("Не удалось подготовить обновление. Запустите плеер и повторите попытку.", "DzhiggaTV"); Shutdown(1); }
+            return;
+        }
         int extraction = Array.IndexOf(e.Args, "--extract-to");
         if (extraction >= 0)
         {

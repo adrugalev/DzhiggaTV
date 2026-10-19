@@ -17,7 +17,6 @@ public sealed class MainViewModel : Observable, IDisposable
     public List<ChannelItem> AllChannels { get; } = [];
     public ObservableCollection<ChannelItem> VisibleChannels { get; } = [];
     public ObservableCollection<string> Groups { get; } = ["Все категории"];
-    public string[] SortOptions { get; } = ["Плейлист", "А → Я", "Я → А"];
     public Dictionary<string, ChannelMapping> Mappings { get; private set; } = [];
     public Dictionary<string, EpgChannel> EpgChannels { get; private set; } = [];
     public string DataDirectory { get; }
@@ -44,8 +43,6 @@ public sealed class MainViewModel : Observable, IDisposable
     public string Search { get => _search; set { if (Set(ref _search, value)) DebounceFilter(); } }
     private string _selectedGroup = "Все категории";
     public string SelectedGroup { get => _selectedGroup; set { if (Set(ref _selectedGroup, value)) RefreshFilter(); } }
-    private int _sortIndex;
-    public int SortIndex { get => _sortIndex; set { if (Set(ref _sortIndex, value)) RefreshFilter(); } }
     private string _section = "all";
     public string SectionTitle => _section switch { "favorites" => "Избранное", "recent" => "Недавние", "watch" => "Сейчас смотрю", _ when _section.StartsWith("collection:") => _section[11..], _ => "Все каналы" };
     public string ChannelCountText => $"{VisibleChannels.Count:N0} каналов · {Groups.Count - 1} категорий";
@@ -118,8 +115,6 @@ public sealed class MainViewModel : Observable, IDisposable
         if (SelectedGroup != "Все категории") items = items.Where(c => c.Group == SelectedGroup);
         if (!string.IsNullOrWhiteSpace(Search)) items = items.Where(c => ChannelMatcher.MatchesSearch(c.Name, Search));
         if (order is not null) items = items.OrderBy(c => order.IndexOf(c.Id));
-        else if (SortIndex == 1) items = items.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
-        else if (SortIndex == 2) items = items.OrderByDescending(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
         VisibleChannels.Clear(); foreach (var c in items) VisibleChannels.Add(c);
         Raise(nameof(ChannelCountText));
     }

@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shell;
 using System.Windows.Threading;
 using DzhiggaTV.Player;
 using Microsoft.Win32;
@@ -14,6 +15,9 @@ namespace DzhiggaTV.App;
 public partial class MainWindow : Window
 {
     public MainViewModel Model { get; }
+    public UpdateCoordinator Updates { get; }
+    private readonly CancellationTokenSource _updateLifetime = new();
+    private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(15) };
     public MpvPlayer Player { get; } = new();
     public bool IsFullscreen { get; private set; }
     public bool IsMini { get; private set; }
@@ -30,12 +34,22 @@ public partial class MainWindow : Window
     private long _playGeneration;
     private record WindowSnapshot(double Left, double Top, double Width, double Height, WindowState State);
 
-    public MainWindow(string[] args)
+    public MainWindow(string[] args, UpdateCoordinator? updates = null)
     {
+        Updates = updates ?? new();
         _args = args;
         var custom = Argument("--data-dir");
         Model = new(custom ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV"));
-        InitializeComponent(); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
+        InitializeComponent(); ApplyMainWindowChrome(); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
+        WindowChrome.SetIsHitTestVisibleInChrome(VersionButton, true);
+        WindowChrome.SetIsHitTestVisibleInChrome(MinimizeButton, true);
+        WindowChrome.SetIsHitTestVisibleInChrome(MaximizeButton, true);
+        WindowChrome.SetIsHitTestVisibleInChrome(CloseButton, true);
+        var workArea = SystemParameters.WorkArea;
+        Width = Math.Min(Width, workArea.Width); Height = Math.Min(Height, workArea.Height);
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = workArea.Left + Math.Max(0, (workArea.Width - Width) / 2);
+        Top = workArea.Top + Math.Max(0, (workArea.Height - Height) / 2);
         VideoHost.HandleReady += (_, _) => InitializeEngine();
         VideoHost.DoubleClicked += (_, _) => ToggleFullscreen();
         VideoHost.PointerActivity += (_, e) => { _overlay?.Reveal(); if (e.Kind == NativePointerKind.Wheel) Player.Volume = Math.Clamp(Player.Volume + Math.Sign(e.WheelDelta) * 5, 0, 100); };
@@ -48,9 +62,16 @@ public partial class MainWindow : Window
             _overlay?.RefreshState();
         });
         Loaded += async (_, _) => await LoadedAsync();
+        Activated += async (_, _) => { if (_initialized && !_modal) await CheckUpdatesInBackgroundAsync(); };
+        _updateTimer.Tick += async (_, _) => await CheckUpdatesInBackgroundAsync();
         LayoutUpdated += (_, _) => QueueOverlayLayout();
         LocationChanged += (_, _) => QueueOverlayLayout();
-        StateChanged += (_, _) => QueueOverlayLayout();
+        StateChanged += (_, _) =>
+        {
+            LayoutRoot.Margin = WindowState == WindowState.Maximized && !IsFullscreen && !IsMini
+                ? SystemParameters.WindowResizeBorderThickness : new(0);
+            QueueOverlayLayout();
+        };
         SizeChanged += (_, _) => QueueOverlayLayout();
         _timer.Tick += async (_, _) =>
         {
@@ -67,6 +88,7 @@ public partial class MainWindow : Window
             await Model.InitializeAsync();
             ApplySettings(); _initialized = true; InitializeEngine();
             _overlay = new(this) { Owner = this, DataContext = Model }; _overlay.Show(); SyncOverlay(); _timer.Start();
+            _updateTimer.Start(); _ = CheckUpdatesInBackgroundAsync();
             if (Argument("--playlist") is { } playlist) await Model.ImportAsync(playlist);
             if (Argument("--media") is { } media)
             {
@@ -142,7 +164,36 @@ public partial class MainWindow : Window
         if (answer == MessageBoxResult.Yes) _ = GuardAsync(Model.RefreshEpgAsync);
     }
     private async void Settings_Click(object sender, RoutedEventArgs e) => await ShowSettingsAsync();
-    private async void Version_Click(object sender, RoutedEventArgs e) => await WithModalAsync(() => { new ReleaseNotesWindow(this).ShowDialog(); return Task.CompletedTask; });
+    private async Task CheckUpdatesInBackgroundAsync()
+    {
+        if (_closing) return;
+        try { await Updates.CheckAsync(false, _updateLifetime.Token); }
+        catch (OperationCanceledException) { }
+    }
+    private async void Version_Click(object sender, RoutedEventArgs e) => await WithModalAsync(() =>
+    {
+        if (Updates.HasUpdate) return ShowUpdateDialogAsync(this, false);
+        new ReleaseNotesWindow(this).ShowDialog(); return Task.CompletedTask;
+    });
+    public Task ShowUpdateDialogAsync(Window owner, bool checkNow)
+    {
+        var dialog = new AppUpdateWindow(owner, Updates, Path.Combine(Model.DataDirectory, "updates"), checkNow);
+        dialog.ShowDialog();
+        if (dialog.PreparedInstaller is { } installer && dialog.SelectedRelease is { } release)
+        {
+            try
+            {
+                UpdateLauncher.Start(installer, release.Version, Model.DataDirectory);
+                if (owner != this) owner.Close();
+                Close();
+            }
+            catch (Exception error)
+            {
+                MessageBox.Show(owner, error is DzhiggaTV.Services.UpdateException ? error.Message : "Не удалось запустить обновление. Повторите попытку.", "DzhiggaTV · Обновление", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+        return Task.CompletedTask;
+    }
     public async Task ShowSettingsAsync()
     {
         await WithModalAsync(async () => { new SettingsWindow(this).ShowDialog(); await Model.SaveAsync(); ApplySettings(); await Model.ReloadAsync(); await Model.RefreshEpgViewAsync(); });
@@ -219,11 +270,28 @@ public partial class MainWindow : Window
     private static T? FindParent<T>(DependencyObject? child) where T : DependencyObject
     { while (child is not null) { if (child is T match) return match; child = VisualTreeHelper.GetParent(child); } return null; }
 
+    private void ApplyMainWindowChrome() => WindowChrome.SetWindowChrome(this, new WindowChrome
+    {
+        CaptionHeight = 76,
+        ResizeBorderThickness = SystemParameters.WindowResizeBorderThickness,
+        GlassFrameThickness = new(0),
+        CornerRadius = new(0),
+        UseAeroCaptionButtons = false
+    });
+    private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+    private void MaximizeRestore_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
+        else SystemCommands.MaximizeWindow(this);
+    }
+    private void Close_Click(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);
+
     public void ToggleFullscreen()
     {
         if (IsMini) { RestoreWindow(); return; }
         if (IsFullscreen) { RestoreWindow(); return; }
         RememberWindow(); IsFullscreen = true;
+        WindowChrome.SetWindowChrome(this, null);
         WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize;
         CollapseChrome(); WindowState = WindowState.Maximized; _overlay?.Reveal(); QueueOverlayLayout();
     }
@@ -232,6 +300,7 @@ public partial class MainWindow : Window
         if (IsMini) { RestoreWindow(); return; }
         if (IsFullscreen) RestoreWindow();
         RememberWindow(); IsMini = true;
+        WindowChrome.SetWindowChrome(this, null);
         WindowState = WindowState.Normal; WindowStyle = WindowStyle.ToolWindow; ResizeMode = ResizeMode.CanResizeWithGrip; Topmost = true;
         MinWidth = 420; MinHeight = 260; Width = Parse("mini.width", 560); Height = Parse("mini.height", 350);
         Left = Parse("mini.left", Math.Max(0, SystemParameters.WorkArea.Right - Width - 24)); Top = Parse("mini.top", Math.Max(0, SystemParameters.WorkArea.Bottom - Height - 24));
@@ -250,7 +319,8 @@ public partial class MainWindow : Window
     public void RestoreWindow()
     {
         if (IsMini) { foreach (var (key, value) in new[] { ("mini.left", Left), ("mini.top", Top), ("mini.width", ActualWidth), ("mini.height", ActualHeight) }) Model.SetSetting(key, value); _ = Model.SaveAsync(); }
-        IsMini = IsFullscreen = false; Topmost = false; WindowState = WindowState.Normal; WindowStyle = WindowStyle.SingleBorderWindow; ResizeMode = ResizeMode.CanResize;
+        IsMini = IsFullscreen = false; Topmost = false; WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize;
+        ApplyMainWindowChrome();
         MinWidth = 940; MinHeight = 600;
         Header.Visibility = Navigation.Visibility = ChannelPanel.Visibility = Splitter.Visibility = ViewingHeading.Visibility = ProgrammePanel.Visibility = StatusBar.Visibility = Visibility.Visible;
         TopRow.Height = new(76); StatusRow.Height = new(32); ViewingHeadingRow.Height = GridLength.Auto; ProgrammeRow.Height = new(170);
@@ -326,10 +396,10 @@ public partial class MainWindow : Window
         if (_shutdownComplete) return;
         e.Cancel = true;
         if (_closing) return;
-        _closing = true; _timer.Stop(); _playCancellation?.Cancel(); _overlay?.Close();
+        _closing = true; _timer.Stop(); _updateTimer.Stop(); _updateLifetime.Cancel(); _playCancellation?.Cancel(); _overlay?.Close();
         Model.SetSetting("volume", Player.Volume); Model.SetSetting("muted", Player.IsMuted);
         await GuardAsync(Model.SaveAsync);
-        try { Model.Dispose(); Player.Dispose(); }
+        try { Updates.Dispose(); Model.Dispose(); Player.Dispose(); }
         finally
         {
             _shutdownComplete = true;

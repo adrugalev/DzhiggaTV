@@ -24,6 +24,12 @@ public static class InstallEngine
     public static Task<InstallResult> InstallAsync(Stream zip, string destination, IProgress<InstallProgress>? progress, CancellationToken cancellationToken)
         => Task.Run(() => InstallCoreAsync(zip, destination, progress, cancellationToken), cancellationToken);
 
+    public static async Task ValidateUpdateTargetAsync(string destination, CancellationToken token)
+    {
+        string root = ValidateDestination(destination);
+        _ = await ValidateExistingAsync(root, token);
+    }
+
     private static async Task<InstallResult> InstallCoreAsync(Stream source, string destination, IProgress<InstallProgress>? progress, CancellationToken token)
     {
         string root = ValidateDestination(destination);

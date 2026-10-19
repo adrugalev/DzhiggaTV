@@ -59,7 +59,7 @@ public partial class MainWindow : Window
         DestinationText.IsEnabled = BrowseButton.IsEnabled = StartMenuCheck.IsEnabled = DesktopCheck.IsEnabled = enabled && !_installed;
         InstallButton.IsEnabled = enabled;
     }
-    private static void TryShortcut(Environment.SpecialFolder folder, string root, List<string> warnings)
+    internal static void TryShortcut(Environment.SpecialFolder folder, string root, List<string> warnings)
     {
         object? shell = null, shortcut = null;
         try

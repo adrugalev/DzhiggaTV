@@ -81,6 +81,22 @@ internal static class Program
                 Assert(cancelled && !Directory.Exists(Path.Combine(scratch, "cancelled", "DzhiggaTV")), "cancel before extraction without creating installation");
             }
             Assert(!File.Exists(Path.Combine(scratch, "escape.txt")), "no ZIP traversal writes outside destination");
+            await InstallEngine.ValidateUpdateTargetAsync(Path.Combine(scratch, "new-update", "DzhiggaTV"), default);
+            Assert(true, "automatic update accepts an unused dedicated destination");
+            await Reject(() => InstallEngine.ValidateUpdateTargetAsync(unknown, default), "automatic update rejects an unowned existing destination");
+            var validRequest = UpdateRequest.Parse(["--update-target", Path.Combine(scratch, "owned", "DzhiggaTV"), "--wait-pid", Environment.ProcessId.ToString(), "--wait-start", "1", "--data-dir", Path.Combine(scratch, "profile with spaces")]);
+            Assert(validRequest.DataDirectory.EndsWith("profile with spaces"), "update handoff preserves profile paths with spaces");
+            await validRequest.WaitForPlayerAsync(default);
+            Assert(true, "PID reuse cannot make the installer wait for an unrelated process");
+            await Reject(() => { _ = UpdateRequest.Parse(["--update-target", owned]); return Task.CompletedTask; }, "reject incomplete update handoff");
+            using (var ownProcess = System.Diagnostics.Process.GetCurrentProcess())
+            using (var waitCancellation = new CancellationTokenSource(30))
+            {
+                bool cancelled = false;
+                try { await (validRequest with { WaitStartTicks = ownProcess.StartTime.ToUniversalTime().Ticks }).WaitForPlayerAsync(waitCancellation.Token); }
+                catch (OperationCanceledException) { cancelled = true; }
+                Assert(cancelled, "waiting for the player supports cancellation without killing it");
+            }
             Console.WriteLine(JsonSerializer.Serialize(new { success = true, count = Passed.Count, passed = Passed, shortcutsCreated = false, registryModified = false, userDataTouched = false }));
             return 0;
         }

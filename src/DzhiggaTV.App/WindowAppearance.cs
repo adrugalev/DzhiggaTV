@@ -13,7 +13,7 @@ internal static class WindowAppearance
         Apply(window);
     }
 
-    // Standard Windows 11 frame: retain native dragging, resizing and caption buttons.
+    // Apply the theme to native Windows 11 frame surfaces.
     // https://learn.microsoft.com/windows/win32/api/dwmapi/ne-dwmapi-dwmwindowattribute
     public static void Apply(Window window)
     {

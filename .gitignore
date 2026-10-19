@@ -2,6 +2,8 @@ bin/
 obj/
 work/
 outputs/
+/DzhiggaTV-Setup-x64.exe
+/DzhiggaTV-Setup-x64.exe.sha256
 .vs/
 *.user
 *.db

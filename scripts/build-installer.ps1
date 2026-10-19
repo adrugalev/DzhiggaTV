@@ -18,3 +18,11 @@ if (!$CompilerPath -or !(Test-Path -LiteralPath $CompilerPath)) {
 $output = Join-Path $RepositoryRoot 'outputs'
 & $CompilerPath "/DAppSource=$PortableDirectory" "/DOutputPath=$output" (Join-Path $PSScriptRoot 'DzhiggaTV.iss')
 if ($LASTEXITCODE -ne 0) { throw "Компилятор установщика завершился с кодом $LASTEXITCODE." }
+$builtInstaller = Join-Path $output 'DzhiggaTV-setup-win-x64.exe'
+$latestInstaller = Join-Path $RepositoryRoot 'DzhiggaTV-Setup-x64.exe'
+Copy-Item -LiteralPath $builtInstaller -Destination $latestInstaller -Force
+if ((Get-FileHash -LiteralPath $latestInstaller -Algorithm SHA256).Hash -ne (Get-FileHash -LiteralPath $builtInstaller -Algorithm SHA256).Hash) {
+    throw 'Контрольная сумма установщика в корне проекта не совпадает с результатом сборки.'
+}
+Write-Host "Последний установщик: $latestInstaller"
+((Get-FileHash -LiteralPath $latestInstaller -Algorithm SHA256).Hash.ToLowerInvariant() + '  DzhiggaTV-Setup-x64.exe') | Set-Content -LiteralPath ($latestInstaller + '.sha256') -Encoding ascii

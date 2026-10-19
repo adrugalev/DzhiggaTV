@@ -20,11 +20,26 @@ public sealed class ReleaseNotesWindow : Window
         current.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); heading.Children.Add(current);
         DockPanel.SetDock(heading, Dock.Top); root.Children.Add(heading);
 
-        var close = new Button { Content = "Закрыть", IsCancel = true, IsDefault = true, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0, 16, 0, 0) };
-        DockPanel.SetDock(close, Dock.Bottom); root.Children.Add(close);
+        var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0, 16, 0, 0) };
+        var check = new Button { Content = "Проверить обновления", MinWidth = 190 };
+        check.SetResourceReference(BorderBrushProperty, "AccentBrush");
+        System.Windows.Automation.AutomationProperties.SetName(check, "Проверить обновления");
+        check.Click += async (_, _) =>
+        {
+            if (owner is not MainWindow main) return;
+            check.IsEnabled = false;
+            try { await main.ShowUpdateDialogAsync(this, true); }
+            finally { if (IsVisible) check.IsEnabled = true; }
+        };
+        var close = new Button { Content = "Закрыть", IsCancel = true, IsDefault = true };
+        footer.Children.Add(check); footer.Children.Add(close);
+        DockPanel.SetDock(footer, Dock.Bottom); root.Children.Add(footer);
         var notes = new StackPanel();
         (string Version, string Summary)[] releases =
         [
+            ("1.0.13", "Обновление через GitHub Releases: подсветка новой версии, описание изменений, загрузка с проверкой и автоматический перезапуск. В истории версий — ручная проверка обновлений."),
+            ("1.0.12", "В верхней панели добавлены видимые кнопки сворачивания, разворачивания / восстановления и закрытия окна."),
+            ("1.0.11", "Убрана кнопка сортировки «Плейлист». Полоса прокрутки стала шире, бегунок — крупнее и заметнее при наведении."),
             ("1.0.10", "История изменений открывается по нажатию на номер версии."),
             ("1.0.9", "Убран информационный блок EPG.ONE над поиском каналов."),
             ("1.0.8", "Убраны лишние кнопки из верхней панели."),
