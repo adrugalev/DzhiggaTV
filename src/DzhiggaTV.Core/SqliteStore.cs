@@ -374,6 +374,37 @@ public sealed class SqliteStore : IDisposable
             [("$id", epgChannelId), ("$from", from.ToUnixTimeSeconds()), ("$to", to.ToUnixTimeSeconds())], cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>One consistent guide snapshot for the allowed playlist channels, without opening a connection per row.</summary>
+    public async Task<IReadOnlyDictionary<string, IReadOnlyList<Programme>>> GetGuideAsync(IEnumerable<string> epgChannelIds,
+        DateTimeOffset from, DateTimeOffset to, CancellationToken cancellationToken = default)
+    {
+        var result = new Dictionary<string, IReadOnlyList<Programme>>(StringComparer.Ordinal);
+        if (to <= from) return result;
+        var ids = epgChannelIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToArray();
+        if (ids.Length == 0) return result;
+        await InitializeAsync(cancellationToken).ConfigureAwait(false);
+        await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
+        using var transaction = connection.BeginTransaction(deferred: true);
+        foreach (var batch in ids.Chunk(400))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await using var command = connection.CreateCommand(); command.Transaction = transaction;
+            var parameters = batch.Select((_, index) => "$channel" + index).ToArray();
+            command.CommandText = "SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id IN (" +
+                string.Join(',', parameters) + ") AND start<$to AND end>$from ORDER BY channel_id,start";
+            for (int i = 0; i < batch.Length; i++) command.Parameters.AddWithValue(parameters[i], batch[i]);
+            command.Parameters.AddWithValue("$from", from.ToUnixTimeSeconds()); command.Parameters.AddWithValue("$to", to.ToUnixTimeSeconds());
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                var programme = ReadProgramme(reader);
+                if (!result.TryGetValue(programme.ChannelId, out var programmes)) result[programme.ChannelId] = programmes = new List<Programme>();
+                ((List<Programme>)programmes).Add(programme);
+            }
+        }
+        transaction.Commit(); return result;
+    }
+
     public async Task<IReadOnlyList<Programme>> SearchProgrammesAsync(string query, int limit = 100, CancellationToken cancellationToken = default)
     {
         var terms = query.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);

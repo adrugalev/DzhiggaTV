@@ -30,7 +30,12 @@ internal static class Program
             ("Removing an automatic mapping clears the previous programme", RemoveMappingAsync),
             ("Settings reload rebinds active and selected channels while preserving user changes", ReloadAsync),
             ("A local picon import replaces the missing-logo fallback immediately", ImportPiconsAsync),
-            ("An EPG setup failure restores the retry button and progress state", EpgSetupFailureAsync)
+            ("An EPG setup failure restores the retry button and progress state", EpgSetupFailureAsync),
+            ("Guide focuses the exact current instant and clamps midnight boundaries", GuideClockAsync),
+            ("Guide hit testing agrees with scrolled, clipped cells and frozen channel names", GuideHitTestingAsync),
+            ("Guide selection shows complete details without playback until double click", GuideSelectionAsync),
+            ("Guide day ranges follow daylight-saving offsets", GuideDaylightSavingAsync),
+            ("Guide reads only allowed EPG IDs across multiple parameter batches", GuideBatchAsync)
         ];
         var failed = 0;
         foreach (var (name, test) in cases)
@@ -40,6 +45,79 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static Task GuideClockAsync()
+    {
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Test UTC+3", TimeSpan.FromHours(3), "Test UTC+3", "Test UTC+3");
+        var day = new DateTime(2026, 10, 19); var range = GuideRange.ForDay(day, zone);
+        var now = new DateTimeOffset(2026, 10, 19, 10, 43, 27, TimeSpan.FromHours(3));
+        double offset = range.FocusOffset(now, 720);
+        Assert(Math.Abs(range.Position(now) - offset - 720 * .22) < .001, "Now must be at the visible focus position, including minutes and seconds.");
+        Assert(range.Start == new DateTimeOffset(day, TimeSpan.FromHours(3)) && range.Contains(now) && !range.Contains(range.End), "The day must use the local timezone with an exclusive end.");
+        Assert(range.FocusOffset(range.Start, 720) == 0 && range.FocusOffset(range.End.AddSeconds(-1), 720) == range.Width - 720, "Focus must not scroll outside the day.");
+        Assert(range.FocusOffset(now, range.Width + 100) == 0, "A wide viewport must not produce a negative offset.");
+        return Task.CompletedTask;
+    }
+    private static Task GuideHitTestingAsync()
+    {
+        var range = GuideRange.ForDay(new(2026, 10, 19), TimeZoneInfo.Utc);
+        var first = new Programme("guide", "First", range.Start.AddHours(9), range.Start.AddHours(10));
+        var second = new Programme("guide", "Second", first.End, first.End.AddMinutes(30));
+        var row = new GuideRow(new(new("channel", "fixture", "Channel", "TV", "https://example.invalid/unused")), [first, second]);
+        double offset = range.Position(first.Start.AddMinutes(30)), width = 800;
+        var clipped = GuideLayout.Cell(first, range, offset, width);
+        Assert(clipped.Left == GuideLayout.ChannelWidth, "A programme that started off screen must be clipped at the fixed channel column.");
+        Assert(GuideLayout.Hit(row, range, offset, width, new(clipped.Left + 20, 20)) == first, "The visible part of a clipped programme must be selectable.");
+        Assert(GuideLayout.Hit(row, range, offset, width, new(20, 20)) is null, "Clicking a channel name must never hit a programme behind it.");
+        Assert(GuideLayout.Hit(row, range, offset, width, new(clipped.Right + 1, 20)) is null, "The gap between cells must not select an unrelated programme.");
+        var next = GuideLayout.Cell(second, range, offset, width);
+        Assert(GuideLayout.Hit(row, range, offset, width, new(next.Left + 5, 20)) == second, "Hit testing must include the horizontal offset.");
+        Assert(GuideLayout.Hit(row, range, offset, width, new(next.Left + 5, 1)) is null, "Vertical cell padding must not select a programme.");
+        return Task.CompletedTask;
+    }
+    private static async Task GuideSelectionAsync()
+    {
+        int plays = 0; string? playedId = null;
+        var programme = new Programme("guide", "Complete title", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(1), string.Join("\n\n", Enumerable.Repeat("Полное описание без сокращения.", 40)));
+        var channel = new ChannelItem(new("channel", "fixture", "Channel", "TV", "https://example.invalid/unused"));
+        var row = new GuideRow(channel, [programme]); var selection = new GuideSelection();
+        Task Play(ChannelItem item) { plays++; playedId = item.Id; return Task.CompletedTask; }
+        Assert(!await selection.ClickAsync(row, programme, 1, Play) && plays == 0, "A single click must never start playback.");
+        Assert(selection.Programme?.Description is { Length: > 1000 } complete && complete == programme.Description, "Selecting a programme must preserve its full description.");
+        Assert(await selection.ClickAsync(row, programme, 2, Play) && plays == 1 && playedId == channel.Id, "A double click must activate the exact selected channel once.");
+        selection.Clear(); Assert(selection.Row is null && selection.Programme is null, "An empty search must clear a stale selection.");
+    }
+    private static Task GuideDaylightSavingAsync()
+    {
+        var begin = TimeZoneInfo.TransitionTime.CreateFloatingDateRule(new DateTime(1, 1, 1, 2, 0, 0), 3, 5, DayOfWeek.Sunday);
+        var end = TimeZoneInfo.TransitionTime.CreateFloatingDateRule(new DateTime(1, 1, 1, 3, 0, 0), 10, 5, DayOfWeek.Sunday);
+        var rule = TimeZoneInfo.AdjustmentRule.CreateAdjustmentRule(new(2026, 1, 1), new(2026, 12, 31), TimeSpan.FromHours(1), begin, end);
+        var zone = TimeZoneInfo.CreateCustomTimeZone("Guide DST", TimeSpan.FromHours(1), "Guide DST", "Guide standard", "Guide daylight", [rule]);
+        var spring = GuideRange.ForDay(new(2026, 3, 29), zone); var autumn = GuideRange.ForDay(new(2026, 10, 25), zone);
+        Assert((spring.End - spring.Start).TotalHours == 23 && (autumn.End - autumn.Start).TotalHours == 25, "Guide coordinates must follow actual elapsed time on short and long local days.");
+        return Task.CompletedTask;
+    }
+    private static async Task GuideBatchAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var store = fixture.Model.Store;
+        var now = DateTimeOffset.UtcNow;
+        await store.ImportEpgAsync(async (addChannel, addProgramme, token) =>
+        {
+            for (int i = 0; i < 820; i++)
+            {
+                string id = "batch-" + i; await addChannel(new(id, id));
+                await addProgramme(new(id, "Current " + i, now.AddMinutes(-30), now.AddMinutes(30), "Complete description " + i));
+                await addProgramme(new(id, "Outside range", now.AddDays(-2), now.AddDays(-2).AddHours(1)));
+            }
+        });
+        var ids = Enumerable.Range(0, 805).Select(i => "batch-" + i).Concat(["batch-0", "missing"]).ToArray();
+        var rows = await store.GetGuideAsync(ids, now.AddHours(-1), now.AddHours(1));
+        Assert(rows.Count == 805 && rows["batch-804"].Single().Description == "Complete description 804", "Large guide requests must preserve every requested channel and description across batches.");
+        Assert(!rows.ContainsKey("batch-805") && rows.All(r => r.Value.Count == 1), "Unrequested channels and out-of-range programmes must stay excluded.");
+        using var cancelled = new CancellationTokenSource(); cancelled.Cancel(); bool stopped = false;
+        try { await store.GetGuideAsync(ids, now.AddHours(-1), now.AddHours(1), cancelled.Token); } catch (OperationCanceledException) { stopped = true; }
+        Assert(stopped, "Closing the guide must cancel a pending database read.");
     }
 
     private static async Task MissingGuideThenRefreshAsync()

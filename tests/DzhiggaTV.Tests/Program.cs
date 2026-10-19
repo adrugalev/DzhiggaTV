@@ -210,6 +210,8 @@ static async Task TestGuideReadDuringImport() => await WithDatabase(async (store
     {
         var read = await store.GetNowNextAsync("epg.one", now).WaitAsync(TimeSpan.FromSeconds(3));
         Equal("Новости сегодня", read.Current!.Title);
+        var guide = await store.GetGuideAsync(["epg.one", "new"], now.AddHours(-1), now.AddHours(1)).WaitAsync(TimeSpan.FromSeconds(3));
+        True(guide["epg.one"].Any(p => p.Title == "Новости сегодня")); True(!guide.ContainsKey("new"));
     }
     finally { continueImport.TrySetResult(); await import; }
     Equal("Updated", (await store.GetNowNextAsync("new", now)).Current!.Title);
