@@ -42,12 +42,14 @@ public sealed class MainViewModel : Observable, IDisposable
     private bool _epgIndeterminate;
     public bool EpgIndeterminate { get => _epgIndeterminate; private set => Set(ref _epgIndeterminate, value); }
     private string _search = "";
-    public string Search { get => _search; set { if (Set(ref _search, value)) DebounceFilter(); } }
+    public string Search { get => _search; set { if ((CanSearch || value.Length == 0) && Set(ref _search, value)) DebounceFilter(); } }
     private string _selectedGroup = "Все категории";
     public string SelectedGroup { get => _selectedGroup; set { if (Set(ref _selectedGroup, value)) RefreshFilter(); } }
     private string _section = "all";
+    public bool IsFavorites => _section == "favorites";
+    public bool CanSearch => !IsFavorites;
     public string SectionTitle => _section switch { "favorites" => "Избранное", "recent" => "Недавние", "watch" => "Сейчас смотрю", _ when _section.StartsWith("collection:") => _section[11..], _ => "Все каналы" };
-    public string ChannelCountText => $"{VisibleChannels.Count:N0} каналов · {Groups.Count - 1} категорий";
+    public string ChannelCountText => IsFavorites ? $"{VisibleChannels.Count:N0} каналов" : $"{VisibleChannels.Count:N0} каналов · {Groups.Count - 1} категорий";
     public string LibraryChannelCountText => $"{AllChannels.Count:N0} каналов";
     private ChannelItem? _selectedChannel;
     public ChannelItem? SelectedChannel { get => _selectedChannel; set => Set(ref _selectedChannel, value); }
@@ -115,7 +117,7 @@ public sealed class MainViewModel : Observable, IDisposable
     }
     public bool IsAllowed(ChannelItem item) => !State.Hidden.Contains(item.Id) && (Flag("adult.enabled") || !IsAdult(item.Channel.Group) && !IsAdult(item.Group));
     public static bool IsAdult(string name) => new[] { "взрос", "adult", "xxx", "18+", "эроти", "porn" }.Any(x => name.Contains(x, StringComparison.OrdinalIgnoreCase));
-    public void SetSection(string section) { _section = section; Raise(nameof(SectionTitle)); RefreshFilter(); }
+    public void SetSection(string section) { _section = section; Raise(nameof(SectionTitle)); Raise(nameof(IsFavorites)); Raise(nameof(CanSearch)); RefreshFilter(); }
     public void RefreshFilter() => _ = RefreshFilterAsync();
     public Task RefreshFilterAsync() => RefreshFilterAsync(false);
     private async Task RefreshFilterAsync(bool debounce)
@@ -126,7 +128,7 @@ public sealed class MainViewModel : Observable, IDisposable
         try
         {
             if (debounce) await Task.Delay(130, token);
-            string query = Search.Trim();
+            string query = CanSearch ? Search.Trim() : "";
             if (query.Length == 0) { _programmeSearchQuery = ""; _programmeMatches = new Dictionary<string, Programme>(); }
             ApplyFilter(query, _programmeSearchQuery == query ? _programmeMatches : new Dictionary<string, Programme>());
             if (query.Length == 0) return;
@@ -150,7 +152,7 @@ public sealed class MainViewModel : Observable, IDisposable
         else if (_section == "recent") { order = State.History; items = items.Where(c => order.Contains(c.Id)); }
         else if (_section == "watch") items = items.Where(c => c.Id == Active?.Id);
         else if (_section.StartsWith("collection:")) { order = State.Collections.GetValueOrDefault(_section[11..]) ?? []; items = items.Where(c => order.Contains(c.Id)); }
-        if (SelectedGroup != "Все категории") items = items.Where(c => c.Group == SelectedGroup);
+        if (!IsFavorites && SelectedGroup != "Все категории") items = items.Where(c => c.Group == SelectedGroup);
         if (query.Length > 0) items = items.Where(c => ChannelMatcher.MatchesSearch(c.Name, query) || c.HasSearchProgramme);
         if (order is not null) items = items.OrderBy(c => order.IndexOf(c.Id));
         var result = items.ToArray();
@@ -338,7 +340,7 @@ public sealed class MainViewModel : Observable, IDisposable
         {
             _searchCancellation?.Cancel();
             _search = ""; _selectedGroup = "Все категории"; _section = "all";
-            Raise(nameof(Search)); Raise(nameof(SelectedGroup)); Raise(nameof(SectionTitle)); RefreshFilter();
+            Raise(nameof(Search)); Raise(nameof(SelectedGroup)); Raise(nameof(SectionTitle)); Raise(nameof(IsFavorites)); Raise(nameof(CanSearch)); RefreshFilter();
         }
         SelectedChannel = item;
     }

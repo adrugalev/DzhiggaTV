@@ -5,7 +5,8 @@ namespace DzhiggaTV.App;
 
 public partial class App : Application
 {
-    public static string DisplayVersion => "v" + (typeof(App).Assembly.GetName().Version?.ToString(3) ?? "—");
+    public static string DisplayVersion => FormatVersion(typeof(App).Assembly.GetName().Version);
+    internal static string FormatVersion(Version? version) => version is null ? "v—" : "v" + version.ToString(version.Revision > 0 ? 4 : version.Build > 0 ? 3 : 2);
 
 
     protected override void OnStartup(StartupEventArgs e)

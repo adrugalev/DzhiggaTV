@@ -41,6 +41,7 @@ public partial class OverlayWindow : Window
         PauseButton.Content = _main.Player.IsPaused ? "▶" : "Ⅱ";
         MuteButton.Content = _main.Player.IsMuted ? "⊘" : "♪";
         RemainingTimeValue.Text = ProgrammeTiming.Remaining(_main.Model.Active?.Current, DateTimeOffset.UtcNow);
+        RemainingTimeText.Visibility = RemainingTimeValue.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateVisibility();
     }
     public void Tick()

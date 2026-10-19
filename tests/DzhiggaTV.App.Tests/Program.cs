@@ -79,14 +79,14 @@ internal static class Program
     {
         var now = new DateTimeOffset(2026, 10, 19, 22, 0, 0, TimeSpan.FromHours(3));
         Programme ProgrammeUntil(DateTimeOffset end) => new("guide", "Film", now.AddHours(-1), end);
-        Assert(ProgrammeTiming.Remaining(null, now) == "—", "Missing EPG must never invent a duration.");
+        Assert(ProgrammeTiming.Remaining(null, now) == "", "Missing EPG must leave the countdown empty so the entire row can be hidden.");
         Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddHours(2).AddMinutes(3)), now) == "2 ч 3 мин", "Hours and whole minutes must be preserved without seconds.");
         Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddSeconds(3599)), now) == "1 ч 0 мин", "A partial minute must round up across an hour boundary.");
         Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddMinutes(14).AddSeconds(20)), now) == "15 мин", "Minute rounding must not expose seconds.");
         Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddMilliseconds(100)), now) == "1 мин", "A partial final minute must remain visible.");
         Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddSeconds(-2)), now) == "0 мин", "An expired programme must not show a negative countdown.");
         Assert(ProgrammeTiming.Remaining(ProgrammeUntil(now.AddHours(26)), now) == "26 ч 0 мин", "Long programmes must not wrap at midnight.");
-        Assert(ProgrammeTiming.Remaining(new("guide", "Future", now.AddHours(1), now.AddHours(2)), now) == "—", "A future entry must not act as the current programme.");
+        Assert(ProgrammeTiming.Remaining(new("guide", "Future", now.AddHours(1), now.AddHours(2)), now) == "", "A future entry must not act as the current programme.");
         return Task.CompletedTask;
     }
 
@@ -167,11 +167,16 @@ internal static class Program
             "Search must include current/future programmes in later batches, exclude expired/description-only/unmapped/hidden/adult results, and deduplicate repeats.");
         Assert(distant.SearchProgramme?.Title == "Финал. ЦСКА — Спартак" && distant.ProgrammeSummary.Contains(now.AddHours(2).ToLocalTime().ToString("HH:mm")),
             "A programme result must explain which title and start time matched.");
-        model.State.Favorites.Add(distant.Id); model.SetSection("favorites"); await model.RefreshFilterAsync();
-        Assert(model.VisibleChannels.Single() == distant, "Programme search must preserve the favorites filter.");
+        model.State.Favorites.Add(distant.Id); model.State.Favorites.Add("search-2");
+        model.SetSection("favorites"); await model.RefreshFilterAsync();
+        Assert(!model.CanSearch && model.VisibleChannels.Select(c => c.Id).ToHashSet().SetEquals(["search-428", "search-2"]) && model.AllChannels.All(c => c.SearchProgramme is null),
+            "Favorites must ignore the previous search and clear programme search labels.");
+        model.Search = "This must not filter favorites"; await model.RefreshFilterAsync();
+        Assert(model.VisibleChannels.Count == 2 && model.Search == "ФИНАЛ цска", "Search input must be inactive in favorites without replacing the saved library query.");
         model.SelectedGroup = "Кино"; await model.RefreshFilterAsync();
-        Assert(model.VisibleChannels.Count == 0, "Category and favorites filters must compose.");
+        Assert(model.IsFavorites && model.VisibleChannels.Count == 2 && !model.ChannelCountText.Contains("категорий"), "A category selected outside favorites must not hide favorite channels or appear in the favorites heading.");
         model.SetSection("all"); await model.RefreshFilterAsync();
+        Assert(model.CanSearch, "Returning to the library must restore search.");
         Assert(model.VisibleChannels.Select(c => c.Id).ToHashSet().SetEquals(["search-3", "search-429"]), "Category restrictions must also apply to programme hits.");
         model.SelectedGroup = "Все категории";
         var renamed = model.AllChannels.Single(c => c.Id == "search-2"); renamed.Name = "Экран Север";
@@ -186,6 +191,9 @@ internal static class Program
         Assert(model.VisibleChannels.Count == 0, "Refreshing EPG must remove stale programme matches from the current search.");
         model.Search = ""; await model.RefreshFilterAsync();
         Assert(model.VisibleChannels.Contains(renamed) && model.AllChannels.All(c => c.SearchProgramme is null), "Clearing search must restore the library and ordinary now/next labels.");
+        model.Search = "Экран Север"; await model.RefreshFilterAsync();
+        model.SetSection("favorites"); model.Search = ""; model.SetSection("all"); await model.RefreshFilterAsync();
+        Assert(model.Search == "" && model.VisibleChannels.Contains(renamed), "Navigation must still be able to clear an old query while leaving favorites.");
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
         try { await model.Store.SearchUpcomingProgrammesAsync("Финал", ["search-guide-0"], now, cancelled.Token); throw new InvalidOperationException("Search ignored cancellation."); }
         catch (OperationCanceledException) { }

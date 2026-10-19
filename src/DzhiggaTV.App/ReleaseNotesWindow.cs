@@ -37,6 +37,7 @@ public sealed class ReleaseNotesWindow : Window
         var notes = new StackPanel();
         (string Version, string Summary)[] releases =
         [
+            ("1.1.0", "В «Избранном» убраны поиск и выбор категории: фильтры из других разделов не влияют на избранные каналы, Ctrl+F не активирует поиск. Если нет данных о времени окончания текущей передачи, строка «До конца осталось» полностью скрывается. Из бокового меню убраны лишние подписи."),
             ("1.0.34", "Надпись «До конца осталось» стала менее заметной: приглушённый цвет и обычное начертание. Оставшееся время показывается с точностью до минут, без секунд."),
             ("1.0.33", "Повторный клик по звёздочке выключает избранное даже под указателем мыши и сразу убирает канал из списка избранного. В полосе плеера убраны кнопки предыдущего просмотренного канала и списка каналов; по центру показано время до конца текущей передачи с обновлением каждую секунду."),
             ("1.0.32", "У каналов используются те же звёздочки избранного, что в левом меню, вдвое меньшего размера: с цветом и анимацией при наведении, цветным состоянием избранного и прежней областью нажатия. Все полосы прокрутки стали ещё на 50% уже. Из описаний убран заголовок «Сведения»."),
@@ -77,12 +78,13 @@ public sealed class ReleaseNotesWindow : Window
         {
             var row = new Grid();
             row.ColumnDefinitions.Add(new() { Width = new(76) }); row.ColumnDefinitions.Add(new());
-            var label = new TextBlock { Text = "v" + version, FontWeight = FontWeights.SemiBold, FontSize = 13, Margin = new(0, 1, 10, 0) };
+            var versionLabel = App.FormatVersion(Version.Parse(version));
+            var label = new TextBlock { Text = versionLabel, FontWeight = FontWeights.SemiBold, FontSize = 13, Margin = new(0, 1, 10, 0) };
             label.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); row.Children.Add(label);
             var text = new TextBlock { Text = summary, TextWrapping = TextWrapping.Wrap, FontSize = 13, LineHeight = 20 };
             Grid.SetColumn(text, 1); row.Children.Add(text);
             var card = new Border { Child = row, Padding = new(12, 10, 12, 10), CornerRadius = new(7), Margin = new(0, 0, 5, 4) };
-            if ("v" + version == App.DisplayVersion) card.SetResourceReference(BackgroundProperty, "CardBrush");
+            if (versionLabel == App.DisplayVersion) card.SetResourceReference(BackgroundProperty, "CardBrush");
             notes.Children.Add(card);
         }
         root.Children.Add(new ScrollViewer { Content = notes, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });

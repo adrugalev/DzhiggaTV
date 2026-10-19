@@ -245,7 +245,7 @@ public partial class MainWindow : Window
     {
         _navigationCollapsed = collapsed;
         NavigationColumn.Width = new(collapsed ? 64 : 196);
-        NavHeading.Visibility = SidebarFootnote.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        NavHeading.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         foreach (var label in FindVisualChildren<TextBlock>(Navigation).Where(t => Equals(t.Tag, "NavLabel")))
             label.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         NavToggleButton.ToolTip = collapsed ? "Развернуть панель" : "Свернуть панель";
@@ -372,7 +372,11 @@ public partial class MainWindow : Window
         if (key == Key.Escape && (IsFullscreen || IsMini)) { RestoreWindow(); e.Handled = true; return; }
         if (key == Key.F11 || key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) { ToggleFullscreen(); e.Handled = true; return; }
         if (key == Key.M && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleMini(); e.Handled = true; return; }
-        if (key == Key.F && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); e.Handled = true; return; }
+        if (key == Key.F && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            if (Model.CanSearch) { if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); }
+            e.Handled = true; return;
+        }
         if (_programmePreview.Panel.IsKeyboardFocusWithin || CurrentProgrammeDetails.IsKeyboardFocusWithin || NextProgrammeDetails.IsKeyboardFocusWithin || AfterNextProgrammeDetails.IsKeyboardFocusWithin) return;
         if (e.OriginalSource is TextBox || e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase) return;
         switch (key)
@@ -384,7 +388,6 @@ public partial class MainWindow : Window
             case Key.M: Player.IsMuted = !Player.IsMuted; break;
             case Key.I: _overlay?.ToggleStatistics(); break;
             case Key.C: _overlay?.ToggleDrawer(); break;
-            case Key.F when Keyboard.Modifiers.HasFlag(ModifierKeys.Control): if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); break;
             case Key.F: if (Model.Active is { } c) await Model.ToggleFavoriteAsync(c); break;
             case Key.PageDown: await NextChannelAsync(1); break;
             case Key.PageUp: await NextChannelAsync(-1); break;
