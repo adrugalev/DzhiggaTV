@@ -8,6 +8,7 @@ var tests = new List<(string Name, Func<Task> Run)>
     ("M3U: duplicate entries receive separate stable IDs", TestDuplicateIdentity),
     ("M3U: async UTF-8 BOM and comments", TestAsyncParser),
     ("User state: favorites and collection order", TestOrdering),
+    ("Programme text: film metadata, plot paragraphs and credits stay separate without losing content", TestProgrammeText),
     ("DPAPI: current-user round trip", TestDpapi),
     ("SQLite: private playlists encrypted and refresh preserves state", TestPlaylistStorage),
     ("SQLite: manual EPG mappings survive automatic refresh", TestMappings),
@@ -31,6 +32,32 @@ foreach (var (name, test) in tests)
 }
 Console.WriteLine($"{tests.Count - failed}/{tests.Count} cases without failure; {failed} failed.");
 return failed == 0 ? 0 : 1;
+
+static Task TestProgrammeText()
+{
+    var start = DateTimeOffset.UtcNow;
+    Programme Film(string text, string? category = null) => new("film", "Название", start, start.AddHours(2), text, category);
+    var text = ProgrammeText.From(Film("Жанр: драма. Страна: США. Название (2004) \"Original\" (12+) IMDb [6.2], 2004, 1 ч. 26 мин....Первая часть сюжета.\r\nВторой абзац. Премьера: 12 августа 2004 | В ролях: Актёр. Режиссер: Автор.", "Кино"));
+    True(text.Metadata.Contains("Жанр: драма.") && text.Metadata.Contains("Страна: США.") && text.Metadata.Contains("2004") && text.Metadata.Contains("IMDb [6.2]") && text.Metadata.Contains("1 ч. 26 мин"));
+    Equal("Первая часть сюжета.\nВторой абзац.", text.Synopsis);
+    True(text.Credits.StartsWith("Премьера:") && text.Credits.Contains("В ролях: Актёр.") && text.Credits.Contains("\nРежиссер: Автор."));
+    text = ProgrammeText.From(Film("Жанр: ужасы. Страна: США. Название (1981) \"Original\" (16+) IMDb [6.5], Бюджет: $3 000 000.\nСюжет фильма. В ролях: Актёр."));
+    Equal("Сюжет фильма.", text.Synopsis); True(text.Metadata.Contains("1981") && text.Metadata.Contains("Бюджет:"));
+    text = ProgrammeText.From(Film("Жанр: драма. Страна: США. Название / Original, Год: 1986, IMDb [5.5], 1 час 37 мин....Сюжет фильма."));
+    Equal("Сюжет фильма.", text.Synopsis); True(text.Metadata.Contains("1986") && text.Metadata.Contains("37 мин"));
+    text = ProgrammeText.From(Film("1999. Страна: США. Биография, драма, история, реальные события, экранизация. История покорения мира компьютерными гениями."));
+    Equal("История покорения мира компьютерными гениями.", text.Synopsis);
+    True(text.Metadata.Contains("Год: 1999") && text.Metadata.Contains("Страна: США.") && text.Metadata.Contains("Жанр: Биография, драма, история"));
+    text = ProgrammeText.From(Film("2000 г.\n\nГруппа альпинистов оказалась в расщелине."));
+    Equal("Группа альпинистов оказалась в расщелине.", text.Synopsis); Equal("Год: 2000", text.Metadata);
+    const string ordinary = "В 2024 году герой шёл 2 часа по лесу.\nЗатем он вернулся домой.";
+    text = ProgrammeText.From(Film(ordinary, "Документальный"));
+    Equal(ordinary, text.Synopsis); Equal("Документальный", text.Metadata); Equal("", text.Credits);
+    text = ProgrammeText.From(Film("Обычное описание без сведений о фильме."));
+    Equal("Обычное описание без сведений о фильме.", text.Synopsis); Equal("", text.Metadata);
+    Equal(new ProgrammeText("", "", ""), ProgrammeText.From(null));
+    return Task.CompletedTask;
+}
 
 static Task TestM3uMetadata()
 {

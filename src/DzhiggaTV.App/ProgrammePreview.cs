@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -19,6 +21,13 @@ internal sealed class ProgrammePreview
     private readonly TextBlock _category = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new(0, 4, 0, 0) };
     private readonly TextBlock _description = new() { FontSize = 13, LineHeight = 20, TextWrapping = TextWrapping.Wrap, Margin = new(0, 0, 6, 2) };
     private readonly ScrollViewer _scroll;
+    private readonly Popup _popup = new()
+    {
+        Placement = PlacementMode.Custom, AllowsTransparency = true, StaysOpen = true,
+        // Explicit left-edge anchoring also works when Windows aligns menus to the right.
+        CustomPopupPlacementCallback = (size, target, _) =>
+        [new(new(0, -size.Height - 4), PopupPrimaryAxis.Horizontal), new(new(0, target.Height + 4), PopupPrimaryAxis.Horizontal)]
+    };
     private readonly ColumnDefinition _metadataColumn = new() { Width = new(230) };
     private readonly DispatcherTimer _close = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private int _index;
@@ -28,11 +37,12 @@ internal sealed class ProgrammePreview
     public ProgrammePreview(MainWindow main, Button current, Button next, Button afterNext, TextBlock currentDescription)
     {
         _main = main; _buttons = [current, next, afterNext]; _currentDescription = currentDescription;
-        // Upcoming previews use the left card, keeping both right-hand triggers exposed.
-        // The current programme can use the full width, above its footer trigger.
+        // The current preview stays in the cards; upcoming previews are anchored above
+        // their own button in a popup, which can also render over the native video HWND.
         Panel = new() { CornerRadius = new(10), BorderThickness = new(1), Padding = new(14, 10, 14, 10), Margin = new(0, 0, 0, 34), Visibility = Visibility.Collapsed };
         Panel.SetResourceReference(Border.BackgroundProperty, "PanelBrush"); Panel.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
-        System.Windows.Automation.AutomationProperties.SetName(Panel, "Полное описание передачи под видео");
+        Panel.SetResourceReference(TextElement.ForegroundProperty, "TextBrush");
+        System.Windows.Automation.AutomationProperties.SetName(Panel, "Полное описание передачи");
         var body = new Grid(); body.RowDefinitions.Add(new() { Height = GridLength.Auto }); body.RowDefinitions.Add(new() { Height = GridLength.Auto });
         body.ColumnDefinitions.Add(_metadataColumn); body.ColumnDefinitions.Add(new() { Width = new(18) }); body.ColumnDefinitions.Add(new());
         var metadata = new StackPanel();
@@ -56,6 +66,7 @@ internal sealed class ProgrammePreview
         Panel.PreviewMouseDown += (_, _) => _keyboardInteraction = false;
         Panel.LostKeyboardFocus += (_, _) => ScheduleClose();
         Panel.LostMouseCapture += (_, _) => ScheduleClose();
+        Panel.PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) { Hide(); e.Handled = true; } };
         _close.Tick += (_, _) =>
         {
             _close.Stop();
@@ -74,6 +85,7 @@ internal sealed class ProgrammePreview
             if (Panel.IsVisible && e.PropertyName is nameof(MainViewModel.CurrentTitle) or nameof(MainViewModel.NextTitle) or nameof(MainViewModel.AfterNextTitle)) Refresh();
         };
         main.Deactivated += (_, _) => Hide(); main.Closed += (_, _) => Hide();
+        main.LocationChanged += (_, _) => Hide(); main.SizeChanged += (_, _) => Hide();
     }
 
     private void Attach(Button button, int index)
@@ -154,7 +166,23 @@ internal sealed class ProgrammePreview
         if (!button.IsVisible || _main.IsFullscreen || _main.IsMini || GetProgramme(index) is null) return;
         _close.Stop();
         bool animate = !Panel.IsVisible;
-        _index = index; Grid.SetColumnSpan(Panel, index == 0 ? 3 : 1); Refresh(); Panel.Visibility = Visibility.Visible;
+        _index = index;
+        if (index == 0)
+        {
+            _popup.IsOpen = false; _popup.Child = null;
+            if (Panel.Parent is null) _main.ProgrammePanel.Children.Add(Panel);
+            Panel.Width = double.NaN; Panel.MaxHeight = double.PositiveInfinity; Panel.Margin = new(0, 0, 0, 34);
+            Grid.SetColumnSpan(Panel, 3);
+        }
+        else
+        {
+            if (Panel.Parent is Grid container) container.Children.Remove(Panel);
+            _popup.Child = Panel; _popup.PlacementTarget = button;
+            Panel.Width = Math.Clamp(_main.ProgrammePanel.ActualWidth / 2 - 36, 240, 440);
+            Panel.MaxHeight = Math.Clamp(_main.ActualHeight * .42, 160, 340); Panel.Margin = new(0);
+        }
+        Refresh(); Panel.Visibility = Visibility.Visible;
+        if (index > 0) _popup.IsOpen = true;
         if (animate && !_main.Model.Flag("reducedMotion") && SystemParameters.ClientAreaAnimation)
             Panel.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(100)));
     }
@@ -172,5 +200,5 @@ internal sealed class ProgrammePreview
         _scroll.ScrollToHome();
     }
 
-    public void Hide() { _close.Stop(); Panel.Visibility = Visibility.Collapsed; _shown = null; _keyboardInteraction = false; }
+    public void Hide() { _close.Stop(); _popup.IsOpen = false; Panel.Visibility = Visibility.Collapsed; _shown = null; _keyboardInteraction = false; }
 }

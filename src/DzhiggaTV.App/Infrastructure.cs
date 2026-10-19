@@ -22,6 +22,7 @@ public sealed class ChannelItem(Channel channel) : Observable
 {
     public Channel Channel { get; } = channel;
     public string Id => Channel.Id;
+    public int Number { get; init; } = channel.Order + 1;
     private string _name = channel.Name;
     public string Name { get => _name; set { if (Set(ref _name, value)) Raise(nameof(Initials)); } }
     public string Group { get; set; } = channel.Group;

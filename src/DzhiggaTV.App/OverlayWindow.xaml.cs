@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using DzhiggaTV.Player;
+using DzhiggaTV.Core;
 
 namespace DzhiggaTV.App;
 
@@ -12,6 +13,7 @@ public partial class OverlayWindow : Window
     private DateTime _lastMove = DateTime.UtcNow;
     private Point _lastPoint;
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
+    private Programme? _descriptionProgramme;
     public OverlayWindow(MainWindow main)
     {
         _main = main; InitializeComponent();
@@ -30,6 +32,11 @@ public partial class OverlayWindow : Window
     }
     public void RefreshState()
     {
+        if (_descriptionProgramme != _main.Model.Active?.Current)
+        {
+            _descriptionProgramme = _main.Model.Active?.Current;
+            FullscreenSynopsisScroll.ScrollToHome(); FullscreenMetadataScroll.ScrollToHome();
+        }
         Welcome.Visibility = _main.HasPlayback ? Visibility.Collapsed : Visibility.Visible;
         PauseButton.Content = _main.Player.IsPaused ? "▶" : "Ⅱ";
         MuteButton.Content = _main.Player.IsMuted ? "⊘" : "♪";
@@ -55,15 +62,23 @@ public partial class OverlayWindow : Window
         // A child of ControlsPanel shares all pointer, idle, menu and keyboard visibility rules.
         FullscreenProgrammeInfo.Visibility = _main.IsFullscreen && _main.Model.Active?.Current is not null ? Visibility.Visible : Visibility.Collapsed;
         var keyboardControls = _keyboardNavigation && ControlsPanel.IsKeyboardFocusWithin;
+        var readingDescription = _pointerInside && FullscreenProgrammeReadingArea.IsMouseOver;
         var idle = (_main.IsFullscreen || _main.IsMini) && _main.HasPlayback &&
-            Drawer.Visibility != Visibility.Visible && !_menuOpen && !keyboardControls &&
+            Drawer.Visibility != Visibility.Visible && !_menuOpen && !keyboardControls && !readingDescription &&
             DateTime.UtcNow - _lastMove > TimeSpan.FromSeconds(3.5);
         ControlsPanel.Visibility = _menuOpen || keyboardControls || (_pointerInside && !idle) ? Visibility.Visible : Visibility.Collapsed;
         Cursor = _pointerInside && idle ? Cursors.None : Cursors.Arrow;
     }
     private void UpdateCompactLayout()
     {
-        FullscreenProgrammeDescription.MaxHeight = ActualHeight < 600 ? 42 : 63;
+        double readingHeight = Math.Clamp(ActualHeight * .20, 84, 216);
+        FullscreenSynopsisScroll.MaxHeight = FullscreenMetadataScroll.MaxHeight = readingHeight;
+        bool stacked = ActualWidth < 900;
+        FullscreenMetadataColumn.Width = new(stacked || FullscreenMetadataScroll.Visibility != Visibility.Visible ? 0 : Math.Clamp(ActualWidth * .24, 230, 320));
+        FullscreenMetadataGap.Width = new(stacked || FullscreenMetadataScroll.Visibility != Visibility.Visible ? 0 : 24);
+        Grid.SetColumn(FullscreenMetadataScroll, stacked ? 0 : 2);
+        Grid.SetRow(FullscreenMetadataScroll, stacked ? 1 : 0);
+        FullscreenMetadataScroll.Margin = new(0, stacked ? 12 : 0, 0, 0);
         var compact = ActualWidth <= 480;
         HistoryButton.Visibility = FavoriteButton.Visibility = MiniButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         VolumeSlider.Visibility = ActualWidth < 340 ? Visibility.Collapsed : Visibility.Visible;
@@ -71,6 +86,13 @@ public partial class OverlayWindow : Window
     private void Overlay_MouseEnter(object sender, MouseEventArgs e)
     {
         _pointerInside = true; _lastMove = DateTime.UtcNow; UpdateVisibility();
+    }
+    private void Description_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not ScrollViewer scroll) return;
+        _lastMove = DateTime.UtcNow;
+        scroll.ScrollToVerticalOffset(scroll.VerticalOffset - e.Delta / 120d * 66);
+        e.Handled = true;
     }
     private void Overlay_MouseLeave(object sender, MouseEventArgs e)
     {
@@ -99,6 +121,8 @@ public partial class OverlayWindow : Window
     }
     private async void Overlay_KeyDown(object sender, KeyEventArgs e)
     {
+        if ((FullscreenSynopsisScroll.IsKeyboardFocusWithin || FullscreenMetadataScroll.IsKeyboardFocusWithin) &&
+            e.Key is Key.Up or Key.Down or Key.PageUp or Key.PageDown or Key.Home or Key.End) return;
         if (e.Key == Key.Tab)
         {
             _keyboardNavigation = true;

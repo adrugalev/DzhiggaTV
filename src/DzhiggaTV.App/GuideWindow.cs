@@ -26,7 +26,7 @@ public sealed class GuideWindow : Window
     private readonly Button _resetFilters;
     private bool _changingFilters;
     private IReadOnlyList<PlaylistSource> _playlistSources = [];
-    private readonly ScrollBar _horizontal = new() { Orientation = Orientation.Horizontal, Minimum = 0, SmallChange = 60, Height = 20 };
+    private readonly ScrollBar _horizontal = new() { Orientation = Orientation.Horizontal, Minimum = 0, SmallChange = 60, Height = Theme.ScrollBarThickness };
     private readonly GuideAxis _axis;
     private readonly GuideNowLine _nowLine;
     private readonly Grid _body = new();
@@ -62,8 +62,8 @@ public sealed class GuideWindow : Window
         MinWidth = 900; MinHeight = Math.Min(560, Height); WindowStartupLocation = WindowStartupLocation.CenterOwner;
         _date.SelectedDate = _clock().LocalDateTime.Date; _date.DisplayDate = _date.SelectedDate.Value;
         ConfigureDatePicker();
-        _axis = new(_viewport) { Height = GuideLayout.HeaderHeight, Margin = new(0, 0, SystemParameters.VerticalScrollBarWidth, 0) };
-        _nowLine = new(_viewport) { IsHitTestVisible = false, Margin = new(0, 0, SystemParameters.VerticalScrollBarWidth, 0) };
+        _axis = new(_viewport) { Height = GuideLayout.HeaderHeight, Margin = new(0, 0, Theme.ScrollBarThickness, 0) };
+        _nowLine = new(_viewport) { IsHitTestVisible = false, Margin = new(0, 0, Theme.ScrollBarThickness, 0) };
         var root = new Grid { Margin = new(20, 16, 20, 12) }; Content = root;
         root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var toolbar = new Grid();
@@ -101,7 +101,7 @@ public sealed class GuideWindow : Window
         timelineBorder.SetResourceReference(BorderBrushProperty, "BorderBrush"); _body.Children.Add(timelineBorder);
         _timeline.Children.Add(_axis); Grid.SetRow(_rows, 1); _timeline.Children.Add(_rows);
         Grid.SetRow(_empty, 1); _timeline.Children.Add(_empty);
-        _horizontal.Margin = new(GuideLayout.ChannelWidth, 0, SystemParameters.VerticalScrollBarWidth, 0); Grid.SetRow(_horizontal, 2); _timeline.Children.Add(_horizontal);
+        _horizontal.Margin = new(GuideLayout.ChannelWidth, 0, Theme.ScrollBarThickness, 0); Grid.SetRow(_horizontal, 2); _timeline.Children.Add(_horizontal);
         Grid.SetRowSpan(_nowLine, 2); _timeline.Children.Add(_nowLine);
         ConfigureRows();
         var detailsDock = new DockPanel { Margin = new(18) };
@@ -380,7 +380,7 @@ public sealed class GuideWindow : Window
     }
     private void UpdateScrollMetrics()
     {
-        _viewport.Width = Math.Max(1, _rows.ActualWidth - SystemParameters.VerticalScrollBarWidth - GuideLayout.ChannelWidth);
+        _viewport.Width = Math.Max(1, _rows.ActualWidth - Theme.ScrollBarThickness - GuideLayout.ChannelWidth);
         _changingOffset = true; _horizontal.Maximum = Math.Max(0, _viewport.Range.Width - _viewport.Width);
         _horizontal.ViewportSize = _viewport.Width; _horizontal.LargeChange = _viewport.Width * .8;
         _viewport.Offset = _horizontal.Value; _changingOffset = false; RefreshTimeline();
