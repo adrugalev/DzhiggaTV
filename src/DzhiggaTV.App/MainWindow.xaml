@@ -80,7 +80,7 @@
    </Grid>
    <GridSplitter x:Name="Splitter" Grid.Column="2" Width="5" HorizontalAlignment="Stretch" Background="{DynamicResource BorderBrush}"/>
    <Grid Grid.Column="3" x:Name="ViewingPanel" Margin="20,20,24,14"><Grid.RowDefinitions><RowDefinition x:Name="ViewingHeadingRow" Height="Auto"/><RowDefinition Height="*"/><RowDefinition x:Name="ProgrammeRow" Height="150"/></Grid.RowDefinitions>
-    <Grid x:Name="ViewingHeading" Margin="0,0,0,18"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Border x:Name="ActiveChannelLogo" Width="48" Height="34" Margin="0,0,12,0" VerticalAlignment="Center"><Border.Style><Style TargetType="Border"><Style.Triggers><DataTrigger Binding="{Binding Active.LogoPath}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Border.Style><Image Source="{Binding Active.LogoPath}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Логотип текущего канала"/></Border><TextBlock Grid.Column="1" Text="{Binding ActiveName}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,14,0"/><TextBlock Grid.Column="2" x:Name="ClockText" Foreground="{DynamicResource MutedBrush}" FontSize="12" VerticalAlignment="Center"/></Grid>
+    <Grid x:Name="ViewingHeading" Margin="0,0,0,18"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Border x:Name="ActiveChannelLogo" Width="48" Height="34" Margin="0,0,12,0" VerticalAlignment="Center"><Border.Style><Style TargetType="Border"><Style.Triggers><DataTrigger Binding="{Binding Active.LogoPath}" Value="{x:Null}"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Border.Style><Image Source="{Binding Active.LogoPath}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Логотип текущего канала"/></Border><TextBlock Grid.Column="1" Text="{Binding ActiveName}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,14,0"/><TextBlock Grid.Column="2" x:Name="ClockText" Foreground="{DynamicResource MutedBrush}" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center"/></Grid>
     <Border x:Name="VideoBorder" Grid.Row="1" Background="#050708" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" ClipToBounds="True"><Grid x:Name="VideoArea"><player:NativeVideoHost x:Name="VideoHost"/></Grid></Border>
     <Grid Grid.Row="2" x:Name="ProgrammePanel" Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
      <Grid.Resources>
@@ -96,23 +96,35 @@
        <Setter Property="VerticalAlignment" Value="Top"/><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Setter Property="Margin" Value="0,7,0,0"/>
        <Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers>
       </Style>
+      <Style x:Key="ProgrammeDetails" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+       <Setter Property="Content" Value="Подробнее"/><Setter Property="Visibility" Value="Hidden"/>
+       <Setter Property="FontSize" Value="11"/><Setter Property="Height" Value="20"/>
+       <Setter Property="Padding" Value="6,0"/><Setter Property="Margin" Value="0"/>
+       <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+       <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+       <Setter Property="HorizontalAlignment" Value="Right"/>
+       <Setter Property="AutomationProperties.HelpText" Value="Наведите для полного описания. Длинный текст можно прокручивать колёсиком над кнопкой."/>
+      </Style>
      </Grid.Resources>
-     <Border x:Name="CurrentProgrammeCard" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,12" Focusable="True" AutomationProperties.Name="Подробности текущей передачи">
+     <Border x:Name="CurrentProgrammeCard" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,10">
       <Grid><Grid.RowDefinitions><RowDefinition Height="20"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
        <TextBlock Text="СЕЙЧАС В ЭФИРЕ" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
        <TextBlock Grid.Row="1" Text="{Binding CurrentTitle}" Style="{StaticResource ProgrammeTitle}"/>
        <TextBlock Grid.Row="2" Text="{Binding CurrentTime}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
        <TextBlock x:Name="CurrentProgrammeDescription" Grid.Row="3" Text="{Binding CurrentDescription}" Style="{StaticResource ProgrammeDescription}"/>
-       <ProgressBar Grid.Row="4" Value="{Binding CurrentProgress, Mode=OneWay}" Margin="0,10,0,0"/>
+       <Grid Grid.Row="4" Height="20" Margin="0,2,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <ProgressBar Value="{Binding CurrentProgress, Mode=OneWay}" Margin="0,0,12,0" VerticalAlignment="Center"/>
+        <Button x:Name="CurrentProgrammeDetails" Grid.Column="1" Style="{StaticResource ProgrammeDetails}" AutomationProperties.Name="Подробнее о текущей передаче"/>
+       </Grid>
       </Grid>
      </Border>
-     <Border x:Name="NextProgrammeCard" Grid.Column="2" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,12" Focusable="True" AutomationProperties.Name="Подробности следующей передачи">
+     <Border x:Name="NextProgrammeCard" Grid.Column="2" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,10">
       <Grid><Grid.RowDefinitions><RowDefinition Height="20"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
        <Grid><TextBlock Text="ДАЛЕЕ" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/><Button Content="Программа  →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="7,2" Margin="0" FontSize="11" Background="Transparent"/></Grid>
        <TextBlock Grid.Row="1" Text="{Binding NextTitle}" Style="{StaticResource ProgrammeTitle}"/>
        <TextBlock Grid.Row="2" Text="{Binding NextTime}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
        <TextBlock x:Name="NextProgrammeDescription" Grid.Row="3" Text="{Binding NextDescription}" Style="{StaticResource ProgrammeDescription}"/>
-       <Border Grid.Row="4" Height="3" Margin="0,10,0,0"/>
+       <Button x:Name="NextProgrammeDetails" Grid.Row="4" Style="{StaticResource ProgrammeDetails}" Margin="0,2,0,0" AutomationProperties.Name="Подробнее о следующей передаче"/>
       </Grid>
      </Border>
     </Grid>
