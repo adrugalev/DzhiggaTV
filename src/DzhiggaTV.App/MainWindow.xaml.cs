@@ -374,7 +374,7 @@ public partial class MainWindow : Window
         if (key == Key.F11 || key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) { ToggleFullscreen(); e.Handled = true; return; }
         if (key == Key.M && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleMini(); e.Handled = true; return; }
         if (key == Key.F && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); e.Handled = true; return; }
-        if (CurrentProgrammeDetails.IsKeyboardFocusWithin || NextProgrammeDetails.IsKeyboardFocusWithin) return;
+        if (_programmePreview.Panel.IsKeyboardFocusWithin || CurrentProgrammeDetails.IsKeyboardFocusWithin || NextProgrammeDetails.IsKeyboardFocusWithin) return;
         if (e.OriginalSource is TextBox || e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase) return;
         switch (key)
         {

@@ -52,6 +52,8 @@ public partial class OverlayWindow : Window
     private void UpdateVisibility()
     {
         if (ControlsPanel is null) return;
+        // A child of ControlsPanel shares all pointer, idle, menu and keyboard visibility rules.
+        FullscreenProgrammeInfo.Visibility = _main.IsFullscreen && _main.Model.Active?.Current is not null ? Visibility.Visible : Visibility.Collapsed;
         var keyboardControls = _keyboardNavigation && ControlsPanel.IsKeyboardFocusWithin;
         var idle = (_main.IsFullscreen || _main.IsMini) && _main.HasPlayback &&
             Drawer.Visibility != Visibility.Visible && !_menuOpen && !keyboardControls &&

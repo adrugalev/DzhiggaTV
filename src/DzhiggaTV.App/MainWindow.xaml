@@ -103,7 +103,7 @@
        <Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
        <Setter Property="HorizontalAlignment" Value="Right"/>
-       <Setter Property="AutomationProperties.HelpText" Value="Наведите для полного описания. Длинный текст можно прокручивать колёсиком над кнопкой."/>
+       <Setter Property="AutomationProperties.HelpText" Value="Наведите для полного описания. Перейдите на описание, чтобы прочитать и прокрутить его."/>
       </Style>
      </Grid.Resources>
      <Border x:Name="CurrentProgrammeCard" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,10">

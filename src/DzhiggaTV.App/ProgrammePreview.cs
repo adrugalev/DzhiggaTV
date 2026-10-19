@@ -20,7 +20,8 @@ internal sealed class ProgrammePreview
     private readonly TextBlock _description = new() { FontSize = 13, LineHeight = 20, TextWrapping = TextWrapping.Wrap, Margin = new(0, 0, 6, 2) };
     private readonly ScrollViewer _scroll, _metadataScroll;
     private readonly ColumnDefinition _metadataColumn = new() { Width = new(230) };
-    private bool _showNext, _measurementQueued;
+    private readonly DispatcherTimer _close = new() { Interval = TimeSpan.FromMilliseconds(200) };
+    private bool _showNext, _measurementQueued, _keyboardInteraction;
     private Programme? _shown;
 
     public ProgrammePreview(MainWindow main, Button current, Button next, TextBlock currentDescription, TextBlock nextDescription)
@@ -28,8 +29,7 @@ internal sealed class ProgrammePreview
         _main = main; _current = current; _next = next;
         _currentDescription = currentDescription; _nextDescription = nextDescription;
         // Keep the triggers exposed below the preview; neither the video nor the channel list is covered.
-        // Hit testing passes through so a preview can never steal the pointer from its own trigger.
-        Panel = new() { CornerRadius = new(10), BorderThickness = new(1), Padding = new(14, 10, 14, 10), Margin = new(0, 0, 0, 34), Visibility = Visibility.Collapsed, IsHitTestVisible = false };
+        Panel = new() { CornerRadius = new(10), BorderThickness = new(1), Padding = new(14, 10, 14, 10), Margin = new(0, 0, 0, 34), Visibility = Visibility.Collapsed };
         Panel.SetResourceReference(Border.BackgroundProperty, "PanelBrush"); Panel.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
         System.Windows.Automation.AutomationProperties.SetName(Panel, "Полное описание передачи под видео");
         var body = new Grid(); Panel.Child = body;
@@ -43,6 +43,18 @@ internal sealed class ProgrammePreview
         _scroll = new() { Content = _description, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetColumn(_scroll, 2); body.Children.Add(_scroll);
         Panel.SizeChanged += (_, _) => _metadataColumn.Width = new(Panel.ActualWidth < 650 ? 170 : 230);
+        Panel.MouseEnter += (_, _) => { _keyboardInteraction = false; _close.Stop(); };
+        Panel.MouseLeave += (_, _) => ScheduleClose();
+        Panel.PreviewMouseDown += (_, _) => _keyboardInteraction = false;
+        Panel.LostKeyboardFocus += (_, _) => ScheduleClose();
+        Panel.LostMouseCapture += (_, _) => ScheduleClose();
+        _close.Tick += (_, _) =>
+        {
+            _close.Stop();
+            var trigger = _showNext ? _next : _current;
+            if (!Panel.IsMouseOver && !trigger.IsMouseOver && !Panel.IsMouseCaptureWithin &&
+                !(_keyboardInteraction && (Panel.IsKeyboardFocusWithin || trigger.IsKeyboardFocusWithin))) Hide();
+        };
         Attach(current, false); Attach(next, true);
         currentDescription.Loaded += (_, _) => QueueMeasurement(); nextDescription.Loaded += (_, _) => QueueMeasurement();
         currentDescription.SizeChanged += (_, _) => QueueMeasurement(); nextDescription.SizeChanged += (_, _) => QueueMeasurement();
@@ -58,11 +70,12 @@ internal sealed class ProgrammePreview
 
     private void Attach(Button button, bool next)
     {
-        button.MouseEnter += (_, _) => Show(next);
-        button.MouseLeave += (_, _) => Hide();
+        button.MouseEnter += (_, _) => { _keyboardInteraction = false; Show(next); };
+        button.MouseLeave += (_, _) => ScheduleClose();
+        button.PreviewMouseDown += (_, _) => _keyboardInteraction = false;
         // Keyboard users can also hold focus on the same button to read the description.
-        button.GotKeyboardFocus += (_, _) => { if (Keyboard.IsKeyDown(Key.Tab)) Show(next); };
-        button.LostKeyboardFocus += (_, _) => { if (!button.IsMouseOver) Hide(); };
+        button.GotKeyboardFocus += (_, _) => { if (Keyboard.IsKeyDown(Key.Tab)) { _keyboardInteraction = true; Show(next); } };
+        button.LostKeyboardFocus += (_, _) => ScheduleClose();
         button.PreviewMouseWheel += (_, e) =>
         {
             if (!Panel.IsVisible) return;
@@ -81,6 +94,13 @@ internal sealed class ProgrammePreview
             else return;
             e.Handled = true;
         };
+    }
+
+    private void ScheduleClose()
+    {
+        // Allow the pointer to cross the small gap between the button and the description.
+        if (!Panel.IsVisible) return;
+        _close.Stop(); _close.Start();
     }
 
     private void QueueMeasurement()
@@ -122,8 +142,10 @@ internal sealed class ProgrammePreview
     {
         var button = next ? _next : _current;
         if (!button.IsVisible || _main.IsFullscreen || _main.IsMini || (next ? _main.Model.Active?.Next : _main.Model.Active?.Current) is null) return;
+        _close.Stop();
+        bool animate = !Panel.IsVisible;
         _showNext = next; Refresh(); Panel.Visibility = Visibility.Visible;
-        if (!_main.Model.Flag("reducedMotion") && SystemParameters.ClientAreaAnimation)
+        if (animate && !_main.Model.Flag("reducedMotion") && SystemParameters.ClientAreaAnimation)
             Panel.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(100)));
     }
 
@@ -140,5 +162,5 @@ internal sealed class ProgrammePreview
         _scroll.ScrollToHome(); _metadataScroll.ScrollToHome();
     }
 
-    public void Hide() { Panel.Visibility = Visibility.Collapsed; _shown = null; }
+    public void Hide() { _close.Stop(); Panel.Visibility = Visibility.Collapsed; _shown = null; _keyboardInteraction = false; }
 }
