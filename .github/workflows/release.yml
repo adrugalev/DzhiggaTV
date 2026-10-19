@@ -1,0 +1,66 @@
+name: Build and publish Windows release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dzhiggatv-release-main
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: pwsh
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  release:
+    if: github.repository == 'adrugalev/DzhiggaTV' && github.ref == 'refs/heads/main'
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - name: Check out the uploaded sources
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Check whether this version needs a release
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/ci-release.ps1 -Mode Plan
+
+      - name: Set up .NET 10
+        if: steps.plan.outputs.build == 'true'
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Test and build the complete installer
+        if: steps.plan.outputs.build == 'true'
+        run: |
+          ./scripts/test-ci-release.ps1
+          ./scripts/build-release.ps1
+
+      - name: Test safe installation and update behavior
+        if: steps.plan.outputs.build == 'true'
+        run: |
+          dotnet run --project src/DzhiggaTV.Installer/SmokeTests/Installer.SmokeTests.csproj -c Release --no-launch-profile -- "$env:GITHUB_WORKSPACE/work/ci-installer-tests"
+          if ($LASTEXITCODE -ne 0) { throw 'Installer tests failed.' }
+
+      - name: Verify the actual embedded application
+        if: steps.plan.outputs.build == 'true'
+        run: ./scripts/verify-release.ps1
+
+      - name: Upload the installer and publish the release
+        if: steps.plan.outputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/ci-release.ps1 -Mode Publish
