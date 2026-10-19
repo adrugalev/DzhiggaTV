@@ -42,8 +42,8 @@ public partial class MainWindow : Window
         var custom = Argument("--data-dir");
         Model = new(custom ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV"));
         InitializeComponent(); ApplyMainWindowChrome(); WindowBounds.Attach(this); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
-        _programmePreview = new(this, CurrentProgrammeCard, NextProgrammeCard);
-        Grid.SetColumn(_programmePreview.Panel, 1); Panel.SetZIndex(_programmePreview.Panel, 5); Workspace.Children.Add(_programmePreview.Panel);
+        _programmePreview = new(this, CurrentProgrammeCard, NextProgrammeCard, ProgrammePanel);
+        Grid.SetColumnSpan(_programmePreview.Panel, 3); Panel.SetZIndex(_programmePreview.Panel, 5); ProgrammePanel.Children.Add(_programmePreview.Panel);
         ViewingPanel.SizeChanged += (_, _) => UpdateProgrammePanelLayout();
         Model.PropertyChanged += (_, e) =>
         {
@@ -374,6 +374,7 @@ public partial class MainWindow : Window
         if (key == Key.F11 || key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) { ToggleFullscreen(); e.Handled = true; return; }
         if (key == Key.M && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleMini(); e.Handled = true; return; }
         if (key == Key.F && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); e.Handled = true; return; }
+        if (_programmePreview.Panel.IsKeyboardFocusWithin) return;
         if (e.OriginalSource is TextBox || e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase) return;
         switch (key)
         {
