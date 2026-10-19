@@ -46,6 +46,7 @@ public sealed class MainViewModel : Observable, IDisposable
     private string _section = "all";
     public string SectionTitle => _section switch { "favorites" => "Избранное", "recent" => "Недавние", "watch" => "Сейчас смотрю", _ when _section.StartsWith("collection:") => _section[11..], _ => "Все каналы" };
     public string ChannelCountText => $"{VisibleChannels.Count:N0} каналов · {Groups.Count - 1} категорий";
+    public string LibraryChannelCountText => $"{AllChannels.Count:N0} каналов";
     private ChannelItem? _selectedChannel;
     public ChannelItem? SelectedChannel { get => _selectedChannel; set => Set(ref _selectedChannel, value); }
     private ChannelItem? _active;
@@ -100,7 +101,7 @@ public sealed class MainViewModel : Observable, IDisposable
         Groups.Clear(); Groups.Add("Все категории");
         foreach (var group in AllChannels.Where(IsAllowed).Select(c => c.Group).Distinct().OrderBy(g => g)) Groups.Add(group);
         if (!Groups.Contains(_selectedGroup)) _selectedGroup = "Все категории";
-        Raise(nameof(SelectedGroup)); RefreshFilter();
+        Raise(nameof(SelectedGroup)); Raise(nameof(LibraryChannelCountText)); RefreshFilter();
         Status = $"Библиотека: {AllChannels.Count:N0} каналов. Пользовательские изменения сохранены локально.";
     }
     public bool IsAllowed(ChannelItem item) => !State.Hidden.Contains(item.Id) && (Flag("adult.enabled") || !IsAdult(item.Channel.Group) && !IsAdult(item.Group));

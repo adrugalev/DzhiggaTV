@@ -118,6 +118,6 @@
     </Grid>
    </Grid>
   </Grid>
-  <Border x:Name="StatusBar" Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="22,6"><Grid><TextBlock Text="{Binding Status}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,200,0"/><TextBlock Text="F11  полный экран     I  статистика" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Right"/></Grid></Border>
+  <Border x:Name="StatusBar" Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="22,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding LibraryChannelCountText}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/><TextBlock Grid.Column="1" Text="F11  полный экран" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Right"/></Grid></Border>
  </Grid>
 </Window>
