@@ -40,8 +40,7 @@ public sealed class GuideWindow : Window
     private readonly TextBlock _title = new() { FontSize = 21, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, LineHeight = 27 };
     private readonly TextBlock _channel = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new(0, 12, 0, 0) };
     private readonly TextBlock _time = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new(0, 6, 0, 0) };
-    private readonly TextBlock _category = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new(0, 6, 0, 0) };
-    private readonly TextBlock _description = new() { FontSize = 13, TextWrapping = TextWrapping.Wrap, LineHeight = 21, Margin = new(0, 20, 6, 0) };
+    private readonly ProgrammeDescriptionView _description = new() { Margin = new(0, 20, 6, 0) };
     private readonly Grid _detailContent = new();
     private readonly ScrollViewer _descriptionScroll;
     private readonly Button _watch;
@@ -107,7 +106,7 @@ public sealed class GuideWindow : Window
         var detailsDock = new DockPanel { Margin = new(18) };
         _watch = CompactButton("Смотреть канал", "Переключиться на этот канал", double.NaN); _watch.Height = 38; _watch.Margin = new(0, 16, 0, 0);
         _watch.SetResourceReference(BorderBrushProperty, "AccentBrush"); DockPanel.SetDock(_watch, Dock.Bottom); detailsDock.Children.Add(_watch);
-        var heading = new StackPanel(); heading.Children.Add(_badge); heading.Children.Add(_title); heading.Children.Add(_channel); heading.Children.Add(_time); heading.Children.Add(_category);
+        var heading = new StackPanel(); heading.Children.Add(_badge); heading.Children.Add(_title); heading.Children.Add(_channel); heading.Children.Add(_time);
         _detailContent.ColumnDefinitions.Add(new()); _detailContent.ColumnDefinitions.Add(new() { Width = new(0) });
         _detailContent.RowDefinitions.Add(new() { Height = GridLength.Auto }); _detailContent.RowDefinitions.Add(new() { Height = GridLength.Auto });
         _detailContent.Children.Add(heading); Grid.SetRow(_description, 1); _detailContent.Children.Add(_description);
@@ -119,7 +118,7 @@ public sealed class GuideWindow : Window
         footer.Children.Add(_count);
         var hint = new TextBlock { Text = "Щелчок — описание · двойной щелчок — смотреть", FontSize = 10, VerticalAlignment = VerticalAlignment.Center };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(hint, 1); footer.Children.Add(hint); Grid.SetRow(footer, 2); root.Children.Add(footer);
-        foreach (var block in new[] { _searchHint, _count, _empty, _time, _category, _badge }) block.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+        foreach (var block in new[] { _searchHint, _count, _empty, _time, _badge }) block.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         _channel.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
         _viewport.Selection.Changed += (_, _) => ShowSelection();
         _horizontal.ValueChanged += (_, e) => { _viewport.Offset = e.NewValue; if (!_changingOffset) _followNow = false; RefreshTimeline(); };
@@ -323,8 +322,8 @@ public sealed class GuideWindow : Window
     }
     private void ShowEmptySelection()
     {
-        _title.Text = "Выберите передачу"; _description.Text = "Нажмите на ячейку, чтобы прочитать полное описание.";
-        _channel.Text = _time.Text = _category.Text = _badge.Text = ""; _watch.Visibility = Visibility.Collapsed;
+        _title.Text = "Выберите передачу"; _description.Show(null, "Нажмите на ячейку, чтобы прочитать полное описание.");
+        _channel.Text = _time.Text = _badge.Text = ""; _watch.Visibility = Visibility.Collapsed;
     }
     private void ShowSelection()
     {
@@ -333,9 +332,7 @@ public sealed class GuideWindow : Window
         var programme = _viewport.Selection.Programme;
         _title.Text = programme?.Title ?? "Нет данных о передаче"; _channel.Text = row.Channel.Name;
         _time.Text = programme is null ? "" : $"{programme.Start.ToLocalTime():dd.MM} · {programme.Start.ToLocalTime():HH:mm} — {programme.End.ToLocalTime():HH:mm}";
-        _category.Text = programme?.Category?.Trim() ?? "";
-        _category.Visibility = _category.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        _description.Text = string.IsNullOrWhiteSpace(programme?.Description) ? "Подробного описания в телепрограмме нет." : programme.Description.Trim();
+        _description.Show(programme, "Подробного описания в телепрограмме нет.");
         _watch.Visibility = Visibility.Visible; _descriptionScroll.ScrollToHome(); UpdateBadge(); RefreshTimeline();
     }
     private void UpdateBadge()

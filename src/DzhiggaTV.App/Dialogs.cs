@@ -6,7 +6,7 @@ namespace DzhiggaTV.App;
 
 public static class Theme
 {
-    public const double ScrollBarThickness = 14;
+    public const double ScrollBarThickness = 7;
     public static bool IsLight { get; private set; }
     public static void Window(Window window)
     {

@@ -14,53 +14,40 @@ internal sealed class ProgrammePreview
     public Border Panel { get; }
     private readonly MainWindow _main;
     private readonly Button[] _buttons;
-    private readonly TextBlock _currentDescription;
     private readonly TextBlock _badge = new() { FontSize = 10, Margin = new(0, 0, 0, 7) };
     private readonly TextBlock _title = new() { FontSize = 15, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _time = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new(0, 5, 0, 0) };
-    private readonly TextBlock _category = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new(0, 4, 0, 0) };
-    private readonly TextBlock _description = new() { FontSize = 13, LineHeight = 20, TextWrapping = TextWrapping.Wrap, Margin = new(0, 0, 6, 2) };
+    private readonly ProgrammeDescriptionView _description = new() { Margin = new(0, 14, 6, 2) };
     private readonly ScrollViewer _scroll;
     private readonly Popup _popup = new()
     {
-        Placement = PlacementMode.Custom, AllowsTransparency = true, StaysOpen = true,
-        // Explicit left-edge anchoring also works when Windows aligns menus to the right.
-        CustomPopupPlacementCallback = (size, target, _) =>
-        [new(new(0, -size.Height - 4), PopupPrimaryAxis.Horizontal), new(new(0, target.Height + 4), PopupPrimaryAxis.Horizontal)]
+        Placement = PlacementMode.Custom, AllowsTransparency = true, StaysOpen = true
     };
-    private readonly ColumnDefinition _metadataColumn = new() { Width = new(230) };
     private readonly DispatcherTimer _close = new() { Interval = TimeSpan.FromMilliseconds(200) };
     private int _index;
-    private bool _measurementQueued, _keyboardInteraction;
+    private bool _keyboardInteraction;
     private Programme? _shown;
 
-    public ProgrammePreview(MainWindow main, Button current, Button next, Button afterNext, TextBlock currentDescription)
+    public ProgrammePreview(MainWindow main, Button current, Button next, Button afterNext)
     {
-        _main = main; _buttons = [current, next, afterNext]; _currentDescription = currentDescription;
-        // The current preview stays in the cards; upcoming previews are anchored above
-        // their own button in a popup, which can also render over the native video HWND.
-        Panel = new() { CornerRadius = new(10), BorderThickness = new(1), Padding = new(14, 10, 14, 10), Margin = new(0, 0, 0, 34), Visibility = Visibility.Collapsed };
+        _main = main; _buttons = [current, next, afterNext];
+        // Keep each popup over its own card and its trigger exposed. Explicit placement
+        // also avoids the system menu-alignment preference moving a popup to another card.
+        _popup.CustomPopupPlacementCallback = (size, target, _) =>
+        {
+            double left = _index == 0 ? target.Width - size.Width : 0;
+            return [new(new(left, -size.Height - 4), PopupPrimaryAxis.Horizontal), new(new(left, target.Height + 4), PopupPrimaryAxis.Horizontal)];
+        };
+        Panel = new() { CornerRadius = new(10), BorderThickness = new(1), Padding = new(14, 12, 14, 12), Visibility = Visibility.Collapsed };
         Panel.SetResourceReference(Border.BackgroundProperty, "PanelBrush"); Panel.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
         Panel.SetResourceReference(TextElement.ForegroundProperty, "TextBrush");
         System.Windows.Automation.AutomationProperties.SetName(Panel, "Полное описание передачи");
-        var body = new Grid(); body.RowDefinitions.Add(new() { Height = GridLength.Auto }); body.RowDefinitions.Add(new() { Height = GridLength.Auto });
-        body.ColumnDefinitions.Add(_metadataColumn); body.ColumnDefinitions.Add(new() { Width = new(18) }); body.ColumnDefinitions.Add(new());
-        var metadata = new StackPanel();
-        foreach (var block in new[] { _badge, _title, _time, _category }) metadata.Children.Add(block);
+        var body = new StackPanel();
+        foreach (var block in new[] { _badge, _title, _time }) body.Children.Add(block);
         _badge.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
-        foreach (var block in new[] { _time, _category }) block.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
-        body.Children.Add(metadata); body.Children.Add(_description);
+        _time.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); body.Children.Add(_description);
         _scroll = new() { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        Panel.Child = _scroll;
-        Panel.SizeChanged += (_, _) =>
-        {
-            bool stacked = Panel.ActualWidth < 650;
-            _metadataColumn.Width = new(stacked ? 0 : 230);
-            body.ColumnDefinitions[1].Width = new(stacked ? 0 : 18);
-            Grid.SetColumn(metadata, stacked ? 2 : 0);
-            Grid.SetColumn(_description, 2); Grid.SetRow(_description, stacked ? 1 : 0);
-            _description.Margin = new(0, stacked ? 8 : 0, 6, 2);
-        };
+        Panel.Child = _scroll; _popup.Child = Panel;
         Panel.MouseEnter += (_, _) => { _keyboardInteraction = false; _close.Stop(); };
         Panel.MouseLeave += (_, _) => ScheduleClose();
         Panel.PreviewMouseDown += (_, _) => _keyboardInteraction = false;
@@ -75,17 +62,15 @@ internal sealed class ProgrammePreview
                 !(_keyboardInteraction && (Panel.IsKeyboardFocusWithin || trigger.IsKeyboardFocusWithin))) Hide();
         };
         for (int i = 0; i < _buttons.Length; i++) Attach(_buttons[i], i);
-        currentDescription.Loaded += (_, _) => QueueMeasurement();
-        currentDescription.SizeChanged += (_, _) => QueueMeasurement();
-        currentDescription.IsVisibleChanged += (_, _) => QueueMeasurement();
         main.Model.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.Active)) Hide();
-            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription) or nameof(MainViewModel.AfterNextDescription)) QueueMeasurement();
+            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription) or nameof(MainViewModel.AfterNextDescription)) RefreshAvailability();
             if (Panel.IsVisible && e.PropertyName is nameof(MainViewModel.CurrentTitle) or nameof(MainViewModel.NextTitle) or nameof(MainViewModel.AfterNextTitle)) Refresh();
         };
         main.Deactivated += (_, _) => Hide(); main.Closed += (_, _) => Hide();
         main.LocationChanged += (_, _) => Hide(); main.SizeChanged += (_, _) => Hide();
+        RefreshAvailability();
     }
 
     private void Attach(Button button, int index)
@@ -122,40 +107,18 @@ internal sealed class ProgrammePreview
         _close.Stop(); _close.Start();
     }
 
-    private void QueueMeasurement()
+    private void RefreshAvailability()
     {
-        if (_measurementQueued) return;
-        _measurementQueued = true;
-        _main.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
-        {
-            _measurementQueued = false;
-            SetAvailability(0, IsClipped(_currentDescription));
-            // Compact upcoming cards omit the synopsis, so any description needs the preview.
-            SetAvailability(1, _main.Model.NextDescription.Length > 0);
-            SetAvailability(2, _main.Model.AfterNextDescription.Length > 0);
-        });
+        SetAvailability(0, _main.Model.CurrentDescription.Length > 0);
+        SetAvailability(1, _main.Model.NextDescription.Length > 0);
+        SetAvailability(2, _main.Model.AfterNextDescription.Length > 0);
     }
 
     private void SetAvailability(int index, bool available)
     {
-        // Only the current synopsis depends on the footer space for its truncation measurement.
+        // Keep the current footer height stable when its description is absent.
         _buttons[index].Visibility = available ? Visibility.Visible : index == 0 ? Visibility.Hidden : Visibility.Collapsed;
         if (!available && Panel.IsVisible && index == _index) Hide();
-    }
-
-    private static bool IsClipped(TextBlock source)
-    {
-        if (!source.IsVisible || string.IsNullOrWhiteSpace(source.Text) || source.ActualWidth <= 0) return false;
-        // Measure the full text with the very same WPF line layout, without the two-line limit.
-        var full = new TextBlock
-        {
-            Text = source.Text, FontFamily = source.FontFamily, FontSize = source.FontSize,
-            FontWeight = source.FontWeight, FontStyle = source.FontStyle, FontStretch = source.FontStretch,
-            Language = source.Language, FlowDirection = source.FlowDirection, Padding = source.Padding,
-            TextWrapping = source.TextWrapping, LineHeight = source.LineHeight, LineStackingStrategy = source.LineStackingStrategy
-        };
-        full.Measure(new(source.ActualWidth, double.PositiveInfinity));
-        return full.DesiredSize.Height > source.ActualHeight + .5 || full.DesiredSize.Width > source.ActualWidth + .5;
     }
 
     private Programme? GetProgramme(int index) => index switch { 0 => _main.Model.Active?.Current, 1 => _main.Model.Active?.Next, _ => _main.Model.Active?.AfterNext };
@@ -166,23 +129,13 @@ internal sealed class ProgrammePreview
         if (!button.IsVisible || _main.IsFullscreen || _main.IsMini || GetProgramme(index) is null) return;
         _close.Stop();
         bool animate = !Panel.IsVisible;
-        _index = index;
-        if (index == 0)
-        {
-            _popup.IsOpen = false; _popup.Child = null;
-            if (Panel.Parent is null) _main.ProgrammePanel.Children.Add(Panel);
-            Panel.Width = double.NaN; Panel.MaxHeight = double.PositiveInfinity; Panel.Margin = new(0, 0, 0, 34);
-            Grid.SetColumnSpan(Panel, 3);
-        }
-        else
-        {
-            if (Panel.Parent is Grid container) container.Children.Remove(Panel);
-            _popup.Child = Panel; _popup.PlacementTarget = button;
-            Panel.Width = Math.Clamp(_main.ProgrammePanel.ActualWidth / 2 - 36, 240, 440);
-            Panel.MaxHeight = Math.Clamp(_main.ActualHeight * .42, 160, 340); Panel.Margin = new(0);
-        }
+        // WPF can retain the previous position when equally sized previews change target.
+        if (_index != index) _popup.IsOpen = false;
+        _index = index; _popup.PlacementTarget = button;
+        Panel.Width = Math.Clamp(_main.ProgrammePanel.ActualWidth / 2 - 36, 240, 440);
+        Panel.MaxHeight = Math.Clamp(_main.ActualHeight * .44, 180, 380);
         Refresh(); Panel.Visibility = Visibility.Visible;
-        if (index > 0) _popup.IsOpen = true;
+        _popup.IsOpen = true;
         if (animate && !_main.Model.Flag("reducedMotion") && SystemParameters.ClientAreaAnimation)
             Panel.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(100)));
     }
@@ -195,8 +148,7 @@ internal sealed class ProgrammePreview
         _shown = programme; _badge.Text = _index switch { 0 => "СЕЙЧАС В ЭФИРЕ", 1 => "ДАЛЕЕ", _ => "ЗАТЕМ" };
         _title.Text = programme.Title;
         _time.Text = $"{programme.Start.ToLocalTime():dd.MM · HH:mm} — {programme.End.ToLocalTime():HH:mm}";
-        _category.Text = programme.Category?.Trim() ?? ""; _category.Visibility = _category.Text.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
-        _description.Text = programme.Description?.Trim() ?? "";
+        _description.Show(programme);
         _scroll.ScrollToHome();
     }
 

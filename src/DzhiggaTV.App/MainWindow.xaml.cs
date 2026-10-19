@@ -42,8 +42,7 @@ public partial class MainWindow : Window
         var custom = Argument("--data-dir");
         Model = new(custom ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV"));
         InitializeComponent(); ApplyMainWindowChrome(); WindowBounds.Attach(this); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
-        _programmePreview = new(this, CurrentProgrammeDetails, NextProgrammeDetails, AfterNextProgrammeDetails, CurrentProgrammeDescription);
-        Panel.SetZIndex(_programmePreview.Panel, 5); ProgrammePanel.Children.Add(_programmePreview.Panel);
+        _programmePreview = new(this, CurrentProgrammeDetails, NextProgrammeDetails, AfterNextProgrammeDetails);
         ViewingPanel.SizeChanged += (_, _) => UpdateProgrammePanelLayout();
         Model.PropertyChanged += (_, e) =>
         {
