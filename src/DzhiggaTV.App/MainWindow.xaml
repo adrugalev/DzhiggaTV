@@ -2,7 +2,7 @@
  <Window.Resources>
   <Style x:Key="NavigationLabel" TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Setter Property="Margin" Value="12,0,0,0"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
   <Style x:Key="CaptionButton" TargetType="Button">
-   <Setter Property="Width" Value="46"/><Setter Property="Height" Value="40"/><Setter Property="Margin" Value="0"/>
+   <Setter Property="Width" Value="42"/><Setter Property="Height" Value="32"/><Setter Property="Margin" Value="0"/>
    <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{DynamicResource TextBrush}"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
     <Border x:Name="CaptionRoot" Background="{TemplateBinding Background}" CornerRadius="5"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
@@ -25,17 +25,14 @@
   </Style>
  </Window.Resources>
  <Grid x:Name="LayoutRoot">
-  <Grid.RowDefinitions><RowDefinition x:Name="TopRow" Height="76"/><RowDefinition Height="*"/><RowDefinition x:Name="StatusRow" Height="32"/></Grid.RowDefinitions>
-  <Border x:Name="Header" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="24,12">
-   <Grid><StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,154,0"><Image Source="Assets/DzhiggaTV-logo.png" Width="40" Height="40" Margin="0,0,12,0" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Логотип DzhiggaTV"/><TextBlock Text="Dzhigga" FontSize="23" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="TV" Foreground="{DynamicResource AccentBrush}" FontSize="23" FontWeight="Light" VerticalAlignment="Center"/><Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Padding="6,0,0,0" Margin="16,0,0,0" VerticalAlignment="Center"><Button x:Name="VersionButton" Click="Version_Click" AutomationProperties.Name="Версия и обновления" Padding="8,4" Margin="0">
+  <Grid.RowDefinitions><RowDefinition x:Name="TopRow" Height="{x:Static local:MainWindow.TitleBarRowHeight}"/><RowDefinition Height="*"/><RowDefinition x:Name="StatusRow" Height="32"/></Grid.RowDefinitions>
+  <Border x:Name="Header" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,6">
+   <Grid><StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,142,0"><Image Source="Assets/DzhiggaTV-logo.png" Width="28" Height="28" Margin="0,0,10,0" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Логотип DzhiggaTV"/><TextBlock Text="Dzhigga" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="TV" Foreground="{DynamicResource AccentBrush}" FontSize="18" FontWeight="Light" VerticalAlignment="Center"/><Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Padding="6,0,0,0" Margin="12,0,0,0" VerticalAlignment="Center"><Button x:Name="VersionButton" Click="Version_Click" AutomationProperties.Name="Версия и обновления" Padding="8,3" Margin="0">
  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
   <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="ToolTip" Value="История версий и проверка обновлений"/>
   <Style.Triggers><DataTrigger Binding="{Binding Updates.HasUpdate, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"><Setter Property="Background" Value="#193F3B"/><Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="ToolTip" Value="Доступна новая версия — нажмите, чтобы обновить"/></DataTrigger></Style.Triggers>
  </Style></Button.Style>
- <StackPanel>
-  <TextBlock FontSize="9"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Text" Value="ВЕРСИЯ"/><Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/><Style.Triggers><DataTrigger Binding="{Binding Updates.HasUpdate, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"><Setter Property="Text" Value="ОБНОВЛЕНИЕ"/><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
-  <StackPanel Orientation="Horizontal"><TextBlock Text="{x:Static local:App.DisplayVersion}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" Margin="0,1,0,0"/><TextBlock Text=" ↑" FontSize="14" Foreground="{DynamicResource AccentBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Updates.HasUpdate, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></StackPanel>
- </StackPanel>
+ <StackPanel Orientation="Horizontal"><TextBlock Text="{x:Static local:App.DisplayVersion}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text=" ↑" FontSize="12" Foreground="{DynamicResource AccentBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Updates.HasUpdate, RelativeSource={RelativeSource AncestorType=Window}}" Value="True"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock></StackPanel>
 </Button></Border></StackPanel>
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
      <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}" Click="Minimize_Click" ToolTip="Свернуть" AutomationProperties.Name="Свернуть окно"><Path Data="M 0,5 L 12,5" Width="12" Height="10" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.3"/></Button>

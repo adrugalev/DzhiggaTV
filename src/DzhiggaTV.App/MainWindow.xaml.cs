@@ -14,6 +14,8 @@ namespace DzhiggaTV.App;
 
 public partial class MainWindow : Window
 {
+    public const double TitleBarHeight = 48;
+    public static GridLength TitleBarRowHeight { get; } = new(TitleBarHeight);
     public MainViewModel Model { get; }
     public UpdateCoordinator Updates { get; }
     private readonly CancellationTokenSource _updateLifetime = new();
@@ -282,7 +284,7 @@ public partial class MainWindow : Window
 
     private void ApplyMainWindowChrome() => WindowChrome.SetWindowChrome(this, new WindowChrome
     {
-        CaptionHeight = 76,
+        CaptionHeight = TitleBarHeight,
         ResizeBorderThickness = SystemParameters.WindowResizeBorderThickness,
         GlassFrameThickness = new(0),
         CornerRadius = new(0),
@@ -334,7 +336,7 @@ public partial class MainWindow : Window
         ApplyMainWindowChrome();
         MinWidth = 940; MinHeight = 600;
         Header.Visibility = Navigation.Visibility = ChannelPanel.Visibility = Splitter.Visibility = ViewingHeading.Visibility = ProgrammePanel.Visibility = StatusBar.Visibility = Visibility.Visible;
-        TopRow.Height = new(76); StatusRow.Height = new(32); ViewingHeadingRow.Height = GridLength.Auto;
+        TopRow.Height = new(TitleBarHeight); StatusRow.Height = new(32); ViewingHeadingRow.Height = GridLength.Auto;
         NavigationColumn.MinWidth = 64; SetNavigationCollapsed(_navigationCollapsed); ChannelColumn.Width = new(350); ChannelColumn.MinWidth = 270; SplitterColumn.Width = new(5);
         ViewingPanel.Margin = new(20,20,24,14); VideoBorder.CornerRadius = new(12); VideoBorder.BorderThickness = new(1);
         if (_snapshot is { } s) { Width = s.Width; Height = s.Height; Left = s.Left; Top = s.Top; WindowState = s.State; }
