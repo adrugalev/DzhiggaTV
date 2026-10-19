@@ -105,10 +105,15 @@
        <Setter Property="HorizontalAlignment" Value="Right"/>
        <Setter Property="AutomationProperties.HelpText" Value="Наведите для полного описания. Перейдите на описание, чтобы прочитать и прокрутить его."/>
       </Style>
+      <Style x:Key="UpcomingTitle" TargetType="TextBlock">
+       <Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/>
+       <Setter Property="TextTrimming" Value="CharacterEllipsis"/><Setter Property="VerticalAlignment" Value="Center"/>
+       <Setter Property="Margin" Value="0,1,0,1"/>
+      </Style>
      </Grid.Resources>
-     <Border x:Name="CurrentProgrammeCard" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,10">
+     <Border x:Name="CurrentProgrammeCard" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="10" Padding="13,9">
       <Grid><Grid.RowDefinitions><RowDefinition Height="20"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <TextBlock Text="СЕЙЧАС В ЭФИРЕ" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
+       <Grid><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Ellipse Width="5" Height="5" Fill="{DynamicResource AccentBrush}" Margin="0,0,6,0"/><TextBlock Text="СЕЙЧАС В ЭФИРЕ" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}"/></StackPanel><Button Content="Программа  →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="5,0" Margin="0" FontSize="10" Height="18" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Открыть телепрограмму"/></Grid>
        <TextBlock Grid.Row="1" Text="{Binding CurrentTitle}" Style="{StaticResource ProgrammeTitle}"/>
        <TextBlock Grid.Row="2" Text="{Binding CurrentTime}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
        <TextBlock x:Name="CurrentProgrammeDescription" Grid.Row="3" Text="{Binding CurrentDescription}" Style="{StaticResource ProgrammeDescription}"/>
@@ -118,15 +123,22 @@
        </Grid>
       </Grid>
      </Border>
-     <Border x:Name="NextProgrammeCard" Grid.Column="2" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,10">
-      <Grid><Grid.RowDefinitions><RowDefinition Height="20"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <Grid><TextBlock Text="ДАЛЕЕ" FontSize="10" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/><Button Content="Программа  →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="7,2" Margin="0" FontSize="11" Background="Transparent"/></Grid>
-       <TextBlock Grid.Row="1" Text="{Binding NextTitle}" Style="{StaticResource ProgrammeTitle}"/>
-       <TextBlock Grid.Row="2" Text="{Binding NextTime}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
-       <TextBlock x:Name="NextProgrammeDescription" Grid.Row="3" Text="{Binding NextDescription}" Style="{StaticResource ProgrammeDescription}"/>
-       <Button x:Name="NextProgrammeDetails" Grid.Row="4" Style="{StaticResource ProgrammeDetails}" Margin="0,2,0,0" AutomationProperties.Name="Подробнее о следующей передаче"/>
+     <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition/><RowDefinition Height="8"/><RowDefinition/></Grid.RowDefinitions>
+      <Border x:Name="NextProgrammeCard" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,7">
+       <Grid><Grid.RowDefinitions><RowDefinition Height="14"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid><TextBlock Text="ДАЛЕЕ" FontSize="9" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding NextTime}" HorizontalAlignment="Right" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center"/></Grid>
+        <TextBlock Grid.Row="1" Text="{Binding NextTitle}" Style="{StaticResource UpcomingTitle}"/>
+        <Button x:Name="NextProgrammeDetails" Grid.Row="2" Style="{StaticResource ProgrammeDetails}" HorizontalAlignment="Left" Padding="0" Foreground="{DynamicResource MutedBrush}" AutomationProperties.Name="Подробнее о следующей передаче"/>
+       </Grid>
+      </Border>
+      <Border x:Name="AfterNextProgrammeCard" Grid.Row="2" Background="{DynamicResource PanelBrush}" CornerRadius="10" Padding="14,7">
+       <Grid><Grid.RowDefinitions><RowDefinition Height="14"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid><TextBlock Text="ЗАТЕМ" FontSize="9" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"/><TextBlock Text="{Binding AfterNextTime}" HorizontalAlignment="Right" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center"/></Grid>
+        <TextBlock Grid.Row="1" Text="{Binding AfterNextTitle}" Style="{StaticResource UpcomingTitle}"/>
+        <Button x:Name="AfterNextProgrammeDetails" Grid.Row="2" Style="{StaticResource ProgrammeDetails}" HorizontalAlignment="Left" Padding="0" Foreground="{DynamicResource MutedBrush}" AutomationProperties.Name="Подробнее о второй следующей передаче"/>
+       </Grid>
+      </Border>
       </Grid>
-     </Border>
     </Grid>
    </Grid>
   </Grid>

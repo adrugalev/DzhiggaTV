@@ -358,12 +358,15 @@ public sealed class SqliteStore : IDisposable
         Programme? current = null;
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
             if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) current = ReadProgramme(reader);
-        command.CommandText = "SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id=$id AND start>=$after AND start>$at ORDER BY start LIMIT 1";
+        command.CommandText = "SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id=$id AND start>=$after AND start>$at ORDER BY start LIMIT 2";
         command.Parameters.AddWithValue("$after", current?.End.ToUnixTimeSeconds() ?? timestamp);
-        Programme? next = null;
+        Programme? next = null, afterNext = null;
         await using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+        {
             if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) next = ReadProgramme(reader);
-        return new NowNext(current, next);
+            if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) afterNext = ReadProgramme(reader);
+        }
+        return new NowNext(current, next, afterNext);
     }
 
     public async Task<IReadOnlyList<Programme>> GetProgrammesAsync(string epgChannelId, DateTimeOffset from, DateTimeOffset to,

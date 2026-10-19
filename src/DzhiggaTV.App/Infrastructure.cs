@@ -48,4 +48,5 @@ public sealed class ChannelItem(Channel channel) : Observable
     public double Progress { get => _progress; set => Set(ref _progress, value); }
     public Programme? Current { get; set; }
     public Programme? Next { get; set; }
+    public Programme? AfterNext { get; set; }
 }

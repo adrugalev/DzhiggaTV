@@ -62,7 +62,10 @@ public sealed class MainViewModel : Observable, IDisposable
     public double CurrentProgress => Active?.Progress ?? 0;
     public string NextTitle => Active?.Next?.Title ?? "Нет данных о следующей передаче";
     public string NextDescription => Active?.Next?.Description?.Trim() ?? "";
-    public string NextTime => Active?.Next is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "EPG.ONE · ежедневное обновление";
+    public string NextTime => Active?.Next is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "";
+    public string AfterNextTitle => Active?.AfterNext?.Title ?? "Дальнейшая программа пока недоступна";
+    public string AfterNextDescription => Active?.AfterNext?.Description?.Trim() ?? "";
+    public string AfterNextTime => Active?.AfterNext is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "";
     private string _status = "Готов к просмотру. Добавьте свой плейлист.";
     public string Status { get => _status; set => Set(ref _status, value); }
     private string _playbackStatus = "Выберите канал";
@@ -255,14 +258,14 @@ public sealed class MainViewModel : Observable, IDisposable
             if (Mappings.TryGetValue(c.Id, out var match))
             {
                 var now = await Store.GetNowNextAsync(match.EpgId);
-                c.Current = now.Current; c.Next = now.Next;
+                c.Current = now.Current; c.Next = now.Next; c.AfterNext = now.AfterNext;
                 c.NowTitle = now.Current?.Title ?? "Нет программы на это время";
                 c.EndTime = now.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
                 c.Progress = now.Current is { } p ? Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : 0;
             }
             else
             {
-                c.Current = c.Next = null; c.NowTitle = "Телепрограмма не назначена"; c.EndTime = ""; c.Progress = 0;
+                c.Current = c.Next = c.AfterNext = null; c.NowTitle = "Телепрограмма не назначена"; c.EndTime = ""; c.Progress = 0;
             }
         }
         RaisePlayback();
@@ -276,7 +279,7 @@ public sealed class MainViewModel : Observable, IDisposable
         {
             if (Mappings.TryGetValue(item.Id, out var mapping) && item.Current is null)
             {
-                var guide = await Store.GetNowNextAsync(mapping.EpgId); item.Current = guide.Current; item.Next = guide.Next;
+                var guide = await Store.GetNowNextAsync(mapping.EpgId); item.Current = guide.Current; item.Next = guide.Next; item.AfterNext = guide.AfterNext;
                 item.NowTitle = guide.Current?.Title ?? "Нет программы на это время";
                 item.EndTime = guide.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
                 if (guide.Current is { } p) item.Progress = Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100);
@@ -305,10 +308,10 @@ public sealed class MainViewModel : Observable, IDisposable
         catch { } // Text fallback is intentional; no URL-bearing exception is logged.
         finally { if (generation == _catalogGeneration && version == _logoVersions.GetValueOrDefault(item.Id)) _logoLoading.Remove(item.Id); }
     }
-    public void InvalidateLogo(string id) { _logoVersions[id] = _logoVersions.GetValueOrDefault(id) + 1; _logoLoading.Remove(id); _logoRetry.Remove(id); var c = AllChannels.Find(c => c.Id == id); if (c is not null) { c.LogoPath = null; c.Current = c.Next = null; } }
+    public void InvalidateLogo(string id) { _logoVersions[id] = _logoVersions.GetValueOrDefault(id) + 1; _logoLoading.Remove(id); _logoRetry.Remove(id); var c = AllChannels.Find(c => c.Id == id); if (c is not null) { c.LogoPath = null; c.Current = c.Next = c.AfterNext = null; } }
     public void RaisePlayback()
     {
-        foreach (var name in new[] { nameof(ActiveName), nameof(CurrentTitle), nameof(CurrentDescription), nameof(CurrentDescriptionCompact), nameof(CurrentTime), nameof(CurrentProgress), nameof(NextTitle), nameof(NextDescription), nameof(NextTime) }) Raise(name);
+        foreach (var name in new[] { nameof(ActiveName), nameof(CurrentTitle), nameof(CurrentDescription), nameof(CurrentDescriptionCompact), nameof(CurrentTime), nameof(CurrentProgress), nameof(NextTitle), nameof(NextDescription), nameof(NextTime), nameof(AfterNextTitle), nameof(AfterNextDescription), nameof(AfterNextTime) }) Raise(name);
     }
     public async Task ToggleFavoriteAsync(ChannelItem item)
     {

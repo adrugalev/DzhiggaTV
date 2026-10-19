@@ -42,12 +42,12 @@ public partial class MainWindow : Window
         var custom = Argument("--data-dir");
         Model = new(custom ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV"));
         InitializeComponent(); ApplyMainWindowChrome(); WindowBounds.Attach(this); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
-        _programmePreview = new(this, CurrentProgrammeDetails, NextProgrammeDetails, CurrentProgrammeDescription, NextProgrammeDescription);
-        Grid.SetColumnSpan(_programmePreview.Panel, 3); Panel.SetZIndex(_programmePreview.Panel, 5); ProgrammePanel.Children.Add(_programmePreview.Panel);
+        _programmePreview = new(this, CurrentProgrammeDetails, NextProgrammeDetails, AfterNextProgrammeDetails, CurrentProgrammeDescription);
+        Panel.SetZIndex(_programmePreview.Panel, 5); ProgrammePanel.Children.Add(_programmePreview.Panel);
         ViewingPanel.SizeChanged += (_, _) => UpdateProgrammePanelLayout();
         Model.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription)) UpdateProgrammePanelLayout();
+            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription) or nameof(MainViewModel.AfterNextDescription)) UpdateProgrammePanelLayout();
             if (e.PropertyName == nameof(MainViewModel.SelectedChannel) && Model.SelectedChannel is { } selected)
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => { if (Model.SelectedChannel == selected && Model.VisibleChannels.Contains(selected)) ChannelList.ScrollIntoView(selected); });
         };
@@ -346,7 +346,7 @@ public partial class MainWindow : Window
     private void UpdateProgrammePanelLayout()
     {
         if (IsMini || IsFullscreen) return;
-        bool hasDescription = Model.CurrentDescription.Length > 0 || Model.NextDescription.Length > 0;
+        bool hasDescription = Model.CurrentDescription.Length > 0 || Model.NextDescription.Length > 0 || Model.AfterNextDescription.Length > 0;
         double compactHeight = ViewingPanel.ActualWidth < 650 ? 150 : 130;
         ProgrammeRow.Height = new(hasDescription ? 180 : compactHeight);
     }
@@ -374,7 +374,7 @@ public partial class MainWindow : Window
         if (key == Key.F11 || key == Key.Enter && Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) { ToggleFullscreen(); e.Handled = true; return; }
         if (key == Key.M && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { ToggleMini(); e.Handled = true; return; }
         if (key == Key.F && Keyboard.Modifiers.HasFlag(ModifierKeys.Control)) { if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); e.Handled = true; return; }
-        if (_programmePreview.Panel.IsKeyboardFocusWithin || CurrentProgrammeDetails.IsKeyboardFocusWithin || NextProgrammeDetails.IsKeyboardFocusWithin) return;
+        if (_programmePreview.Panel.IsKeyboardFocusWithin || CurrentProgrammeDetails.IsKeyboardFocusWithin || NextProgrammeDetails.IsKeyboardFocusWithin || AfterNextProgrammeDetails.IsKeyboardFocusWithin) return;
         if (e.OriginalSource is TextBox || e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase) return;
         switch (key)
         {

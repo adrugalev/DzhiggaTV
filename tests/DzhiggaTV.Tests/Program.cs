@@ -12,6 +12,7 @@ var tests = new List<(string Name, Func<Task> Run)>
     ("SQLite: private playlists encrypted and refresh preserves state", TestPlaylistStorage),
     ("SQLite: manual EPG mappings survive automatic refresh", TestMappings),
     ("SQLite: indexed now/next, range and Cyrillic programme search", TestGuideQueries),
+    ("SQLite: next two programmes stay chronological across midnight and missing guide entries", TestNextTwo),
     ("SQLite: EPG import failure leaves the previous guide intact", TestEpgRollback),
     ("SQLite: EPG cancellation leaves the previous guide intact", TestEpgCancellation),
     ("SQLite: guide reads use the previous snapshot during a background import", TestGuideReadDuringImport),
@@ -153,6 +154,35 @@ static async Task TestGuideQueries() => await WithDatabase(async (store, _) =>
     Equal(1, (await store.SearchProgrammesAsync("Новост")).Count);
     Equal(0, (await store.SearchProgrammesAsync("' OR 1=1 --")).Count);
     Equal(1, (await store.GetEpgChannelsAsync()).Count); Equal("Alias", (await store.GetEpgChannelsAsync())[0].DisplayNames[1]);
+});
+
+static async Task TestNextTwo() => await WithDatabase(async (store, _) =>
+{
+    var at = DateTimeOffset.Parse("2026-10-19T23:50:00+03:00");
+    var current = new Programme("night", "Сейчас", at.AddMinutes(-20), at.AddMinutes(20));
+    var next = new Programme("night", "Следующая", current.End, current.End.AddMinutes(30), "Первое описание");
+    var after = new Programme("night", "Затем", next.End.AddMinutes(20), next.End.AddMinutes(80), "Второе описание", "Фильм");
+    await store.ImportEpgAsync(async (addChannel, addProgramme, _) =>
+    {
+        await addChannel(new("night", "Ночной канал"));
+        // Insertion order must not determine the order on the cards.
+        await addProgramme(after); await addProgramme(current); await addProgramme(next);
+        await addProgramme(new("night", "Закончилась", at.AddHours(-2), current.Start));
+    });
+    var guide = await store.GetNowNextAsync("night", at);
+    Equal(current.Title, guide.Current!.Title); Equal(next.Title, guide.Next!.Title);
+    Equal(after.Title, guide.AfterNext!.Title); Equal(after.Description!, guide.AfterNext.Description!);
+    Equal(after.Category!, guide.AfterNext.Category!);
+    guide = await store.GetNowNextAsync("night", next.Start);
+    Equal(next.Title, guide.Current!.Title); Equal(after.Title, guide.Next!.Title); True(guide.AfterNext is null);
+    guide = await store.GetNowNextAsync("night", next.End.AddMinutes(1));
+    True(guide.Current is null); Equal(after.Title, guide.Next!.Title); True(guide.AfterNext is null);
+    guide = await store.GetNowNextAsync("night", current.Start.AddMinutes(-1));
+    Equal(current.Title, guide.Next!.Title); Equal(next.Title, guide.AfterNext!.Title);
+    guide = await store.GetNowNextAsync("night", after.End);
+    True(guide.Current is null && guide.Next is null && guide.AfterNext is null);
+    guide = await store.GetNowNextAsync("unknown", at);
+    True(guide.Current is null && guide.Next is null && guide.AfterNext is null);
 });
 
 static async Task TestEpgRollback() => await WithDatabase(async (store, _) =>

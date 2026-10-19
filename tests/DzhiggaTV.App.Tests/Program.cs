@@ -241,11 +241,15 @@ internal static class Program
 
         Assert(row.Current?.Title == "Передача один", "The current programme was not refreshed on the existing row.");
         Assert(row.Next?.Title == "Следующая один", "The next programme was not refreshed.");
+        Assert(row.AfterNext?.Title == "Затем один" && model.AfterNextTitle == "Затем один" && model.AfterNextDescription == "Вторая следующая передача.",
+            "The second upcoming card must load its programme and trimmed description on EPG refresh.");
         Assert(model.CurrentTitle == "Передача один", "The playback panel did not receive the current title.");
         Assert(model.CurrentDescription == "Описание текущей передачи.\nПодробности из телепрограммы." && model.NextDescription == "Описание следующей передачи.",
             "The playback cards must display both descriptions from SQLite without losing paragraphs.");
         Assert(notified.Contains(nameof(MainViewModel.CurrentDescription)) && notified.Contains(nameof(MainViewModel.NextDescription)),
             "EPG refresh must notify both description bindings.");
+        Assert(notified.Contains(nameof(MainViewModel.AfterNextTitle)) && notified.Contains(nameof(MainViewModel.AfterNextTime)) && notified.Contains(nameof(MainViewModel.AfterNextDescription)),
+            "The second upcoming card must notify every binding.");
         await WaitUntilAsync(() => row.LogoPath == fixture.FirstLogo,
             "The first EPG refresh must retry the visible logo without waiting for negative-cache expiry.");
         Assert(DecodeWidth(row.LogoPath!) == 2, "The resulting logo must be decodable by WPF.");
@@ -270,6 +274,8 @@ internal static class Program
         Assert(row.Next?.Title == "Следующая два", "Remapping must replace the next programme.");
         Assert(model.CurrentTitle == "Передача два", "Remapping must refresh the playback panel.");
         Assert(model.CurrentDescription == "Описание передачи два." && model.NextDescription == "", "Remapping must replace the description and clear an unavailable next description.");
+        Assert(row.AfterNext is null && model.AfterNextDescription == "" && model.AfterNextTime == "",
+            "Remapping to a shorter guide must clear the second upcoming card, including its time and description.");
         await WaitUntilAsync(() => row.LogoPath == fixture.SecondLogo, "Remapping must replace an already loaded EPG logo.");
     }
 
@@ -290,11 +296,11 @@ internal static class Program
         await model.RefreshEpgViewAsync();
 
         Assert(!model.Mappings.ContainsKey(row.Id), "The fixture mapping was not removed.");
-        Assert(row.Current is null && row.Next is null, "Removing a mapping must clear both previous programmes.");
+        Assert(row.Current is null && row.Next is null && row.AfterNext is null, "Removing a mapping must clear all three previous programmes.");
         Assert(row.NowTitle == "Телепрограмма не назначена" && row.EndTime == "" && row.Progress == 0,
             "Removing a mapping must clear all programme details.");
         Assert(model.CurrentTitle == "Программа пока недоступна", "The playback panel retained a removed programme.");
-        Assert(model.CurrentDescription == "" && model.NextDescription == "", "Removing a mapping must clear both descriptions.");
+        Assert(model.CurrentDescription == "" && model.NextDescription == "" && model.AfterNextDescription == "", "Removing a mapping must clear every description.");
     }
 
     private static async Task ReloadAsync()
@@ -322,6 +328,7 @@ internal static class Program
             "Settings reload lost favorites or custom channel labels.");
         Assert(model.CurrentTitle == "Передача один", "The rebound active row did not regain its programme.");
         Assert(model.CurrentDescription.Contains("Подробности из телепрограммы.") && model.NextDescription == "Описание следующей передачи.", "Reload must restore both programme descriptions.");
+        Assert(replacement.AfterNext?.Title == "Затем один" && model.AfterNextDescription == "Вторая следующая передача.", "Reload must also restore the second upcoming programme.");
         await WaitUntilAsync(() => replacement.LogoPath == fixture.FirstLogo, "The rebound row did not regain its logo.");
         var persisted = await model.Store.LoadUserStateAsync();
         Assert(persisted.Favorites.Contains(replacement.Id) && persisted.History.Contains(replacement.Id),
@@ -429,6 +436,7 @@ internal static class Program
             await addChannel(new("guide-two", "Канал два", SecondLogo));
             await addProgramme(new("guide-one", "Передача один", _now.AddMinutes(-20), _now.AddMinutes(20), "  Описание текущей передачи.\nПодробности из телепрограммы.  "));
             await addProgramme(new("guide-one", "Следующая один", _now.AddMinutes(20), _now.AddMinutes(60), "Описание следующей передачи."));
+            await addProgramme(new("guide-one", "Затем один", _now.AddMinutes(60), _now.AddMinutes(120), "  Вторая следующая передача.  "));
             await addProgramme(new("guide-two", "Передача два", _now.AddMinutes(-15), _now.AddMinutes(30), "Описание передачи два."));
             await addProgramme(new("guide-two", "Следующая два", _now.AddMinutes(30), _now.AddMinutes(90), "  "));
         });

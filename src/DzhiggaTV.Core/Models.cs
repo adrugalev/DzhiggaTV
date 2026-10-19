@@ -17,7 +17,7 @@ public sealed record ChannelMapping(string ChannelId, string EpgId, string Name,
 public sealed record PlaylistSource(string Id, string Name, string Location, bool IsRemote = false,
     DateTimeOffset? LastUpdated = null);
 
-public sealed record NowNext(Programme? Current, Programme? Next);
+public sealed record NowNext(Programme? Current, Programme? Next, Programme? AfterNext = null);
 
 public sealed class UserState
 {
