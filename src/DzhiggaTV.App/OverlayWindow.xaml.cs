@@ -63,6 +63,7 @@ public partial class OverlayWindow : Window
     }
     private void UpdateCompactLayout()
     {
+        FullscreenProgrammeDescription.MaxHeight = ActualHeight < 600 ? 42 : 63;
         var compact = ActualWidth <= 480;
         HistoryButton.Visibility = FavoriteButton.Visibility = MiniButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         VolumeSlider.Visibility = ActualWidth < 340 ? Visibility.Collapsed : Visibility.Visible;

@@ -11,12 +11,15 @@
   <Border x:Name="Drawer" Width="340" HorizontalAlignment="Left" Background="#F0161E25" Margin="8,12,0,48" CornerRadius="9" Visibility="Collapsed" Padding="10"><DockPanel><TextBlock DockPanel.Dock="Top" Text="КАНАЛЫ" Foreground="#63D9CD" FontSize="11" Margin="8,8,0,8"/><ListBox ItemsSource="{Binding VisibleChannels}" DisplayMemberPath="Name" SelectionChanged="Drawer_Selected"/></DockPanel></Border>
   <Border x:Name="ControlsPanel" VerticalAlignment="Bottom" Background="#D911191F" CornerRadius="7" Margin="3" Padding="6,4" Visibility="Collapsed" KeyboardNavigation.TabNavigation="Cycle">
    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <StackPanel x:Name="FullscreenProgrammeInfo" Grid.ColumnSpan="3" Margin="10,8,10,12" Visibility="Collapsed" IsHitTestVisible="False" AutomationProperties.Name="Сейчас в эфире">
+    <StackPanel x:Name="FullscreenProgrammeInfo" Grid.ColumnSpan="3" Margin="12,10,12,12" Visibility="Collapsed" IsHitTestVisible="False" AutomationProperties.Name="Сейчас в эфире">
      <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-      <TextBlock Text="{Binding ActiveName}" FontSize="12" Foreground="#A9BAC4" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
+      <TextBlock Text="{Binding ActiveName}" FontSize="12" Foreground="#63D9CD" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
       <TextBlock Grid.Column="1" Text="{Binding CurrentTime}" FontSize="12" Foreground="#A9BAC4"/>
      </Grid>
      <TextBlock Text="{Binding CurrentTitle}" FontSize="20" FontWeight="SemiBold" Foreground="#EEF3F5" TextTrimming="CharacterEllipsis" Margin="0,4,0,8"/>
+     <TextBlock x:Name="FullscreenProgrammeDescription" Text="{Binding CurrentDescriptionCompact}" FontSize="14" LineHeight="21" LineStackingStrategy="BlockLineHeight" Foreground="#C6D2DA" TextWrapping="Wrap" TextTrimming="WordEllipsis" MaxHeight="63" Margin="0,0,0,12">
+      <TextBlock.Style><Style TargetType="TextBlock"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></TextBlock.Style>
+     </TextBlock>
      <ProgressBar Value="{Binding CurrentProgress, Mode=OneWay}" Height="3" Background="#35414A" Foreground="#63D9CD"/>
     </StackPanel>
     <StackPanel Grid.Row="1" Orientation="Horizontal"><Button x:Name="HistoryButton" Style="{StaticResource PlayerButton}" Content="↶" Click="Previous_Click" ToolTip="Предыдущий просмотренный (Backspace)"/><Button Style="{StaticResource PlayerButton}" Content="◀" Click="ChannelBack_Click" ToolTip="Канал назад (PgUp)"/><Button x:Name="PauseButton" Style="{StaticResource PlayerButton}" Content="Ⅱ" Click="Pause_Click" ToolTip="Пауза (Space)"/><Button Style="{StaticResource PlayerButton}" Content="▶" Click="ChannelNext_Click" ToolTip="Следующий канал (PgDn)"/><Button x:Name="MuteButton" Style="{StaticResource PlayerButton}" Content="♪" Click="Mute_Click" ToolTip="Звук (M)"/><Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Width="70" Value="70" ValueChanged="Volume_Changed" VerticalAlignment="Center" Margin="5,0"/></StackPanel>
