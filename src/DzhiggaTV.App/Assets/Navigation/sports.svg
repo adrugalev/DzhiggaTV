@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="color" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#B4F491"/>
+      <stop offset="0.45" stop-color="#45D7A0"/>
+      <stop offset="1" stop-color="#14BACE"/>
+    </linearGradient>
+    <linearGradient id="highlight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#EBFFD9"/>
+      <stop offset="0.5" stop-color="#93F5CB"/>
+      <stop offset="1" stop-color="#4ED5E5"/>
+    </linearGradient>
+    <g id="screens" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="14" y="15" width="42" height="32" rx="6"/>
+      <rect x="72" y="15" width="42" height="32" rx="6"/>
+      <rect x="14" y="73" width="42" height="32" rx="6"/>
+      <rect x="72" y="73" width="42" height="32" rx="6"/>
+      <path d="M35 47 V56 M24 56 H46 M93 47 V56 M82 56 H104 M35 105 V114 M24 114 H46 M93 105 V114 M82 114 H104"/>
+    </g>
+  </defs>
+  <use href="#screens" stroke="#087D7B" stroke-width="8"/>
+  <use href="#screens" stroke="url(#color)" stroke-width="5.8"/>
+  <use href="#screens" stroke="url(#highlight)" stroke-width="1.4"/>
+</svg>
