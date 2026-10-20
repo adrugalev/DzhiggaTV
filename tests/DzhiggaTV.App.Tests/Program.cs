@@ -25,6 +25,8 @@ internal static class Program
     {
         (string Name, Func<Task> Run)[] cases =
         [
+            ("Sports audio never overlaps when switching, muting, replacing or removing sources", SportsAudioAsync),
+            ("Sports selection persists ordered unique allowed channels and safely restores stale settings", SportsSelectionAsync),
             ("Cold startup displays all three cached cards while background EPG import blocks saving", StartupGuideDuringImportAsync),
             ("Late viewport guide loading notifies all active programme cards", ActiveViewportGuideAsync),
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
@@ -53,6 +55,58 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static Task SportsAudioAsync()
+    {
+        var sources = new List<CheckedAudio>();
+        var audio = new SportsAudioFocus();
+        CheckedAudio Create() { var source = new CheckedAudio(() => sources.Count(s => !s.IsMuted)); sources.Add(source); return source; }
+        var a = Create(); var b = Create(); var c = Create();
+        KeyValuePair<string, ISportsAudio> Pair(string id, CheckedAudio source) => new(id, source);
+        audio.Replace([Pair("a", a), Pair("b", b), Pair("c", c)], "b");
+        Assert(audio.SelectedId == "b" && !b.IsMuted && a.IsMuted && c.IsMuted, "Saved source must be selected exclusively.");
+        audio.Select("a"); audio.Select("c"); audio.Select("b");
+        audio.Select("missing"); Assert(audio.SelectedId == "b", "Unknown source must not silence the current channel.");
+        audio.IsMuted = true; audio.Select("c");
+        Assert(sources.All(s => s.IsMuted) && audio.SelectedId == "c", "Switching source while globally muted must remain silent.");
+        audio.Volume = 123; audio.IsMuted = false;
+        Assert(!c.IsMuted && a.Volume == 100 && c.Volume == 100, "Unmute must restore only the chosen source and apply clamped master volume.");
+        var d = Create(); audio.Replace([Pair("a", a), Pair("c", c), Pair("d", d)]);
+        Assert(audio.SelectedId == "c" && !c.IsMuted && b.IsMuted && d.IsMuted, "Adding/removing another tile must retain audio focus and mute removed sources.");
+        audio.Replace([Pair("a", a), Pair("d", d)]);
+        Assert(audio.SelectedId == "a" && !a.IsMuted && c.IsMuted, "Removing the selected channel must select a remaining source.");
+        audio.Replace([]);
+        Assert(audio.SelectedId is null && sources.All(s => s.IsMuted), "Closing the grid must silence every source before disposal.");
+        return Task.CompletedTask;
+    }
+
+    private sealed class CheckedAudio(Func<int> audibleCount) : ISportsAudio
+    {
+        private bool _muted = true;
+        public bool IsMuted { get => _muted; set { _muted = value; Assert(audibleCount() <= 1, "Two sources became audible during an intermediate state."); } }
+        public double Volume { get; set; }
+    }
+
+    private static async Task SportsSelectionAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        for (int i = 0; i < 12; i++) model.AllChannels.Add(new(new("sport-" + i, "fixture", "Sport " + i, "Спорт", "https://example.invalid/unused")));
+        model.State.Hidden.Add("sport-0");
+        model.AllChannels.Add(new(new("adult-sport", "fixture", "Restricted", "Для взрослых", "https://example.invalid/unused")));
+        var ids = new[] { "missing", "sport-0", "adult-sport", "sport-3", "sport-3", "sport-2" }.Concat(Enumerable.Range(0, 12).Select(i => "sport-" + i));
+        var chosen = SportsSelection.Resolve(model, ids);
+        Assert(chosen.Count == 9 && chosen.Select(c => c.Id).Distinct().Count() == 9 && chosen[0].Id == "sport-3" && chosen[1].Id == "sport-2",
+            "Selection must preserve order, remove duplicates and limit the grid to nine allowed channels.");
+        Assert(chosen.All(model.IsAllowed), "Hidden/adult channels must not bypass library restrictions.");
+        SportsSelection.Save(model, chosen, "sport-2"); await model.SaveAsync();
+        Assert(SportsSelection.Restore(model).Select(c => c.Id).SequenceEqual(chosen.Select(c => c.Id)) && model.Setting("sports.audio") == "sport-2", "Selected IDs and audio source must round-trip.");
+        model.State.Hidden.Add("sport-3");
+        Assert(SportsSelection.Restore(model).All(c => c.Id != "sport-3"), "A subsequently hidden channel must not restart from saved selections.");
+        model.SetSetting("sports.channels", "broken json");
+        Assert(SportsSelection.Restore(model).Count == 0, "Corrupt saved data must leave a usable empty selection.");
+        model.SetSetting("sports.channels", "[null,\"\",\"missing\",\"sport-2\"]");
+        Assert(SportsSelection.Restore(model).Single().Id == "sport-2", "Null and deleted IDs must not prevent restoring valid channels.");
     }
 
     private static async Task FavoriteToggleAsync()

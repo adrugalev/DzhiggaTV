@@ -8,6 +8,9 @@ namespace DzhiggaTV.App;
 internal static class WindowBounds
 {
     public static void Attach(MainWindow window)
+        => Attach(window, () => window.IsFullscreen, () => window.IsMini);
+
+    public static void Attach(Window window, Func<bool> fullscreen, Func<bool>? mini = null)
     {
         HwndSource? source = null;
         window.SourceInitialized += (_, _) =>
@@ -18,11 +21,11 @@ internal static class WindowBounds
         window.Closed += (_, _) => source?.RemoveHook(Hook);
         IntPtr Hook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
-            if (message != 0x0024 || window.IsMini) return IntPtr.Zero; // WM_GETMINMAXINFO
+            if (message != 0x0024 || mini?.Invoke() == true) return IntPtr.Zero; // WM_GETMINMAXINFO
             var monitor = MonitorFromWindow(hwnd, 2);
             var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
             if (monitor == IntPtr.Zero || !GetMonitorInfo(monitor, ref info)) return IntPtr.Zero;
-            var bounds = WindowBoundsGeometry.Maximized(info.Monitor.ToRect(), info.Work.ToRect(), window.IsFullscreen);
+            var bounds = WindowBoundsGeometry.Maximized(info.Monitor.ToRect(), info.Work.ToRect(), fullscreen());
             var limits = Marshal.PtrToStructure<MinMaxInfo>(lParam);
             limits.MaxPosition = new() { X = (int)bounds.X, Y = (int)bounds.Y };
             limits.MaxSize = new() { X = (int)bounds.Width, Y = (int)bounds.Height };

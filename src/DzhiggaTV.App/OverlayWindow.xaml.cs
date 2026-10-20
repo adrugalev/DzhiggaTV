@@ -14,10 +14,13 @@ public partial class OverlayWindow : Window
     private Point _lastPoint;
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
     private Programme? _descriptionProgramme;
+    private bool _volumeReady, _syncingVolume;
     public OverlayWindow(MainWindow main)
     {
-        _main = main; InitializeComponent();
-        VolumeSlider.Value = main.Player.Volume;
+        _main = main;
+        var volume = main.Player.Volume;
+        InitializeComponent();
+        VolumeSlider.Value = volume; _volumeReady = true;
         Loaded += (_, _) => { RefreshHoverState(); UpdateVisibility(); };
         SizeChanged += (_, _) => { UpdateCompactLayout(); RefreshHoverState(); UpdateVisibility(); };
         IsVisibleChanged += (_, _) => { RefreshHoverState(); UpdateVisibility(); };
@@ -40,6 +43,12 @@ public partial class OverlayWindow : Window
         Welcome.Visibility = _main.HasPlayback ? Visibility.Collapsed : Visibility.Visible;
         PauseButton.Content = _main.Player.IsPaused ? "▶" : "Ⅱ";
         MuteButton.Content = _main.Player.IsMuted ? "⊘" : "♪";
+        if (!VolumeSlider.IsMouseCaptureWithin)
+        {
+            _syncingVolume = true;
+            try { VolumeSlider.Value = _main.Player.Volume; }
+            finally { _syncingVolume = false; }
+        }
         RemainingTimeValue.Text = ProgrammeTiming.Remaining(_main.Model.Active?.Current, DateTimeOffset.UtcNow);
         RemainingTimeText.Visibility = RemainingTimeValue.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateVisibility();
@@ -148,7 +157,7 @@ public partial class OverlayWindow : Window
     private async void ChannelNext_Click(object sender, RoutedEventArgs e) => await _main.NextChannelAsync(1);
     private void Pause_Click(object sender, RoutedEventArgs e) { _main.Player.TogglePause(); RefreshState(); }
     private void Mute_Click(object sender, RoutedEventArgs e) { _main.Player.IsMuted = !_main.Player.IsMuted; RefreshState(); }
-    private void Volume_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) { if (_main is not null) _main.Player.Volume = e.NewValue; }
+    private void Volume_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) { if (_volumeReady && !_syncingVolume) _main.Player.Volume = e.NewValue; }
     private async void Favorite_Click(object sender, RoutedEventArgs e) { if (_main.Model.Active is { } c) await _main.Model.ToggleFavoriteAsync(c); }
     private void Mini_Click(object sender, RoutedEventArgs e) => _main.ToggleMini();
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => _main.ToggleFullscreen();

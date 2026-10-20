@@ -254,10 +254,11 @@ public sealed class MainViewModel : Observable, IDisposable
         Logos.ResetFailedDownloads();
         await LoadViewportAsync(RelevantChannels());
     }
-    public async Task UpdateNowNextAsync()
+    public Task UpdateNowNextAsync() => UpdateNowNextAsync(RelevantChannels());
+    public async Task UpdateNowNextAsync(IEnumerable<ChannelItem> channels)
     {
         // At most the visible viewport and active channel: no thousands of queries every tick.
-        var relevant = RelevantChannels().ToArray();
+        var relevant = channels.Where(IsAllowed).DistinctBy(c => c.Id).ToArray();
         foreach (var c in relevant)
         {
             if (Mappings.TryGetValue(c.Id, out var match))

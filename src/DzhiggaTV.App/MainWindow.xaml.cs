@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     public bool IsMini { get; private set; }
     public bool HasPlayback { get; private set; }
     private OverlayWindow? _overlay;
+    private SportsEveningWindow? _sports;
     private readonly ProgrammePreview _programmePreview;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private CancellationTokenSource? _playCancellation;
@@ -215,6 +216,34 @@ public partial class MainWindow : Window
     }
     private async void Guide_Click(object sender, RoutedEventArgs e) => await ShowGuideAsync();
     public async Task ShowGuideAsync() => await WithModalAsync(() => { new GuideWindow(this).ShowDialog(); return Task.CompletedTask; });
+    public async Task ShowSportsEveningAsync()
+    {
+        if (!_initialized || _sports is not null) return;
+        await GuardAsync(() => WithModalAsync(async () =>
+        {
+            var wasPaused = Player.IsPaused;
+            var muted = Player.IsMuted;
+            // Keep the main stream silent even if a pending connection finishes while the grid is open.
+            Player.IsMuted = true;
+            if (_engineReady) Player.IsPaused = true;
+            try
+            {
+                _sports = new SportsEveningWindow(this, Player.Volume, muted);
+                _sports.ShowDialog();
+            }
+            finally
+            {
+                if (!_closing)
+                {
+                    Player.Volume = _sports?.Volume ?? Player.Volume;
+                    Player.IsMuted = _sports?.IsMuted ?? muted;
+                    if (_engineReady) Player.IsPaused = wasPaused;
+                }
+                _sports = null;
+            }
+            if (!_closing) await Model.SaveAsync();
+        }));
+    }
     public async Task WithModalAsync(Func<Task> action)
     {
         _programmePreview.Hide();
@@ -225,6 +254,7 @@ public partial class MainWindow : Window
     {
         if (sender is not Button { Tag: string tag } button) return;
         if (tag == "guide") { await ShowGuideAsync(); return; }
+        if (tag == "sports") { await ShowSportsEveningAsync(); return; }
         if (tag == "categories")
         {
             var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.Right, MaxHeight = Math.Min(520, SystemParameters.WorkArea.Height - 80) };
@@ -425,7 +455,7 @@ public partial class MainWindow : Window
         if (_shutdownComplete) return;
         e.Cancel = true;
         if (_closing) return;
-        _closing = true; _timer.Stop(); _updateTimer.Stop(); _updateLifetime.Cancel(); _playCancellation?.Cancel(); _overlay?.Close();
+        _closing = true; _timer.Stop(); _updateTimer.Stop(); _updateLifetime.Cancel(); _playCancellation?.Cancel(); _sports?.Close(); _overlay?.Close();
         Model.SetSetting("volume", Player.Volume); Model.SetSetting("muted", Player.IsMuted);
         await GuardAsync(Model.SaveAsync);
         try { Updates.Dispose(); Model.Dispose(); Player.Dispose(); }
