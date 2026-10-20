@@ -279,6 +279,7 @@ public sealed class MainViewModel : Observable, IDisposable
     public async Task LoadViewportAsync(IEnumerable<ChannelItem> items, bool updateViewport = false)
     {
         var snapshot = items.ToArray();
+        bool activeGuideLoaded = false;
         if (updateViewport) { _viewportIds.Clear(); foreach (var c in snapshot) _viewportIds.Add(c.Id); }
         foreach (var item in snapshot)
         {
@@ -287,10 +288,12 @@ public sealed class MainViewModel : Observable, IDisposable
                 var guide = await Store.GetNowNextAsync(mapping.EpgId); item.Current = guide.Current; item.Next = guide.Next; item.AfterNext = guide.AfterNext;
                 item.NowTitle = guide.Current?.Title ?? "Нет программы на это время";
                 item.EndTime = guide.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
-                if (guide.Current is { } p) item.Progress = Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100);
+                item.Progress = guide.Current is { } p ? Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : 0;
+                activeGuideLoaded |= ReferenceEquals(item, Active);
             }
         }
         LoadLogos(snapshot);
+        if (activeGuideLoaded) RaisePlayback();
     }
     public void LoadLogos(IEnumerable<ChannelItem> items)
     {
@@ -327,11 +330,17 @@ public sealed class MainViewModel : Observable, IDisposable
         if (_section == "favorites") RefreshFilter();
         await SaveAsync();
     }
-    public async Task RecordPlaybackAsync(ChannelItem item)
+    public async Task ActivateChannelAsync(ChannelItem item)
     {
         if (Active?.Id != item.Id) PreviousId = Active?.Id;
-        Active = item; SelectPlaybackChannel(item); State.RecordWatched(item.Id); SetSetting("last.channel", item.Id); await SaveAsync();
-        await LoadViewportAsync([item]); RaisePlayback();
+        Active = item; SelectPlaybackChannel(item);
+        await LoadViewportAsync([item]);
+    }
+    public async Task RecordPlaybackAsync(ChannelItem item)
+    {
+        // Cached guide reads must not wait for a state write queued behind an EPG import.
+        await ActivateChannelAsync(item);
+        State.RecordWatched(item.Id); SetSetting("last.channel", item.Id); await SaveAsync();
     }
     public void SelectPlaybackChannel(ChannelItem item)
     {

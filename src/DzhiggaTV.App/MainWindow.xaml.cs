@@ -132,6 +132,9 @@ public partial class MainWindow : Window
         HasPlayback = true; Model.PlaybackStatus = "Подключение к каналу…"; _overlay?.RefreshState();
         await GuardAsync(async () =>
         {
+            await Model.ActivateChannelAsync(item);
+            if (generation != _playGeneration || token.IsCancellationRequested) return;
+            _overlay?.RefreshState();
             await Player.PlayAsync(item.Channel.Url, token);
             if (generation != _playGeneration || token.IsCancellationRequested) return;
             await Model.RecordPlaybackAsync(item);

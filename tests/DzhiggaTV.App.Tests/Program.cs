@@ -25,6 +25,8 @@ internal static class Program
     {
         (string Name, Func<Task> Run)[] cases =
         [
+            ("Cold startup displays all three cached cards while background EPG import blocks saving", StartupGuideDuringImportAsync),
+            ("Late viewport guide loading notifies all active programme cards", ActiveViewportGuideAsync),
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
             ("Programme countdown handles missing data, hour boundaries and expired programmes", ProgrammeCountdownAsync),
             ("First EPG refresh replaces the missing-logo fallback immediately", MissingGuideThenRefreshAsync),
@@ -269,6 +271,55 @@ internal static class Program
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel(); bool stopped = false;
         try { await store.GetGuideAsync(ids, now.AddHours(-1), now.AddHours(1), cancelled.Token); } catch (OperationCanceledException) { stopped = true; }
         Assert(stopped, "Closing the guide must cancel a pending database read.");
+    }
+
+    private static async Task StartupGuideDuringImportAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        var saved = model.AllChannels.Single().Channel with { Order = 25 };
+        var channels = Enumerable.Range(0, 25).Select(i => new Channel("cold-" + i, "fixture", "Канал " + i, "Тест", "https://example.invalid/unused", Order: i)).Append(saved).ToArray();
+        await model.Store.SavePlaylistAsync(new("fixture", "Cold startup", "local-only.m3u8"), channels);
+        await fixture.SeedGuideAsync(); await fixture.MapAsync("guide-one");
+        model.SetSetting("epg.enabled", false); model.SetSetting("resume", true); model.SetSetting("last.channel", saved.Id); await model.SaveAsync();
+        // Exercise actual initialization with cached data; networking is explicitly disabled.
+        await model.InitializeAsync();
+        var channel = model.AllChannels.Single(c => c.Id == saved.Id);
+        Assert(model.AllChannels.IndexOf(channel) >= 20 && channel.Current is null, "The resumed channel must start outside the prefetched viewport.");
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var finish = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var now = DateTimeOffset.UtcNow;
+        var import = model.Store.ImportEpgAsync(async (addChannel, addProgramme, token) =>
+        {
+            started.SetResult(); await finish.Task.WaitAsync(token);
+            await addChannel(new("guide-one", "Обновлённый канал", fixture.FirstLogo));
+            for (int i = 0; i < 3; i++) await addProgramme(new("guide-one", "Новая передача " + i, now.AddMinutes(-5 + i * 30), now.AddMinutes(25 + i * 30), "Новое описание " + i));
+        });
+        await started.Task;
+        var activation = model.RecordPlaybackAsync(channel);
+        try
+        {
+            await WaitUntilAsync(() => model.CurrentTitle == "Передача один" && model.NextTitle == "Следующая один" && model.AfterNextTitle == "Затем один",
+                "Cached cards must appear before a background guide import releases the writer.");
+            Assert(!activation.IsCompleted && !import.IsCompleted, "The test must verify cards while persistence is still blocked.");
+        }
+        finally { finish.TrySetResult(); await import; await activation; }
+        await model.RefreshEpgViewAsync();
+        Assert(model.CurrentTitle == "Новая передача 0" && model.NextTitle == "Новая передача 1" && model.AfterNextTitle == "Новая передача 2",
+            "Finishing the background refresh must replace all cached cards without selecting the channel again.");
+        await WaitUntilAsync(() => channel.LogoPath == fixture.FirstLogo, "The restored channel logo must finish loading.");
+    }
+
+    private static async Task ActiveViewportGuideAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        await fixture.MapAsync("guide-one"); await model.RefreshEpgViewAsync();
+        var channel = model.AllChannels.Single(); model.Active = channel;
+        await fixture.SeedGuideAsync();
+        var notified = new HashSet<string?>(); model.PropertyChanged += (_, e) => notified.Add(e.PropertyName);
+        await model.LoadViewportAsync([channel]);
+        Assert(model.CurrentTitle == "Передача один" && model.NextTitle == "Следующая один" && model.AfterNextTitle == "Затем один", "Viewport loading must restore all three programmes.");
+        Assert(new[] { nameof(MainViewModel.CurrentTitle), nameof(MainViewModel.NextTitle), nameof(MainViewModel.AfterNextTitle), nameof(MainViewModel.CurrentDescription), nameof(MainViewModel.NextDescription), nameof(MainViewModel.AfterNextDescription) }.All(notified.Contains),
+            "Viewport loading must notify the card bindings immediately, without a timer tick.");
     }
 
     private static async Task MissingGuideThenRefreshAsync()
