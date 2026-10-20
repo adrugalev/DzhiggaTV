@@ -5,6 +5,8 @@ namespace DzhiggaTV.App;
 
 public sealed class ReleaseNotesWindow : Window
 {
+    private CancellationTokenSource? _checking;
+
     public ReleaseNotesWindow(Window owner)
     {
         Theme.Window(this);
@@ -12,6 +14,7 @@ public sealed class ReleaseNotesWindow : Window
         Width = 610; Height = 620; MinWidth = 480; MinHeight = 360;
         MaxHeight = Math.Max(360, SystemParameters.WorkArea.Height - 60);
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Closed += (_, _) => _checking?.Cancel();
 
         var root = new DockPanel { Margin = new(24) }; Content = root;
         var heading = new StackPanel { Margin = new(0, 0, 0, 18) };
@@ -20,23 +23,48 @@ public sealed class ReleaseNotesWindow : Window
         current.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); heading.Children.Add(current);
         DockPanel.SetDock(heading, Dock.Top); root.Children.Add(heading);
 
-        var footer = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0, 16, 0, 0) };
+        var footer = new StackPanel { Margin = new(0, 16, 0, 0) };
+        var status = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new(3, 0, 3, 8), Visibility = Visibility.Collapsed };
+        status.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+        System.Windows.Automation.AutomationProperties.SetName(status, "Результат проверки обновлений");
+        System.Windows.Automation.AutomationProperties.SetLiveSetting(status, System.Windows.Automation.AutomationLiveSetting.Polite);
+        footer.Children.Add(status);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         var check = new Button { Content = "Проверить обновления", MinWidth = 190 };
         check.SetResourceReference(BorderBrushProperty, "AccentBrush");
         System.Windows.Automation.AutomationProperties.SetName(check, "Проверить обновления");
         check.Click += async (_, _) =>
         {
             if (owner is not MainWindow main) return;
-            check.IsEnabled = false;
-            try { await main.ShowUpdateDialogAsync(this, true); }
-            finally { if (IsVisible) check.IsEnabled = true; }
+            using var lifetime = new CancellationTokenSource(); _checking = lifetime;
+            check.IsEnabled = false; check.Content = "Проверяем…";
+            status.Text = "Проверяем обновления…"; status.Visibility = Visibility.Visible;
+            try
+            {
+                await main.Updates.CheckAsync(true, lifetime.Token);
+                if (!IsVisible || lifetime.IsCancellationRequested) return;
+                if (main.Updates.LastError is { } error) status.Text = error;
+                else if (!main.Updates.HasUpdate) status.Text = "Версия актуальна. Новых версий не найдено.";
+                else
+                {
+                    status.Visibility = Visibility.Collapsed;
+                    await main.ShowUpdateDialogAsync(this, false);
+                }
+            }
+            catch (OperationCanceledException) when (lifetime.IsCancellationRequested) { }
+            finally
+            {
+                _checking = null;
+                if (IsVisible) { check.IsEnabled = true; check.Content = "Проверить обновления"; }
+            }
         };
         var close = new Button { Content = "Закрыть", IsCancel = true, IsDefault = true };
-        footer.Children.Add(check); footer.Children.Add(close);
+        buttons.Children.Add(check); buttons.Children.Add(close); footer.Children.Add(buttons);
         DockPanel.SetDock(footer, Dock.Bottom); root.Children.Add(footer);
         var notes = new StackPanel();
         (string Version, string Summary)[] releases =
         [
+            ("1.2.7", "При ручной проверке без новых выпусков рядом с кнопкой появляется надпись «Версия актуальна. Новых версий не найдено», без отдельного окна. В выборе каналов «Мультиэкрана» карточка с логотипом следует за мышью, место назначения плавно подсвечивается, а перенос завершается мягкой анимацией. Логотипы в схеме увеличены, названия стали крупнее и полужирными. Учитывается настройка сокращения анимаций."),
             ("1.2.6", "Выбор каналов «Мультиэкрана» дополнен схемой: перетаскивайте каналы на нужные места, меняйте экраны местами или заменяйте канал. Галочки заполняют свободные места, кнопка «Сброс» снимает весь выбор. Расположение и пустые ячейки сохраняются. Одновременно можно смотреть до четырёх каналов в сетке 2 × 2; прежние большие наборы автоматически сокращаются."),
             ("1.2.5", "«Мультиэкран» открывается с тем же количеством экранов, которое было при последнем использовании. Текущий канал основного плеера занимает первое место и получает звук: если его не было в наборе, он заменяет прежний первый канал. При первом запуске с текущим каналом открывается один экран без автоматического окна выбора; добавлять и убирать каналы можно кнопкой «Выбрать каналы»."),
             ("1.2.4", "При открытии «Мультиэкрана» текущий канал основного плеера становится первым в сетке и выбирается источником звука. Если его не было в сохранённом наборе, он добавляется автоматически; при девяти заполненных местах заменяет последний канал. При повторном открытии приоритет получает канал, который сейчас включён в основном плеере. Из подсказки кнопки убрано лишнее пояснение — оставлено только название «Мультиэкран»."),

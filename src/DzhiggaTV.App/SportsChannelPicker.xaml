@@ -17,9 +17,9 @@
    </ControlTemplate></Setter.Value></Setter>
   </Style>
  </Window.Resources>
- <Grid Margin="22,18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+ <Grid><Grid Margin="22,18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <StackPanel><TextBlock Text="Каналы мультиэкрана" FontSize="22" FontWeight="SemiBold"/>
-   <TextBlock Text="Перетащите каналы на схему или отметьте галочками. До 4 экранов, звук — с одного канала." FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,20"/></StackPanel>
+   <TextBlock Text="Зажмите канал и перетащите на схему или отметьте галочкой. До 4 экранов, звук — с одного канала." FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,20"/></StackPanel>
   <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="1.15*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
   <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
   <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
@@ -57,5 +57,7 @@
    <StackPanel VerticalAlignment="Center"><TextBlock x:Name="Count" FontSize="12"/><TextBlock x:Name="Limit" FontSize="11" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Visibility="Collapsed"/></StackPanel>
    <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="Reset" Content="Сброс" Click="Reset_Click" Margin="3,3,16,3" ToolTip="Снять выбор со всех каналов"/><Button Content="Отмена" IsCancel="True"/><Button x:Name="Watch" Content="Смотреть" IsDefault="True" Click="Watch_Click" BorderBrush="{DynamicResource AccentBrush}"/></StackPanel>
   </Grid>
+ </Grid>
+ <Canvas x:Name="DragSurface" IsHitTestVisible="False" ClipToBounds="True"/>
  </Grid>
 </Window>
