@@ -108,6 +108,27 @@ internal static class Program
                 try { await service.DownloadAsync(release, Path.Combine(scratch, "cancel"), null, cancelled.Token); } catch (OperationCanceledException) { stopped = true; }
                 Assert(stopped && !Directory.EnumerateFiles(Path.Combine(scratch, "cancel"), "*", SearchOption.AllDirectories).Any(), "cancel without leaving an executable");
             }
+            string cleanupRoot = Path.Combine(scratch, "obsolete-cleanupRoot"); Directory.CreateDirectory(cleanupRoot);
+            string Workspace(string version, string filename = "DzhiggaTV-Update-x64.zip", bool recent = false)
+            {
+                string directory = Path.Combine(cleanupRoot, version); Directory.CreateDirectory(directory);
+                string path = Path.Combine(directory, filename); File.WriteAllText(path, "cached bytes");
+                if (!recent) File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddHours(-1));
+                return path;
+            }
+            string old = Workspace("1.2.10.0"), current = Workspace("1.2.11.0"), future = Workspace("1.2.12.0");
+            string active = Workspace("1.2.9.0", "DzhiggaTV-Setup-x64.exe"), unknown = Workspace("1.2.8.0", "keep.txt");
+            string recent = Workspace("1.2.7.0", recent: true), partial = Workspace("1.2.6.0", "DzhiggaTV-Update-x64.zip.part");
+            string shortVersion = Workspace("1.2");
+            string prepared = Path.Combine(cleanupRoot, "1.2.10.0", "prepared-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(prepared);
+            File.WriteAllText(Path.Combine(prepared, "application.zip"), "reconstructed payload"); File.SetLastWriteTimeUtc(Path.Combine(prepared, "application.zip"), DateTime.UtcNow.AddHours(-1));
+            string runner = Path.Combine(prepared, "runner"); Directory.CreateDirectory(runner);
+            File.WriteAllText(Path.Combine(runner, "DzhiggaTV.Setup.dll"), "runner"); File.SetLastWriteTimeUtc(Path.Combine(runner, "DzhiggaTV.Setup.dll"), DateTime.UtcNow.AddHours(-1));
+            long oldBytes = Directory.EnumerateFiles(Path.GetDirectoryName(old)!, "*", SearchOption.AllDirectories).Sum(p => new FileInfo(p).Length);
+            var cleaned = await UpdateCacheCleaner.CleanAsync(cleanupRoot, new Version(1, 2, 11), activeExecutables: [active]);
+            Assert(cleaned.Directories == 1 && cleaned.Bytes == oldBytes && !Directory.Exists(Path.GetDirectoryName(old)), "remove only completed obsolete version, including reconstructed payload and isolated runtime");
+            Assert(new[] { current, future, active, unknown, recent, partial, shortVersion }.All(File.Exists), "preserve current/future releases, active installer, recent/partial downloads and unrelated files");
+            Assert((await UpdateCacheCleaner.CleanAsync(cleanupRoot, new Version(1, 2, 11), activeExecutables: [active])).Directories == 0, "cache cleanup is idempotent");
             Console.WriteLine($"{_passed} updater checks passed."); return 0;
         }
         catch (Exception error) { Console.WriteLine("FAIL " + error); return 1; }

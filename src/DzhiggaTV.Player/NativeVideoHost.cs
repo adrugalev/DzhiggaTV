@@ -34,7 +34,11 @@ public sealed class NativeVideoHost : HwndHost
         switch (msg)
         {
             case 0x0200: PointerActivity?.Invoke(this, new(NativePointerKind.Move)); break;
-            case 0x0201: PointerActivity?.Invoke(this, new(NativePointerKind.LeftDown)); break;
+            case 0x0201:
+                var point = new NativePoint { X = (short)(lParam.ToInt64() & 0xffff), Y = (short)((lParam.ToInt64() >> 16) & 0xffff) };
+                ClientToScreen(hwnd, ref point);
+                PointerActivity?.Invoke(this, new(NativePointerKind.LeftDown, screenX: point.X, screenY: point.Y));
+                break;
             case 0x0204: PointerActivity?.Invoke(this, new(NativePointerKind.RightDown)); break;
             case 0x020A: PointerActivity?.Invoke(this, new(NativePointerKind.Wheel, (short)((wParam.ToInt64() >> 16) & 0xffff))); handled = true; break;
             case 0x0203: DoubleClicked?.Invoke(this, EventArgs.Empty); handled = true; break;
@@ -47,4 +51,6 @@ public sealed class NativeVideoHost : HwndHost
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern IntPtr CreateWindowEx(uint exStyle, string className, string windowName, uint style, int x, int y, int width, int height, IntPtr parent, IntPtr menu, IntPtr instance, IntPtr param);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool DestroyWindow(IntPtr hwnd);
+    [StructLayout(LayoutKind.Sequential)] private struct NativePoint { public int X, Y; }
+    [DllImport("user32.dll")] private static extern bool ClientToScreen(IntPtr hwnd, ref NativePoint point);
 }

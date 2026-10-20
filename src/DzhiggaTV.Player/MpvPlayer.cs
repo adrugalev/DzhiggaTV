@@ -291,7 +291,9 @@ public sealed class MpvPlayer : IDisposable
         {
             while (!_lifetime.IsCancellationRequested)
             {
-                var ptr = NativeMethods.mpv_wait_event(_handle, .1);
+                // Native events wake this wait immediately; Dispose explicitly calls mpv_wakeup.
+                // A timeout only woke every idle/playing instance ten times a second.
+                var ptr = NativeMethods.mpv_wait_event(_handle, -1);
                 if (ptr == IntPtr.Zero) continue;
                 var evt = Marshal.PtrToStructure<MpvEvent>(ptr);
                 switch (evt.EventId)
@@ -436,8 +438,16 @@ public sealed class MpvPlayer : IDisposable
             finally { NativeMethods.mpv_free(str); }
         }
     }
-    private long? ReadLong(string name) => long.TryParse(ReadString(name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : null;
-    private double? ReadDouble(string name) => double.TryParse(ReadString(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && double.IsFinite(value) ? value : null;
+    private long? ReadLong(string name)
+    {
+        lock (_nativeGate)
+            return !_disposed && _handle != IntPtr.Zero && NativeMethods.GetInt64(_handle, name, 4, out var value) >= 0 ? value : null;
+    }
+    private double? ReadDouble(string name)
+    {
+        lock (_nativeGate)
+            return !_disposed && _handle != IntPtr.Zero && NativeMethods.GetDouble(_handle, name, 5, out var value) >= 0 && double.IsFinite(value) ? value : null;
+    }
     private static int? ToInt(long? value) => value is >= 0 and <= int.MaxValue ? (int)value.Value : null;
 
     private object? ReadNode(string name)

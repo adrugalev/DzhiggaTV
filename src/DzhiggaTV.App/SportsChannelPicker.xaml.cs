@@ -101,8 +101,8 @@ public partial class SportsChannelPicker : Window
             Grid.SetRow(details, 1); content.Children.Add(details);
             if (channel is not null)
             {
-                var logo = new Image { Width = 80, Height = 64, Stretch = Stretch.Uniform, Margin = new(0, 0, 0, 10) };
-                logo.SetBinding(Image.SourceProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }); details.Children.Add(logo);
+                var logo = new ChannelLogo { Width = 80, Height = 64, Stretch = Stretch.Uniform, Margin = new(0, 0, 0, 10) };
+                logo.SetBinding(ChannelLogo.PathProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }); details.Children.Add(logo);
                 var remove = new Button { Content = "×", Padding = new(0), Margin = new(0), Width = 22, Height = 22, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, ToolTip = "Убрать канал с этого экрана" };
                 System.Windows.Automation.AutomationProperties.SetName(remove, $"Очистить экран {i + 1}");
                 remove.Click += (_, _) => { _layout.Remove(channel.Id); Limit.Visibility = Visibility.Collapsed; RefreshSelection(); }; content.Children.Add(remove);

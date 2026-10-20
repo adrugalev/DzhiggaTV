@@ -259,11 +259,12 @@ public sealed class MainViewModel : Observable, IDisposable
     {
         // At most the visible viewport and active channel: no thousands of queries every tick.
         var relevant = channels.Where(IsAllowed).DistinctBy(c => c.Id).ToArray();
+        var guides = await Store.GetNowNextBatchAsync(relevant.Where(c => Mappings.ContainsKey(c.Id)).Select(c => Mappings[c.Id].EpgId), cancellationToken: _lifetime.Token);
         foreach (var c in relevant)
         {
             if (Mappings.TryGetValue(c.Id, out var match))
             {
-                var now = await Store.GetNowNextAsync(match.EpgId);
+                var now = guides[match.EpgId];
                 c.Current = now.Current; c.Next = now.Next; c.AfterNext = now.AfterNext;
                 c.NowTitle = now.Current?.Title ?? "Нет программы на это время";
                 c.EndTime = now.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
@@ -282,11 +283,12 @@ public sealed class MainViewModel : Observable, IDisposable
         var snapshot = items.ToArray();
         bool activeGuideLoaded = false;
         if (updateViewport) { _viewportIds.Clear(); foreach (var c in snapshot) _viewportIds.Add(c.Id); }
+        var guides = await Store.GetNowNextBatchAsync(snapshot.Where(c => c.Current is null && Mappings.ContainsKey(c.Id)).Select(c => Mappings[c.Id].EpgId), cancellationToken: _lifetime.Token);
         foreach (var item in snapshot)
         {
             if (Mappings.TryGetValue(item.Id, out var mapping) && item.Current is null)
             {
-                var guide = await Store.GetNowNextAsync(mapping.EpgId); item.Current = guide.Current; item.Next = guide.Next; item.AfterNext = guide.AfterNext;
+                var guide = guides[mapping.EpgId]; item.Current = guide.Current; item.Next = guide.Next; item.AfterNext = guide.AfterNext;
                 item.NowTitle = guide.Current?.Title ?? "Нет программы на это время";
                 item.EndTime = guide.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
                 item.Progress = guide.Current is { } p ? Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : 0;

@@ -347,28 +347,46 @@ public sealed class SqliteStore : IDisposable
         return result;
     }
 
-    public async Task<NowNext> GetNowNextAsync(string epgChannelId, DateTimeOffset? at = null, CancellationToken cancellationToken = default)
+    public async Task<NowNext> GetNowNextAsync(string epgChannelId, DateTimeOffset? at = null,
+        CancellationToken cancellationToken = default) =>
+        (await GetNowNextBatchAsync([epgChannelId], at, cancellationToken).ConfigureAwait(false))[epgChannelId];
+
+    /// <summary>One read snapshot and two prepared commands for a viewport, rather than opening per row.</summary>
+    public async Task<IReadOnlyDictionary<string, NowNext>> GetNowNextBatchAsync(IEnumerable<string> epgChannelIds,
+        DateTimeOffset? at = null, CancellationToken cancellationToken = default)
     {
-        var timestamp = (at ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds();
+        var result = new Dictionary<string, NowNext>(StringComparer.Ordinal);
+        var ids = epgChannelIds.Distinct(StringComparer.Ordinal).ToArray();
+        if (ids.Length == 0) return result;
+        long timestamp = (at ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds();
         await InitializeAsync(cancellationToken).ConfigureAwait(false);
         await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id=$id AND start<=$at AND end>$at ORDER BY start DESC LIMIT 1";
-        command.Parameters.AddWithValue("$id", epgChannelId); command.Parameters.AddWithValue("$at", timestamp);
-        Programme? current = null;
-        await using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
-            if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) current = ReadProgramme(reader);
-        command.CommandText = "SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id=$id AND start>=$after AND start>$at ORDER BY start LIMIT 2";
-        command.Parameters.AddWithValue("$after", current?.End.ToUnixTimeSeconds() ?? timestamp);
-        Programme? next = null, afterNext = null;
-        await using (var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+        using var transaction = connection.BeginTransaction(deferred: true);
+        await using var currentCommand = connection.CreateCommand(); currentCommand.Transaction = transaction;
+        currentCommand.CommandText = "SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id=$id AND start<=$at AND end>$at ORDER BY start DESC LIMIT 1";
+        var currentId = currentCommand.Parameters.Add("$id", SqliteType.Text);
+        currentCommand.Parameters.AddWithValue("$at", timestamp); currentCommand.Prepare();
+        await using var nextCommand = connection.CreateCommand(); nextCommand.Transaction = transaction;
+        nextCommand.CommandText = "SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id=$id AND start>=$after AND start>$at ORDER BY start LIMIT 2";
+        var nextId = nextCommand.Parameters.Add("$id", SqliteType.Text);
+        var after = nextCommand.Parameters.Add("$after", SqliteType.Integer);
+        nextCommand.Parameters.AddWithValue("$at", timestamp); nextCommand.Prepare();
+        foreach (var id in ids)
         {
-            if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) next = ReadProgramme(reader);
-            if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) afterNext = ReadProgramme(reader);
+            cancellationToken.ThrowIfCancellationRequested(); currentId.Value = nextId.Value = id;
+            Programme? current = null, next = null, afterNext = null;
+            await using (var reader = await currentCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+                if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) current = ReadProgramme(reader);
+            after.Value = current?.End.ToUnixTimeSeconds() ?? timestamp;
+            await using (var reader = await nextCommand.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false))
+            {
+                if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) next = ReadProgramme(reader);
+                if (await reader.ReadAsync(cancellationToken).ConfigureAwait(false)) afterNext = ReadProgramme(reader);
+            }
+            result[id] = new NowNext(current, next, afterNext);
         }
-        return new NowNext(current, next, afterNext);
+        transaction.Commit(); return result;
     }
-
     public async Task<IReadOnlyList<Programme>> GetProgrammesAsync(string epgChannelId, DateTimeOffset from, DateTimeOffset to,
         CancellationToken cancellationToken = default)
     {
@@ -376,6 +394,12 @@ public sealed class SqliteStore : IDisposable
         return await QueryProgrammesAsync("SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id=$id AND start<$to AND end>$from ORDER BY start",
             [("$id", epgChannelId), ("$from", from.ToUnixTimeSeconds()), ("$to", to.ToUnixTimeSeconds())], cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>Bounded sidebar schedule. Avoid loading descriptions for every future programme.</summary>
+    public Task<IReadOnlyList<Programme>> GetUpcomingProgrammesAsync(string epgChannelId, DateTimeOffset from,
+        int limit = 24, CancellationToken cancellationToken = default) => QueryProgrammesAsync(
+            "SELECT channel_id,title,start,end,NULL,NULL FROM programmes WHERE channel_id=$id AND start>=$from ORDER BY start LIMIT $limit",
+            [("$id", epgChannelId), ("$from", from.ToUnixTimeSeconds()), ("$limit", Math.Clamp(limit, 1, 48))], cancellationToken);
 
     /// <summary>One consistent guide snapshot for the allowed playlist channels, without opening a connection per row.</summary>
     public async Task<IReadOnlyDictionary<string, IReadOnlyList<Programme>>> GetGuideAsync(IEnumerable<string> epgChannelIds,

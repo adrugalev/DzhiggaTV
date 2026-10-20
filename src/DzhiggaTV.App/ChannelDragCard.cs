@@ -25,8 +25,8 @@ internal sealed class ChannelDragCard : Border
         RenderTransform = new TransformGroup { Children = { _scale, _position } };
         RenderTransformOrigin = new(.5, .5);
         var row = new StackPanel { VerticalAlignment = VerticalAlignment.Center }; Child = row;
-        var logo = _logo = new Image { Width = 62, Height = 56, Stretch = Stretch.Uniform, Margin = new(0, 0, 0, 8) };
-        logo.SetBinding(Image.SourceProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel });
+        var logo = _logo = new ChannelLogo { Width = 62, Height = 56, Stretch = Stretch.Uniform, Margin = new(0, 0, 0, 8) };
+        logo.SetBinding(ChannelLogo.PathProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel });
         var logoStyle = new Style(typeof(Image));
         var missing = new DataTrigger { Binding = new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }, Value = null };
         missing.Setters.Add(new Setter(VisibilityProperty, Visibility.Collapsed)); logoStyle.Triggers.Add(missing); logo.Style = logoStyle;

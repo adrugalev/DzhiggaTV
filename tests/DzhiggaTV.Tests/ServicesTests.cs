@@ -46,6 +46,17 @@ internal static class ServicesTests
             Check(programmes[0].Start == DateTimeOffset.Parse("2026-10-18T09:00:00Z"));
         }
         Check(XmlTvParser.ParseDate("2026") == new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero));
+        string longText = string.Concat(Enumerable.Repeat("Текст 🎬 & <>", 900));
+        string escaped = System.Security.SecurityElement.Escape(longText)!;
+        using (var input = new MemoryStream(Encoding.UTF8.GetBytes("<tv><channel id=\"a\"><display-name>Канал</display-name></channel>" +
+            "<programme channel=\"a\" start=\"20261018000000 +0000\" stop=\"20261018010000 +0000\"><title>Фильм</title><desc>" + escaped +
+            "</desc><category>Кино</category></programme><programme channel=\"a\" start=\"20261018010000 +0000\" stop=\"20261018020000 +0000\"><title>Новости</title><desc><![CDATA[Коротко <>&]]></desc></programme></tv>")))
+        {
+            var programmes = new List<Programme>();
+            await XmlTvParser.ParseAsync(input, _ => Task.CompletedTask, p => { programmes.Add(p); return Task.CompletedTask; });
+            Check(programmes.Count == 2 && programmes[0].Description == longText && programmes[0].Category == "Кино" && programmes[1].Description == "Коротко <>&",
+                "Reusable XML text buffer preserves long Unicode fields and does not bleed between records");
+        }
         Check(XmlTvParser.ParseDate("20261018120000 -0430").Offset == TimeSpan.FromMinutes(-270));
         Check(!XmlTvParser.TryParseDate("20261018120000 XYZ", out _));
         Check(!XmlTvParser.TryParseDate("20260230120000 +0300", out _));
@@ -178,7 +189,7 @@ internal static class ServicesTests
         var directory = Path.Combine(Path.GetTempPath(), "DzhiggaTV.LogoTests", Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
         try { await action(directory); } finally { Directory.Delete(directory, true); }
     }
-    private static void Check(bool condition) { if (!condition) throw new Exception("Assertion failed."); }
+    private static void Check(bool condition, string? message = null) { if (!condition) throw new Exception(message ?? "Assertion failed."); }
     private static async Task Expect<T>(Func<Task> action) where T : Exception
     { try { await action(); } catch (T) { return; } throw new Exception("Expected " + typeof(T).Name); }
     private static void ExpectSync<T>(Action action) where T : Exception

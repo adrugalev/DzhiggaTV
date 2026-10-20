@@ -1,0 +1,784 @@
+{
+  "Date": "2026-10-20",
+  "BaselineVersion": "1.2.11",
+  "OptimizedVersion": "1.2.12",
+  "Hardware": {
+    "Processor": "Intel Core i7-1260U",
+    "LogicalProcessors": 12,
+    "Gpu": "Intel Iris Xe",
+    "GpuDriver": "31.0.101.4255"
+  },
+  "Control": {
+    "Before": {
+      "Version": "1.2.11.0",
+      "LogicalProcessors": 12,
+      "Samples": [
+        {
+          "Phase": "idle",
+          "Seconds": 30.3001643,
+          "CpuPercent": 0.2621341671514743,
+          "PrivateBytesMean": 313247197.8666667,
+          "WorkingSetBytesMean": 400396424.53333336,
+          "PrivateBytesPeak": 345067520,
+          "AllocatedBytesPerSecond": 27365.9242171172,
+          "Streams": []
+        },
+        {
+          "Phase": "main-1080p",
+          "Seconds": 30.1192403,
+          "CpuPercent": 0.8257111208301846,
+          "PrivateBytesMean": 521811831.46666664,
+          "WorkingSetBytesMean": 614670745.6,
+          "PrivateBytesPeak": 542134272,
+          "AllocatedBytesPerSecond": 25583.115388205857,
+          "Streams": [
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.133
+            }
+          ]
+        },
+        {
+          "Phase": "multiscreen-4-plus-live-main",
+          "Seconds": 30.1580258,
+          "CpuPercent": 4.468648773422032,
+          "PrivateBytesMean": 1396434261.3333333,
+          "WorkingSetBytesMean": 1438972996.2666667,
+          "PrivateBytesPeak": 1460916224,
+          "AllocatedBytesPerSecond": 73823.13466951142,
+          "Streams": [
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.132999999999996
+            },
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.167
+            },
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.167
+            },
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.167
+            },
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.133000000000003
+            }
+          ]
+        },
+        {
+          "Phase": "main-after-scrolling",
+          "Seconds": 30.1165688,
+          "CpuPercent": 0.7522852337680647,
+          "PrivateBytesMean": 645077128.5333333,
+          "WorkingSetBytesMean": 728273032.5333333,
+          "PrivateBytesPeak": 672731136,
+          "AllocatedBytesPerSecond": 26373.25670379821,
+          "Streams": [
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.133999999999986
+            }
+          ]
+        }
+      ]
+    },
+    "After": {
+      "Version": "1.2.12.0",
+      "LogicalProcessors": 12,
+      "Samples": [
+        {
+          "Phase": "idle",
+          "Seconds": 30.2997699,
+          "CpuPercent": 0.24924556715308038,
+          "PrivateBytesMean": 291839726.93333334,
+          "WorkingSetBytesMean": 378374144,
+          "PrivateBytesPeak": 319549440,
+          "AllocatedBytesPerSecond": 23206.776893708357,
+          "Streams": []
+        },
+        {
+          "Phase": "main-1080p",
+          "Seconds": 30.1137609,
+          "CpuPercent": 0.7437076161859721,
+          "PrivateBytesMean": 501355178.6666667,
+          "WorkingSetBytesMean": 593569382.4,
+          "PrivateBytesPeak": 519729152,
+          "AllocatedBytesPerSecond": 25376.571280407556,
+          "Streams": [
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30.00000030000004,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.132999999999996
+            }
+          ]
+        },
+        {
+          "Phase": "multiscreen-4-plus-live-main",
+          "Seconds": 30.1635328,
+          "CpuPercent": 4.070692221215326,
+          "PrivateBytesMean": 1367294361.6,
+          "WorkingSetBytesMean": 1409209958.4,
+          "PrivateBytesPeak": 1431412736,
+          "AllocatedBytesPerSecond": 69949.36614321251,
+          "Streams": [
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30.00000030000004,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.165999999999997
+            },
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30.00000030000004,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.167
+            },
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30.00000030000004,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.166
+            },
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30.00000030000004,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.133000000000003
+            },
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30.00000030000004,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.166999999999998
+            }
+          ]
+        },
+        {
+          "Phase": "main-after-scrolling",
+          "Seconds": 30.1355581,
+          "CpuPercent": 0.7431696887449823,
+          "PrivateBytesMean": 596863112.5333333,
+          "WorkingSetBytesMean": 678041053.8666667,
+          "PrivateBytesPeak": 616083456,
+          "AllocatedBytesPerSecond": 24250.156495359544,
+          "Streams": [
+            {
+              "Width": 1920,
+              "Height": 1080,
+              "FramesPerSecond": 30.00000030000004,
+              "HardwareDecoder": "d3d11va",
+              "VideoOutput": "gpu-next",
+              "DroppedFrames": 0,
+              "TimelineSeconds": 30.167
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "SupplementaryRuns": [
+    {
+      "Run": 1,
+      "Before": {
+        "Version": "1.2.11.0",
+        "LogicalProcessors": 12,
+        "Samples": [
+          {
+            "Phase": "idle",
+            "Seconds": 25.3413547,
+            "CpuPercent": 0.5703375044902395,
+            "PrivateBytesMean": 314743685.12,
+            "WorkingSetBytesMean": 401523671.04,
+            "PrivateBytesPeak": 345485312,
+            "AllocatedBytesPerSecond": 42671.43618805825,
+            "Streams": []
+          },
+          {
+            "Phase": "main-1080p",
+            "Seconds": 25.1160456,
+            "CpuPercent": 1.1975661088941485,
+            "PrivateBytesMean": 528132505.6,
+            "WorkingSetBytesMean": 628522680.32,
+            "PrivateBytesPeak": 547282944,
+            "AllocatedBytesPerSecond": 30564.684115719236,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.1
+              }
+            ]
+          },
+          {
+            "Phase": "multiscreen-4-plus-live-main",
+            "Seconds": 25.1380765,
+            "CpuPercent": 5.371375238939489,
+            "PrivateBytesMean": 1399270277.12,
+            "WorkingSetBytesMean": 1450289397.76,
+            "PrivateBytesPeak": 1479589888,
+            "AllocatedBytesPerSecond": 80155.05880093889,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.132999999999996
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.134
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.134
+              }
+            ]
+          },
+          {
+            "Phase": "main-after-scrolling",
+            "Seconds": 25.1004731,
+            "CpuPercent": 0.9596847665260408,
+            "PrivateBytesMean": 657921146.88,
+            "WorkingSetBytesMean": 746049372.16,
+            "PrivateBytesPeak": 701485056,
+            "AllocatedBytesPerSecond": 30525.32105460594,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.099999999999994
+              }
+            ]
+          }
+        ]
+      },
+      "After": {
+        "Version": "1.2.11.0",
+        "LogicalProcessors": 12,
+        "Samples": [
+          {
+            "Phase": "idle",
+            "Seconds": 25.2247523,
+            "CpuPercent": 0.06194312560206984,
+            "PrivateBytesMean": 289670594.56,
+            "WorkingSetBytesMean": 379236679.68,
+            "PrivateBytesPeak": 323645440,
+            "AllocatedBytesPerSecond": 30230.6239098332,
+            "Streams": []
+          },
+          {
+            "Phase": "main-1080p",
+            "Seconds": 25.10131,
+            "CpuPercent": 0.7988460894404846,
+            "PrivateBytesMean": 494491402.24,
+            "WorkingSetBytesMean": 596442808.32,
+            "PrivateBytesPeak": 511815680,
+            "AllocatedBytesPerSecond": 28416.684228831084,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.099999999999998
+              }
+            ]
+          },
+          {
+            "Phase": "multiscreen-4-plus-live-main",
+            "Seconds": 25.1339797,
+            "CpuPercent": 4.678054426852266,
+            "PrivateBytesMean": 1361912299.52,
+            "WorkingSetBytesMean": 1414497730.56,
+            "PrivateBytesPeak": 1437958144,
+            "AllocatedBytesPerSecond": 77259.2332443079,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.099999999999994
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.166999999999998
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.167
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.134
+              }
+            ]
+          },
+          {
+            "Phase": "main-after-scrolling",
+            "Seconds": 25.1169913,
+            "CpuPercent": 0.9746058504493995,
+            "PrivateBytesMean": 600735907.84,
+            "WorkingSetBytesMean": 693795717.12,
+            "PrivateBytesPeak": 614871040,
+            "AllocatedBytesPerSecond": 28121.839577178976,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.134
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "Run": 2,
+      "Before": {
+        "Version": "1.2.11.0",
+        "LogicalProcessors": 12,
+        "Samples": [
+          {
+            "Phase": "idle",
+            "Seconds": 25.3119054,
+            "CpuPercent": 0.29836091807349013,
+            "PrivateBytesMean": 316412395.52,
+            "WorkingSetBytesMean": 406603857.92,
+            "PrivateBytesPeak": 336093184,
+            "AllocatedBytesPerSecond": 41044.40118522251,
+            "Streams": []
+          },
+          {
+            "Phase": "main-1080p",
+            "Seconds": 25.0992111,
+            "CpuPercent": 0.9441697817612548,
+            "PrivateBytesMean": 523085414.4,
+            "WorkingSetBytesMean": 618638540.8,
+            "PrivateBytesPeak": 540975104,
+            "AllocatedBytesPerSecond": 9942.623256393903,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133
+              }
+            ]
+          },
+          {
+            "Phase": "multiscreen-4-plus-live-main",
+            "Seconds": 25.1509079,
+            "CpuPercent": 5.0838953345828655,
+            "PrivateBytesMean": 1386564812.8,
+            "WorkingSetBytesMean": 1432021401.6,
+            "PrivateBytesPeak": 1466236928,
+            "AllocatedBytesPerSecond": 59613.91159163682,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.167
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.167
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.167
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.166999999999998
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.165999999999997
+              }
+            ]
+          },
+          {
+            "Phase": "main-after-scrolling",
+            "Seconds": 25.1314944,
+            "CpuPercent": 0.9636812524765738,
+            "PrivateBytesMean": 641777500.16,
+            "WorkingSetBytesMean": 724605992.96,
+            "PrivateBytesPeak": 674873344,
+            "AllocatedBytesPerSecond": 30412.516973125163,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133999999999986
+              }
+            ]
+          }
+        ]
+      },
+      "After": {
+        "Version": "1.2.12.0",
+        "LogicalProcessors": 12,
+        "Samples": [
+          {
+            "Phase": "idle",
+            "Seconds": 25.2397441,
+            "CpuPercent": 0.3146905254611252,
+            "PrivateBytesMean": 292890705.92,
+            "WorkingSetBytesMean": 375375790.08,
+            "PrivateBytesPeak": 325324800,
+            "AllocatedBytesPerSecond": 26386.955325747538,
+            "Streams": []
+          },
+          {
+            "Phase": "main-1080p",
+            "Seconds": 25.1003792,
+            "CpuPercent": 0.8300007409184215,
+            "PrivateBytesMean": 498757959.68,
+            "WorkingSetBytesMean": 593092935.68,
+            "PrivateBytesPeak": 518078464,
+            "AllocatedBytesPerSecond": 33040.775734575356,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133
+              }
+            ]
+          },
+          {
+            "Phase": "multiscreen-4-plus-live-main",
+            "Seconds": 25.1350256,
+            "CpuPercent": 4.80218826592323,
+            "PrivateBytesMean": 1363178127.36,
+            "WorkingSetBytesMean": 1407653314.56,
+            "PrivateBytesPeak": 1443999744,
+            "AllocatedBytesPerSecond": 76698.07187305989,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133000000000003
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.134
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133
+              },
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.133
+              }
+            ]
+          },
+          {
+            "Phase": "main-after-scrolling",
+            "Seconds": 25.1250919,
+            "CpuPercent": 1.0002036383927946,
+            "PrivateBytesMean": 599292641.28,
+            "WorkingSetBytesMean": 684962119.68,
+            "PrivateBytesPeak": 623230976,
+            "AllocatedBytesPerSecond": 56203.57551806606,
+            "Streams": [
+              {
+                "Width": 1920,
+                "Height": 1080,
+                "FramesPerSecond": 30.00000030000004,
+                "HardwareDecoder": "d3d11va",
+                "VideoOutput": "gpu-next",
+                "DroppedFrames": 0,
+                "TimelineSeconds": 25.10000000000001
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "XmlTv": {
+    "Before": [
+      {
+        "Iteration": 0,
+        "Seconds": 1.4663352,
+        "AllocatedBytes": 1564909472,
+        "Programmes": 100000,
+        "Checksum": 6800000
+      },
+      {
+        "Iteration": 1,
+        "Seconds": 0.7646884,
+        "AllocatedBytes": 1563296576,
+        "Programmes": 100000,
+        "Checksum": 6800000
+      },
+      {
+        "Iteration": 2,
+        "Seconds": 0.6284429,
+        "AllocatedBytes": 1563901712,
+        "Programmes": 100000,
+        "Checksum": 6800000
+      }
+    ],
+    "After": [
+      {
+        "Iteration": 0,
+        "Seconds": 1.1445542,
+        "AllocatedBytes": 271306328,
+        "Programmes": 100000,
+        "Checksum": 6800000
+      },
+      {
+        "Iteration": 1,
+        "Seconds": 0.6291502,
+        "AllocatedBytes": 269117200,
+        "Programmes": 100000,
+        "Checksum": 6800000
+      },
+      {
+        "Iteration": 2,
+        "Seconds": 0.4735788,
+        "AllocatedBytes": 269570792,
+        "Programmes": 100000,
+        "Checksum": 6800000
+      }
+    ]
+  },
+  "Installer": {
+    "Before": {
+      "InstallerBytes": 257032382,
+      "Seconds": 5.0445409,
+      "PeakPrivateBytes": 28172288,
+      "PeakWorkingSetBytes": 188604416,
+      "ExtractedBytes": 273016093.0
+    },
+    "After": {
+      "InstallerBytes": 182091802,
+      "Seconds": 2.8525913,
+      "PeakPrivateBytes": 87633920,
+      "PeakWorkingSetBytes": 291631104,
+      "ExtractedBytes": 273031503.0
+    },
+    "Sha256": "204f0467e48a431faed227a0e56f286dddfb1eaea6f618347d3597b7da316ee6"
+  },
+  "Disk": {
+    "WorkspaceInitialBytes": 36857614036.0,
+    "TrackedFilesInitialBytes": 2696583,
+    "ProfileBeforeBytes": 8114453924,
+    "ProfileAfterBytes": 908781188,
+    "Cleanup": {
+      "Directories": 18,
+      "Bytes": 7205672736
+    },
+    "OldBuildStagesRetained": 31,
+    "OldBuildStagesBytes": 4547124548.0,
+    "OldBuildCleanupStatus": "Automatic approval review rejected both deletion variants; retained",
+    "OwnTemporaryMediaRemovedBytes": 752454948,
+    "TemporaryBenchmarkDirectoryCleanup": "Automatic approval review rejected recursive deletion of six benchmark directories; retained",
+    "WorkspaceFinalBytes": 38391197902
+  },
+  "Verification": {
+    "Core": 26,
+    "Transport": 14,
+    "App": 27,
+    "Updater": 38,
+    "Delta": 32,
+    "MultiscreenNative": 85,
+    "ReleaseDelta": 5,
+    "PlayerNative": 17
+  }
+}

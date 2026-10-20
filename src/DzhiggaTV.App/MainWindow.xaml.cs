@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     private WindowSnapshot? _snapshot;
     private bool _initialized, _engineReady, _modal, _closing, _shutdownComplete, _layoutQueued;
     private bool _navigationCollapsed = true;
+    private Rect _overlayLayoutBounds = Rect.Empty;
     private Point _dragOrigin;
     private ChannelItem? _dragItem;
     private long _playGeneration;
@@ -83,9 +84,16 @@ public partial class MainWindow : Window
         });
         Loaded += async (_, _) => await LoadedAsync();
         Activated += async (_, _) => { if (_initialized && !_modal) await CheckUpdatesInBackgroundAsync(); };
-        _updateTimer.Tick += async (_, _) => await CheckUpdatesInBackgroundAsync();
-        LayoutUpdated += (_, _) => QueueOverlayLayout();
+        _updateTimer.Tick += async (_, _) => { await CheckUpdatesInBackgroundAsync(); await CleanUpdateCacheAsync(); };
+        LayoutUpdated += (_, _) =>
+        {
+            if (!IsLoaded || _closing) return;
+            var bounds = VideoArea.TransformToAncestor(this).TransformBounds(new Rect(VideoArea.RenderSize));
+            if (_overlayLayoutBounds == bounds) return;
+            _overlayLayoutBounds = bounds; QueueOverlayLayout();
+        };
         LocationChanged += (_, _) => QueueOverlayLayout();
+        DpiChanged += (_, _) => QueueOverlayLayout();
         StateChanged += (_, _) =>
         {
             LayoutRoot.Margin = WindowState == WindowState.Maximized && !IsFullscreen && !IsMini
@@ -109,7 +117,7 @@ public partial class MainWindow : Window
             await Model.InitializeAsync();
             ApplySettings(); _initialized = true; InitializeEngine();
             _overlay = new(this) { Owner = this, DataContext = Model }; _overlay.Show(); SyncOverlay(); _timer.Start();
-            _updateTimer.Start(); _ = CheckUpdatesInBackgroundAsync();
+            _updateTimer.Start(); _ = CheckUpdatesInBackgroundAsync(); _ = CleanUpdateCacheAsync();
             if (Argument("--playlist") is { } playlist) await Model.ImportAsync(playlist);
             if (Argument("--media") is { } media)
             {
@@ -193,6 +201,11 @@ public partial class MainWindow : Window
         if (_closing) return;
         try { await Updates.CheckAsync(false, _updateLifetime.Token); }
         catch (OperationCanceledException) { }
+    }
+    private async Task CleanUpdateCacheAsync()
+    {
+        try { await DzhiggaTV.Services.UpdateCacheCleaner.CleanAsync(Path.Combine(Model.DataDirectory, "updates"), typeof(App).Assembly.GetName().Version!, _updateLifetime.Token); }
+        catch (Exception ex) when (ex is OperationCanceledException or IOException or UnauthorizedAccessException) { }
     }
     private async void Version_Click(object sender, RoutedEventArgs e) => await WithModalAsync(() =>
     {

@@ -210,6 +210,16 @@ static async Task TestNextTwo() => await WithDatabase(async (store, _) =>
     True(guide.Current is null && guide.Next is null && guide.AfterNext is null);
     guide = await store.GetNowNextAsync("unknown", at);
     True(guide.Current is null && guide.Next is null && guide.AfterNext is null);
+    var batch = await store.GetNowNextBatchAsync(["night", "unknown", "night"], at);
+    Equal(2, batch.Count); Equal(current.Title, batch["night"].Current!.Title);
+    Equal(next.Title, batch["night"].Next!.Title); Equal(after.Description!, batch["night"].AfterNext!.Description!);
+    True(batch["unknown"].Current is null && batch["unknown"].Next is null && batch["unknown"].AfterNext is null);
+    Equal(0, (await store.GetNowNextBatchAsync([], at)).Count);
+    var upcoming = await store.GetUpcomingProgrammesAsync("night", current.End, 2);
+    Equal(2, upcoming.Count); Equal(next.Title, upcoming[0].Title); Equal(after.Title, upcoming[1].Title);
+    True(upcoming.All(p => p.Description is null && p.Category is null));
+    Equal(1, (await store.GetUpcomingProgrammesAsync("night", current.End, 1)).Count);
+    Equal(0, (await store.GetUpcomingProgrammesAsync("unknown", at)).Count);
 });
 
 static async Task TestEpgRollback() => await WithDatabase(async (store, _) =>

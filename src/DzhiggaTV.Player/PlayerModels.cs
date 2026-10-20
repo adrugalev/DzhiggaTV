@@ -6,10 +6,12 @@ public enum HdrMode { Auto, ToneMapToSdr }
 public enum PlaybackState { Idle, Loading, Playing, Paused, Buffering, Reconnecting, Error, Disposed }
 public enum NativePointerKind { Move, LeftDown, RightDown, Wheel }
 
-public sealed class NativePointerEventArgs(NativePointerKind kind, int wheelDelta = 0) : EventArgs
+public sealed class NativePointerEventArgs(NativePointerKind kind, int wheelDelta = 0, int screenX = 0, int screenY = 0) : EventArgs
 {
     public NativePointerKind Kind { get; } = kind;
     public int WheelDelta { get; } = wheelDelta;
+    public int ScreenX { get; } = screenX;
+    public int ScreenY { get; } = screenY;
 }
 
 /// <summary>Callbacks may run on a background thread. Message never contains a media URL.</summary>

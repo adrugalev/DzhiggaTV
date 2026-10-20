@@ -53,7 +53,7 @@ internal static class Program
             await Task.CompletedTask;
             var start = DateTimeOffset.Now.AddMinutes(-20);
             foreach (var channel in guideChannels)
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 18; i++)
                 yield return new(channel.Id, $"Передача {i + 1} · {channel.Name}", start.AddHours(i), start.AddHours(i + 1),
                     "2026 г., Россия. Спорт.\n\nТестовое описание трансляции. Телепрограмма следует за выбранным источником звука.");
         }
@@ -75,7 +75,26 @@ internal static class Program
             Check(main.Player.Volume == 0, "Opening the main controls preserves saved master volume");
             Check(main.WindowState == WindowState.Maximized && !main.IsFullscreen, "Startup opens maximized while retaining the normal application controls");
             await Task.Delay(700);
-            if (!args.Contains("--visual-only")) await VerifyCategoryScrollAsync(main);
+            await VerifyLogoResolutionAsync(main, profile);
+            main.ToggleFullscreen(); await Task.Delay(400);
+            var mainOverlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
+            var descriptionCard = (Border)mainOverlay.FindName("FullscreenProgrammeInfo");
+            descriptionCard.Visibility = Visibility.Visible; mainOverlay.UpdateLayout();
+            Check(descriptionCard.ActualWidth > 0 && descriptionCard.ActualWidth <= mainOverlay.ActualWidth * .25 + 1 &&
+                descriptionCard.TranslatePoint(new(), mainOverlay).X < 20,
+                "Main fullscreen description is a compact left card no wider than a quarter of the screen");
+            Check(((ScrollViewer)mainOverlay.FindName("FullscreenMetadataScroll")).ActualHeight > 0 &&
+                Grid.GetRow((ScrollViewer)mainOverlay.FindName("FullscreenMetadataScroll")) == 1,
+                "Main fullscreen film metadata is separated below the synopsis");
+            if (args.Contains("--main-visual-only"))
+            {
+                Console.WriteLine("MAIN_VISUAL_READY " + profile);
+                while (main.IsVisible) await Task.Delay(300);
+                return 0;
+            }
+            main.ToggleFullscreen(); await Task.Delay(200);
+            if (!args.Contains("--visual-only") && !args.Contains("--skip-category")) await VerifyCategoryScrollAsync(main);
+            if (args.Contains("--category-only")) return 0;
             var mainVideoHandle = Descendants<NativeVideoHost>(main).Single().VideoHandle;
             Task? sportsRun = null;
             _ = main.Dispatcher.BeginInvoke(new Action(() => sportsRun = main.ShowSportsEveningAsync()));
@@ -105,6 +124,7 @@ internal static class Program
             sports.SetChannels(main.Model.AllChannels.Take(6));
             await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
             await VerifyVideoLayoutAsync(args, main, sports);
+            await VerifyLiveInteractionsAsync(main, sports);
             await VerifyRemovalReflowAsync(main, sports);
             var four = Tiles(sports); var positions = four.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
             var mainPosition = main.Player.GetStatistics().PlaybackPositionSeconds;
@@ -154,6 +174,7 @@ internal static class Program
             Check(choices.All(c => !c.IsSelected) && !((Button)picker.FindName("Watch")).IsEnabled && scheme.Children.Count == 4,
                 "Reset clears even filtered-out checkboxes and preserves four empty positions");
             search.Clear();
+            await chooserChannels.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
             var tenth = choices.Single(c => c.Channel.Id == "sport-10");
             main.Model.InvalidateLogo(tenth.Channel.Id); chooserChannels.ScrollIntoView(tenth);
             await WaitAsync(() => tenth.Channel.LogoPath is not null);
@@ -279,6 +300,62 @@ internal static class Program
         await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
     }
 
+    private static async Task VerifyLiveInteractionsAsync(MainWindow main, SportsEveningWindow sports)
+    {
+        static NativeVideoHost Host(SportsTile tile) => Descendants<NativeVideoHost>(tile).Single();
+        var four = Tiles(sports); var handles = four.ToDictionary(t => t.Channel.Id, t => Host(t).VideoHandle);
+        var before = sports.ChannelLayout.ToArray();
+        var first = four.Single(t => t.Channel.Id == "sport-1"); var last = four.Single(t => t.Channel.Id == "sport-4");
+        Point oldFirst = first.TranslatePoint(new(), sports), oldLast = last.TranslatePoint(new(), sports);
+        sports.SelectAudio("sport-3");
+        Check(sports.SwapChannels("sport-1", "sport-4"), "Playing videos can swap directly in the multiscreen grid");
+        await Task.Delay(300);
+        Check((first.TranslatePoint(new(), sports) - oldLast).Length < 1 && (last.TranslatePoint(new(), sports) - oldFirst).Length < 1,
+            "A live swap exchanges the actual video surfaces between their cells");
+        Check(four.All(t => Host(t).VideoHandle == handles[t.Channel.Id] && Playing(t)) && four.Single(t => !t.IsMuted).Channel.Id == "sport-3",
+            "Swapping keeps native handles, running decoders and the existing audio source");
+        var saved = JsonSerializer.Deserialize<string?[]>(main.Model.Setting("sports.layout"))!;
+        Check(saved.SequenceEqual(sports.ChannelLayout) && !sports.SwapChannels("missing", "sport-1") && !sports.SwapChannels("sport-1", "sport-1"),
+            "Live positions persist and invalid/self drops do not alter the selection");
+        var windowState = sports.WindowState; var bounds = sports.RestoreBounds;
+        var expanded = four.Single(t => t.Channel.Id == "sport-2"); double oldVideoArea = Host(expanded).ActualWidth * Host(expanded).ActualHeight;
+        var positions = four.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
+        sports.ToggleChannelFullscreen("sport-2"); await Task.Delay(1300);
+        Check(sports.ExpandedChannelId == "sport-2" && sports.WindowStyle == WindowStyle.None && sports.WindowState == WindowState.Maximized &&
+            four.Count(t => t.IsVisible) == 1 && expanded.IsVisible && Host(expanded).ActualWidth * Host(expanded).ActualHeight > oldVideoArea,
+            "A channel fills the fullscreen window while the other native surfaces are hidden");
+        Check(four.All(t => Host(t).VideoHandle == handles[t.Channel.Id] && Playing(t) && !t.Player.IsPaused && t.Player.GetStatistics().PlaybackPositionSeconds > positions[t.Channel.Id]) && !expanded.IsMuted,
+            "Other channels keep playing live during single-channel fullscreen with exclusive audio");
+        var card = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "DzhiggaTV · Описание передачи");
+        Check(card.Width <= sports.ActualWidth * .25 + 1 && card.Left < sports.Left + sports.ActualWidth * .25,
+            "Single-channel fullscreen description is a compact card on the left, at most a quarter wide");
+        sports.ToggleChannelFullscreen("sport-2"); await Task.Delay(350);
+        Check(sports.ExpandedChannelId is null && four.All(t => t.IsVisible && Host(t).VideoHandle == handles[t.Channel.Id]) && sports.WindowState == windowState &&
+            Math.Abs(sports.RestoreBounds.Width - bounds.Width) < 1 && sports.ChannelLayout.SequenceEqual(saved),
+            "Repeating fullscreen on the same channel restores the previous window and exact swapped layout");
+        sports.ToggleFullscreen(); sports.ToggleChannelFullscreen("sport-1"); await Task.Delay(200); sports.ToggleChannelFullscreen("sport-1"); await Task.Delay(200);
+        Check(sports.ExpandedChannelId is null && sports.WindowStyle == WindowStyle.None && four.All(t => t.IsVisible),
+            "Expanding from an already fullscreen grid restores that fullscreen grid");
+        sports.ToggleFullscreen();
+        sports.ToggleChannelFullscreen("sport-4"); sports.SetChannels(main.Model.AllChannels.Take(3)); await Task.Delay(250);
+        Check(sports.ExpandedChannelId is null && Tiles(sports).All(t => t.IsVisible), "Removing the expanded channel safely returns to the remaining grid");
+        sports.SetLayout([main.Model.AllChannels[0], null, main.Model.AllChannels[1], main.Model.AllChannels[2]]);
+        Check(sports.SwapChannels("sport-1", "sport-3") && sports.ChannelLayout.SequenceEqual(new string?[] { "sport-3", null, "sport-2", "sport-1" }),
+            "Live swaps preserve saved empty editor positions without creating empty video cells");
+        sports.SetChannels(main.Model.AllChannels.Take(4)); await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
+        sports.SelectAudio("sport-3");
+        var programmeList = Descendants<StackPanel>(sports).Single(p => p.Name == "MultiscreenUpcomingProgrammes");
+        await WaitAsync(() => programmeList.Children.OfType<Border>().Count() > 2);
+        var programmes = programmeList.Children.OfType<Border>().Select(b => (Programme)b.DataContext).ToArray();
+        Check(programmes.Length == 17 && programmes.All(p => p.ChannelId == "guide-sport-3") && programmes.Select(p => p.Start).SequenceEqual(programmes.OrderBy(p => p.Start).Select(p => p.Start)),
+            "The sidebar loads a chronological extended schedule for the selected audio channel");
+        var viewport = (ScrollViewer)programmeList.Parent;
+        int visible = programmeList.Children.OfType<Border>().Count(b => b.TransformToAncestor(viewport).TransformBounds(new Rect(b.RenderSize)).IntersectsWith(new Rect(viewport.RenderSize)));
+        Check(visible > 2 && viewport.ActualHeight > 150, "The programme list uses the available sidebar height to show more than two future programmes");
+        sports.SelectAudio("sport-1"); await WaitAsync(() => programmeList.Children.OfType<Border>().All(b => ((Programme)b.DataContext).ChannelId == "guide-sport-1"));
+        Check(programmeList.Children.OfType<Border>().Count() == 17, "Switching audio replaces the entire extended programme list without stale rows");
+    }
+
     private static async Task VerifyVideoLayoutAsync(string[] args, MainWindow main, SportsEveningWindow sports)
     {
         static NativeVideoHost Host(SportsTile tile) => Descendants<NativeVideoHost>(tile).Single();
@@ -340,6 +417,8 @@ internal static class Program
         static async Task AtTop(ListBox list, string message)
         {
             await Task.Delay(350); list.UpdateLayout();
+            Console.WriteLine(JsonSerializer.Serialize(new { top = list.Name, message, items = list.Items.Count,
+                Scroll(list).VerticalOffset, firstY = (list.ItemContainerGenerator.ContainerFromIndex(0) as FrameworkElement)?.TranslatePoint(new(), Scroll(list)).Y }));
             Check(Scroll(list).VerticalOffset < .1 && list.Items.Count > 0 &&
                 list.ItemContainerGenerator.ContainerFromIndex(0) is FrameworkElement first &&
                 Math.Abs(first.TranslatePoint(new(), Scroll(list)).Y) < 8, message);
@@ -349,6 +428,7 @@ internal static class Program
         foreach (string group in new[] { "Спорт", "Другие", "Все категории" })
         {
             await AtBottom(list); category.SetCurrentValue(ComboBox.SelectedItemProperty, group);
+            Console.WriteLine(JsonSerializer.Serialize(new { requestedGroup = group, selectedGroup = category.SelectedItem, modelGroup = main.Model.SelectedGroup, firstGroup = main.Model.VisibleChannels.FirstOrDefault()?.Group }));
             await AtTop(list, "Main category starts at the first row: " + group);
         }
         // Exercise the separate sidebar path, including reselecting the same category.
@@ -403,6 +483,38 @@ internal static class Program
         finally { picker.Close(); }
     }
     private static bool Playing(SportsTile tile) => tile.Player.State == PlaybackState.Playing && tile.Player.GetStatistics().Width > 0;
+    private static async Task VerifyLogoResolutionAsync(MainWindow owner, string profile)
+    {
+        string path = Path.Combine(profile, "large-logo.png");
+        var pixels = new byte[1024 * 256 * 4];
+        for (int i = 0; i < pixels.Length; i += 4) { pixels[i] = 190; pixels[i + 1] = 90; pixels[i + 3] = 160; }
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(1024, 256, 96, 96, PixelFormats.Bgra32, null, pixels, 1024 * 4)));
+        using (var stream = File.Create(path)) encoder.Save(stream);
+        var first = new ChannelLogo { Path = path, Width = 80, Height = 40 };
+        var second = new ChannelLogo { Path = path, Width = 80, Height = 40 };
+        var larger = new ChannelLogo { Path = path, Width = 160, Height = 80 };
+        var stack = new StackPanel(); stack.Children.Add(first); stack.Children.Add(second); stack.Children.Add(larger);
+        var window = new Window { Owner = owner, Width = 320, Height = 260, ShowInTaskbar = false, Content = stack };
+        try
+        {
+            window.Show(); await WaitAsync(() => first.Source is BitmapSource && second.Source != null && larger.Source != null);
+            var image = (BitmapSource)first.Source;
+            var dpi = VisualTreeHelper.GetDpi(first);
+            Check(image.IsFrozen && image.PixelWidth >= Math.Ceiling(first.ActualWidth * dpi.DpiScaleX) && image.PixelWidth < 1024,
+                "Logo decode retains display pixels at monitor DPI without retaining the full-size source");
+            Check(Math.Abs((double)image.PixelWidth / image.PixelHeight - 4) < .1 && image.Format.BitsPerPixel >= 32,
+                "Logo scaling preserves aspect ratio and alpha transparency");
+            Check(ReferenceEquals(first.Source, second.Source) && ((BitmapSource)larger.Source).PixelWidth > image.PixelWidth,
+                "Equal logo sizes share a frozen image while larger scheme logos get a sharper decode");
+            File.Delete(path);
+            Check(!File.Exists(path), "Decoded logos release the source file handle");
+        }
+        finally { window.Close(); }
+        await WaitAsync(() => first.Source == null && second.Source == null);
+        Check(first.Source == null && second.Source == null, "Unloaded logo controls release their decoded image references");
+    }
+
     private static SportsTile[] Tiles(SportsEveningWindow window) => Descendants<SportsTile>(window).ToArray();
     private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
     {

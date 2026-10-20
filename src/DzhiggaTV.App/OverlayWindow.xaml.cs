@@ -15,6 +15,7 @@ public partial class OverlayWindow : Window
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
     private Programme? _descriptionProgramme;
     private bool _volumeReady, _syncingVolume;
+    private (double Width, double Height, Visibility Metadata)? _compactLayout;
     public OverlayWindow(MainWindow main)
     {
         _main = main;
@@ -55,6 +56,7 @@ public partial class OverlayWindow : Window
     }
     public void Tick()
     {
+        if (!IsVisible) return;
         RefreshHoverState(); RefreshState();
         if (StatisticsPanel.Visibility == Visibility.Visible) UpdateStatistics();
         UpdateCompactLayout();
@@ -70,26 +72,26 @@ public partial class OverlayWindow : Window
     private void UpdateVisibility()
     {
         if (ControlsPanel is null) return;
-        // A child of ControlsPanel shares all pointer, idle, menu and keyboard visibility rules.
-        FullscreenProgrammeInfo.Visibility = _main.IsFullscreen && _main.Model.Active?.Current is not null ? Visibility.Visible : Visibility.Collapsed;
-        var keyboardControls = _keyboardNavigation && ControlsPanel.IsKeyboardFocusWithin;
+        var keyboardControls = _keyboardNavigation && (ControlsPanel.IsKeyboardFocusWithin || FullscreenProgrammeInfo.IsKeyboardFocusWithin);
         var readingDescription = _pointerInside && FullscreenProgrammeReadingArea.IsMouseOver;
         var idle = (_main.IsFullscreen || _main.IsMini) && _main.HasPlayback &&
             Drawer.Visibility != Visibility.Visible && !_menuOpen && !keyboardControls && !readingDescription &&
             DateTime.UtcNow - _lastMove > TimeSpan.FromSeconds(3.5);
         ControlsPanel.Visibility = _menuOpen || keyboardControls || (_pointerInside && !idle) ? Visibility.Visible : Visibility.Collapsed;
+        FullscreenProgrammeInfo.Visibility = ControlsPanel.Visibility == Visibility.Visible && _main.IsFullscreen && _main.Model.Active?.Current is not null ? Visibility.Visible : Visibility.Collapsed;
         Cursor = _pointerInside && idle ? Cursors.None : Cursors.Arrow;
     }
     private void UpdateCompactLayout()
     {
-        double readingHeight = Math.Clamp(ActualHeight * .20, 84, 216);
-        FullscreenSynopsisScroll.MaxHeight = FullscreenMetadataScroll.MaxHeight = readingHeight;
-        bool stacked = ActualWidth < 900;
-        FullscreenMetadataColumn.Width = new(stacked || FullscreenMetadataScroll.Visibility != Visibility.Visible ? 0 : Math.Clamp(ActualWidth * .24, 230, 320));
-        FullscreenMetadataGap.Width = new(stacked || FullscreenMetadataScroll.Visibility != Visibility.Visible ? 0 : 24);
-        Grid.SetColumn(FullscreenMetadataScroll, stacked ? 0 : 2);
-        Grid.SetRow(FullscreenMetadataScroll, stacked ? 1 : 0);
-        FullscreenMetadataScroll.Margin = new(0, stacked ? 12 : 0, 0, 0);
+        var layout = (ActualWidth, ActualHeight, FullscreenMetadataScroll.Visibility);
+        if (_compactLayout == layout) return;
+        _compactLayout = layout;
+        FullscreenProgrammeInfo.Width = FullscreenProgrammeInfo.MaxWidth = Math.Max(0, ActualWidth * .25);
+        FullscreenSynopsisScroll.MaxHeight = Math.Max(30, Math.Min(180, ActualHeight * .20));
+        FullscreenMetadataScroll.MaxHeight = Math.Max(24, Math.Min(110, ActualHeight * .12));
+        FullscreenMetadataColumn.Width = FullscreenMetadataGap.Width = new(0);
+        Grid.SetColumn(FullscreenMetadataScroll, 0); Grid.SetRow(FullscreenMetadataScroll, 1);
+        FullscreenMetadataScroll.Margin = new(0, 12, 0, 0);
         var compact = ActualWidth <= 480;
         FavoriteButton.Visibility = MiniButton.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
         VolumeSlider.Visibility = ActualWidth < 340 ? Visibility.Collapsed : Visibility.Visible;

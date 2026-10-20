@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using DzhiggaTV.Player;
 
@@ -12,7 +13,8 @@ public sealed class SportsEveningWindow : Window
 {
     private readonly MainViewModel _model;
     private readonly SportsScreenPanel _screens;
-    private readonly SportsProgrammePanel _programme = new();
+    private readonly SportsProgrammePanel _programme;
+    private readonly Grid _root, _toolbar, _footer;
     private readonly Dictionary<string, SportsTile> _tiles = new(StringComparer.Ordinal);
     private IReadOnlyList<ChannelItem?> _layout = [];
     private readonly SportsAudioFocus _audio = new();
@@ -23,6 +25,14 @@ public sealed class SportsEveningWindow : Window
     private readonly TextBlock _empty = new() { Text = "Выберите каналы для одновременного просмотра", FontSize = 18, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     private readonly Button _mute, _fullscreen;
     private bool _closed, _isFullscreen;
+    private string? _expandedChannelId;
+    private bool _expandedWasFullscreen;
+    private SportsTile? _pressedTile;
+    private Point _pressPosition;
+    private SportsDragWindow? _drag;
+    private SportsFullscreenOverlay? _focusedOverlay;
+    public string? ExpandedChannelId => _expandedChannelId;
+    public IReadOnlyList<string?> ChannelLayout => _layout.Select(c => c?.Id).ToArray();
     private (Rect Bounds, WindowState State)? _restore;
     public double Volume => _audio.Volume;
     public bool IsMuted => _audio.IsMuted;
@@ -30,15 +40,16 @@ public sealed class SportsEveningWindow : Window
     public SportsEveningWindow(MainWindow main, double volume, bool muted)
     {
         _model = main.Model;
+        _programme = new(_model);
         _screens = new(_programme); _screens.Children.Add(_programme);
         Theme.Window(this); WindowBounds.Attach(this, () => _isFullscreen);
         Owner = main; Title = "DzhiggaTV · Мультиэкран";
         Width = Math.Min(1440, SystemParameters.WorkArea.Width - 24); Height = Math.Min(900, SystemParameters.WorkArea.Height - 36);
         MinWidth = Math.Min(860, Width); MinHeight = Math.Min(500, Height); WindowStartupLocation = WindowStartupLocation.CenterOwner;
         _audio.Volume = volume; _audio.IsMuted = muted;
-        var root = new Grid { Margin = new(12) }; Content = root;
+        var root = _root = new Grid { Margin = new(12) }; Content = root;
         root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
-        var toolbar = new Grid { Margin = new(4, 0, 0, 12) };
+        var toolbar = _toolbar = new Grid { Margin = new(4, 0, 0, 12) };
         toolbar.ColumnDefinitions.Add(new()); toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         toolbar.Children.Add(new TextBlock { Text = "Мультиэкран", FontSize = 22, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
         var actions = new StackPanel { Orientation = Orientation.Horizontal }; Grid.SetColumn(actions, 1); toolbar.Children.Add(actions);
@@ -47,10 +58,10 @@ public sealed class SportsEveningWindow : Window
         var close = Button("Вернуться", "Закрыть мультиэкран и вернуться к плееру");
         actions.Children.Add(choose); actions.Children.Add(_fullscreen); actions.Children.Add(close); root.Children.Add(toolbar);
         var viewing = new Grid(); Grid.SetRow(viewing, 1); root.Children.Add(viewing); viewing.Children.Add(_screens); viewing.Children.Add(_empty);
-        var footer = new Grid { Margin = new(4, 10, 4, 0) };
+        var footer = _footer = new Grid { Margin = new(4, 10, 4, 0) };
         footer.ColumnDefinitions.Add(new()); footer.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); footer.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         footer.Children.Add(_sound); _sound.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
-        var hint = new TextBlock { Text = "Щелчок по видео — выбрать звук", FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new(16, 0, 16, 0) };
+        var hint = new TextBlock { Text = "Перетащите видео — поменять местами · Двойной щелчок — полный экран", FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new(16, 0, 16, 0) };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(hint, 1); footer.Children.Add(hint);
         var soundControls = new StackPanel { Orientation = Orientation.Horizontal }; Grid.SetColumn(soundControls, 2); footer.Children.Add(soundControls);
         _mute = Button("", "Выключить / включить звук (M)"); _mute.MinWidth = 98; soundControls.Children.Add(_mute);
@@ -60,10 +71,19 @@ public sealed class SportsEveningWindow : Window
         Grid.SetRow(footer, 2); root.Children.Add(footer); _empty.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         choose.Click += (_, _) => ChooseChannels(); _fullscreen.Click += (_, _) => ToggleFullscreen(); close.Click += (_, _) => Close();
         _mute.Click += (_, _) => ToggleMute();
+        PreviewMouseLeftButtonDown += TilePressed;
+        PreviewMouseMove += TileMoved;
+        PreviewMouseLeftButtonUp += TileReleased;
+        LostMouseCapture += (_, _) => { if (_pressedTile is not null && Mouse.Captured != this) CancelInteraction(); };
+        Deactivated += (_, _) => CancelInteraction();
+        SizeChanged += (_, _) => { CancelInteraction(); _focusedOverlay?.Sync(); };
+        LocationChanged += (_, _) => { CancelInteraction(); _focusedOverlay?.Sync(); };
+        DpiChanged += (_, _) => { CancelInteraction(); _focusedOverlay?.Sync(); };
         PreviewKeyDown += (_, e) =>
         {
-            if (e.Key == Key.F11 || e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Alt) { ToggleFullscreen(); e.Handled = true; }
-            else if (e.Key == Key.Escape) { if (_isFullscreen) ToggleFullscreen(); else Close(); e.Handled = true; }
+            if (e.Key == Key.Escape && (_drag is not null || _pressedTile is not null)) { CancelInteraction(); e.Handled = true; }
+            else if (e.Key == Key.F11 || e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Alt) { ToggleFullscreen(); e.Handled = true; }
+            else if (e.Key == Key.Escape) { if (_expandedChannelId is not null) RestoreChannel(); else if (_isFullscreen) ToggleFullscreen(); else Close(); e.Handled = true; }
             else if (e.Key == Key.M && Keyboard.Modifiers == ModifierKeys.None) { ToggleMute(); e.Handled = true; }
         };
         Loaded += (_, _) =>
@@ -78,11 +98,14 @@ public sealed class SportsEveningWindow : Window
         {
             foreach (var tile in _tiles.Values) tile.RefreshVideoAspect();
             RefreshProgramme();
+            _focusedOverlay?.Tick();
         };
         Closing += (_, _) =>
         {
             if (_closed) return;
             _closed = true;
+            _focusedOverlay?.Close(); _focusedOverlay = null;
+            CancelInteraction(); _programme.Dispose();
             _guideTimer.Stop();
             _layoutTimer.Stop();
             SaveSelection();
@@ -95,6 +118,7 @@ public sealed class SportsEveningWindow : Window
 
     private void ChooseChannels()
     {
+        CancelInteraction();
         var initial = _layout.Count > 0 ? _layout :
             _model.Active is { } active && _model.IsAllowed(active) ? new[] { active } : [];
         var picker = new SportsChannelPicker(this, _model, initial);
@@ -107,8 +131,10 @@ public sealed class SportsEveningWindow : Window
     public void SetLayout(IEnumerable<ChannelItem?> slots, string? preferredAudioId = null)
     {
         if (_closed) return;
+        CancelInteraction();
         _layout = SportsSelection.ResolveLayout(_model, slots.Select(c => c?.Id));
         var selection = _layout.OfType<ChannelItem>().ToArray();
+        if (_expandedChannelId is { } expanded && selection.All(c => c.Id != expanded)) RestoreChannel();
         var next = selection.Select(c => _tiles.TryGetValue(c.Id, out var existing) ? existing : new SportsTile(c, _model)).ToArray();
         _audio.Replace(next.Select(t => new KeyValuePair<string, ISportsAudio>(t.Channel.Id, t)), preferredAudioId);
         foreach (var removed in _tiles.Values.Where(t => !next.Contains(t)).ToArray())
@@ -121,13 +147,23 @@ public sealed class SportsEveningWindow : Window
             _tiles.Add(tile.Channel.Id, tile);
             tile.AudioRequested += (_, _) => SelectAudio(tile.Channel.Id);
             tile.RemoveRequested += (_, _) => SetLayout(_layout.Select(c => c?.Id == tile.Channel.Id ? null : c).ToArray());
-            tile.FullscreenRequested += (_, _) => ToggleFullscreen();
+            tile.FullscreenRequested += (_, _) => ToggleChannelFullscreen(tile.Channel.Id);
+            tile.VideoPressed += (_, e) => BeginPress(tile, PointFromScreen(new(e.ScreenX, e.ScreenY)));
+            tile.VideoMoved += (_, _) => { if (_expandedChannelId == tile.Channel.Id) _focusedOverlay?.Reveal(); };
             tile.AspectChanged += (_, _) => _screens.InvalidateMeasure();
             _screens.Children.Add(tile);
         }
         // Dictionary slots may be reused after removals; persist the visible order explicitly.
         _tiles.Clear();
         foreach (var tile in next) _tiles.Add(tile.Channel.Id, tile);
+        ArrangeScreens();
+        _empty.Visibility = next.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+        _model.LoadLogos(selection); _ = LoadGuideAsync(selection);
+        SaveSelection(); RefreshAudio();
+    }
+
+    private void ArrangeScreens()
+    {
         var columns = SportsLayout.ColumnsFor(_layout.Count);
         for (int i = 0; i < _layout.Count; i++)
         {
@@ -135,10 +171,70 @@ public sealed class SportsEveningWindow : Window
             var screen = _tiles[channel.Id];
             Grid.SetRow(screen, i / columns); Grid.SetColumn(screen, i % columns);
         }
-        _screens.SetScreens(next);
-        _empty.Visibility = next.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
-        _model.LoadLogos(selection); _ = LoadGuideAsync(selection);
-        SaveSelection(); RefreshAudio();
+        _screens.SetScreens(_layout.OfType<ChannelItem>().Select(c => _tiles[c.Id]));
+    }
+
+    public bool SwapChannels(string sourceId, string targetId)
+    {
+        if (_closed || _expandedChannelId is not null || sourceId == targetId) return false;
+        var slots = _layout.ToArray();
+        int source = Array.FindIndex(slots, c => c?.Id == sourceId), target = Array.FindIndex(slots, c => c?.Id == targetId);
+        if (source < 0 || target < 0) return false;
+        (slots[source], slots[target]) = (slots[target], slots[source]); _layout = slots;
+        ArrangeScreens(); SaveSelection();
+        foreach (string id in new[] { sourceId, targetId })
+            if (SystemParameters.ClientAreaAnimation && !_model.Flag("reducedMotion"))
+                _tiles[id].PulsePlacement();
+        return true;
+    }
+
+    private void BeginPress(SportsTile tile, Point position)
+    {
+        if (_closed || _expandedChannelId is not null || _drag is not null) return;
+        _pressedTile = tile; _pressPosition = position;
+        if (!Mouse.Capture(this, CaptureMode.Element)) _pressedTile = null;
+    }
+    private void TilePressed(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source) return;
+        SportsTile? tile = null;
+        for (var element = source; element is not null; element = element is FrameworkContentElement content ? content.Parent : VisualTreeHelper.GetParent(element))
+        {
+            if (element is System.Windows.Controls.Button or System.Windows.Controls.Primitives.ScrollBar) return;
+            if (element is SportsTile found) { tile = found; break; }
+        }
+        if (tile is null) return;
+        e.Handled = true;
+        if (e.ClickCount == 2) ToggleChannelFullscreen(tile.Channel.Id);
+        else BeginPress(tile, e.GetPosition(this));
+    }
+    private void TileMoved(object sender, MouseEventArgs e)
+    {
+        if (_pressedTile is not { } tile) return;
+        if (e.LeftButton != MouseButtonState.Pressed) { CancelInteraction(); return; }
+        var position = e.GetPosition(this);
+        if (Math.Abs(position.X - _pressPosition.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(position.Y - _pressPosition.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        _pressedTile = null; Mouse.Capture(null);
+        var targets = _tiles.Values.Where(t => t.IsVisible).ToDictionary(t => t.Channel.Id, t => new Rect(t.TranslatePoint(new(), _root), t.RenderSize));
+        var drag = new SportsDragWindow(this, _root, tile.Channel, targets, SystemParameters.ClientAreaAnimation && !_model.Flag("reducedMotion"));
+        _drag = drag;
+        drag.Completed += target => { if (ReferenceEquals(_drag, drag)) { _drag = null; if (target is not null && !_closed) SwapChannels(tile.Channel.Id, target); } };
+        drag.Begin(PointToScreen(position)); e.Handled = true;
+    }
+    private void TileReleased(object sender, MouseButtonEventArgs e)
+    {
+        if (_pressedTile is not { } tile) return;
+        var position = e.GetPosition(tile);
+        _pressedTile = null; if (Mouse.Captured == this) Mouse.Capture(null);
+        if (new Rect(tile.RenderSize).Contains(position)) SelectAudio(tile.Channel.Id);
+        e.Handled = true;
+    }
+    private void CancelInteraction()
+    {
+        _pressedTile = null;
+        if (Mouse.Captured == this) Mouse.Capture(null);
+        var drag = _drag; _drag = null; drag?.Cancel();
     }
 
     public void SelectAudio(string id) { _audio.Select(id); SaveSelection(); RefreshAudio(); }
@@ -165,7 +261,37 @@ public sealed class SportsEveningWindow : Window
 
     public void ToggleFullscreen()
     {
-        if (!_isFullscreen)
+        if (_expandedChannelId is not null) { RestoreChannel(); return; }
+        SetWindowFullscreen(!_isFullscreen);
+    }
+    public void ToggleChannelFullscreen(string id)
+    {
+        if (_closed || !_tiles.ContainsKey(id)) return;
+        CancelInteraction();
+        if (_expandedChannelId == id) { RestoreChannel(); return; }
+        if (_expandedChannelId is not null) RestoreChannel();
+        _expandedWasFullscreen = _isFullscreen; _expandedChannelId = id;
+        SelectAudio(id);
+        _tiles[id].SetExpanded(true); _screens.Focus(_tiles[id]);
+        _toolbar.Visibility = _footer.Visibility = Visibility.Collapsed; _root.Margin = new(0);
+        if (!_isFullscreen) SetWindowFullscreen(true);
+        _focusedOverlay = new(this, _tiles[id].Channel);
+        _focusedOverlay.Reveal();
+    }
+    private void RestoreChannel()
+    {
+        if (_expandedChannelId is not { } id) return;
+        _focusedOverlay?.Close(); _focusedOverlay = null;
+        CancelInteraction(); _expandedChannelId = null;
+        if (_tiles.TryGetValue(id, out var tile)) tile.SetExpanded(false);
+        _screens.Focus(null);
+        _toolbar.Visibility = _footer.Visibility = Visibility.Visible; _root.Margin = new(12);
+        if (!_expandedWasFullscreen && _isFullscreen) SetWindowFullscreen(false);
+    }
+    private void SetWindowFullscreen(bool fullscreen)
+    {
+        CancelInteraction();
+        if (fullscreen)
         {
             _restore = (RestoreBounds, WindowState); _isFullscreen = true; WindowState = WindowState.Normal;
             WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.NoResize;
@@ -190,11 +316,15 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
     private readonly MainViewModel _model;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Button _sound;
+    private readonly Grid _root, _header;
+    private readonly TextBlock _programme;
     private readonly TextBlock _status = new() { FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(10, 0, 10, 4), Text = "Подключение к трансляции…" };
     private bool _disposed, _audioSelected, _compact;
     public event EventHandler? AudioRequested;
     public event EventHandler? RemoveRequested;
     public event EventHandler? FullscreenRequested;
+    public event EventHandler<NativePointerEventArgs>? VideoPressed;
+    public event EventHandler? VideoMoved;
     public event EventHandler? AspectChanged;
     public double VideoAspect { get; private set; } = MultiscreenGeometry.DefaultAspect;
     public bool IsMuted { get => Player.IsMuted; set => Player.IsMuted = value; }
@@ -204,12 +334,12 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
     {
         Channel = channel; _model = model;
         Margin = new(4); BorderThickness = new(2); CornerRadius = new(8); SetResourceReference(BorderBrushProperty, "BorderBrush"); SetResourceReference(BackgroundProperty, "PanelBrush");
-        var root = new Grid { ClipToBounds = true }; Child = root;
+        var root = _root = new Grid { ClipToBounds = true }; Child = root;
         root.RowDefinitions.Add(new() { Height = new(42) }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = new(22) }); root.RowDefinitions.Add(new() { Height = new(16) });
-        var header = new Grid { Margin = new(8, 4, 5, 4) };
+        var header = _header = new Grid { Margin = new(8, 4, 5, 4) };
         foreach (var width in new[] { new GridLength(28), new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto, GridLength.Auto }) header.ColumnDefinitions.Add(new() { Width = width });
-        var logo = new Image { Width = 24, Height = 24, Stretch = Stretch.Uniform };
-        logo.SetBinding(Image.SourceProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }); header.Children.Add(logo);
+        var logo = new ChannelLogo { Width = 24, Height = 24, Stretch = Stretch.Uniform };
+        logo.SetBinding(ChannelLogo.PathProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }); header.Children.Add(logo);
         var title = new TextBlock { Text = $"{channel.Number}  {channel.Name}", FontSize = 13, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new(7, 0, 4, 0), ToolTip = channel.Name };
         Grid.SetColumn(title, 1); header.Children.Add(title);
         _sound = SportsEveningWindow.Button("Звук", $"Выбрать звук: {channel.Name}"); _sound.Width = 64; _sound.Padding = new(5, 3, 5, 3);
@@ -230,14 +360,29 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
         System.Windows.Automation.AutomationProperties.SetName(remove, $"Убрать: {channel.Name}");
         root.Children.Add(header);
         var video = new Border { Background = Brushes.Black, Child = _host }; Grid.SetRow(video, 1); root.Children.Add(video);
-        var programme = new TextBlock { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(10, 6, 10, 0) };
+        var programme = _programme = new TextBlock { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(10, 6, 10, 0) };
         programme.SetBinding(TextBlock.TextProperty, new Binding(nameof(ChannelItem.NowTitle)) { Source = channel }); programme.SetBinding(ToolTipProperty, new Binding(nameof(ChannelItem.NowTitle)) { Source = channel });
         Grid.SetRow(programme, 2); root.Children.Add(programme); Grid.SetRow(_status, 3); root.Children.Add(_status); _status.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         _host.HandleReady += async (_, _) => await PlayAsync();
-        _host.PointerActivity += (_, e) => { if (e.Kind == NativePointerKind.LeftDown) AudioRequested?.Invoke(this, EventArgs.Empty); };
+        _host.PointerActivity += (_, e) =>
+        {
+            if (e.Kind == NativePointerKind.LeftDown) VideoPressed?.Invoke(this, e);
+            else if (e.Kind == NativePointerKind.Move) VideoMoved?.Invoke(this, EventArgs.Empty);
+        };
         _host.DoubleClicked += (_, _) => FullscreenRequested?.Invoke(this, EventArgs.Empty);
         Player.StateChanged += OnStateChanged;
     }
+
+    public void SetExpanded(bool expanded)
+    {
+        Margin = new(expanded ? 0 : 4); BorderThickness = new(expanded ? 0 : 2); CornerRadius = new(expanded ? 0 : 8);
+        _header.Visibility = _programme.Visibility = _status.Visibility = expanded ? Visibility.Collapsed : Visibility.Visible;
+        _root.RowDefinitions[0].Height = new(expanded ? 0 : 42);
+        _root.RowDefinitions[2].Height = new(expanded ? 0 : 22);
+        _root.RowDefinitions[3].Height = new(expanded ? 0 : 16);
+    }
+    public void PulsePlacement() => _header.BeginAnimation(OpacityProperty,
+        new DoubleAnimation(.45, 1, TimeSpan.FromMilliseconds(220)) { FillBehavior = FillBehavior.Stop });
 
     private async Task PlayAsync()
     {

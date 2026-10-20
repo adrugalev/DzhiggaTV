@@ -31,7 +31,7 @@ $installerDotnet = Join-Path $installerRepoRoot 'work\dotnet\dotnet.exe'
 if (-not (Test-Path -LiteralPath $installerDotnet -PathType Leaf)) { $installerDotnet = (Get-Command dotnet -ErrorAction Stop).Source }
 $installerPublishPath = Join-Path $installerRepoRoot 'work\managed-installer-publish'
 New-Item -ItemType Directory -Path $installerPublishPath -Force | Out-Null
-$installerArguments = @('publish', (Join-Path $installerRepoRoot 'src\DzhiggaTV.Installer\DzhiggaTV.Installer.csproj'), '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:DebugType=none', '-p:DebugSymbols=false', ('-p:PortableArchive=' + $installerArchivePath), '-o', $installerPublishPath, '--nologo')
+$installerArguments = @('publish', (Join-Path $installerRepoRoot 'src\DzhiggaTV.Installer\DzhiggaTV.Installer.csproj'), '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=true', '-p:EnableCompressionInSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:DebugType=none', '-p:DebugSymbols=false', ('-p:PortableArchive=' + $installerArchivePath), '-o', $installerPublishPath, '--nologo')
 & $installerDotnet @installerArguments
 if ($LASTEXITCODE -ne 0) { throw 'Сборка DzhiggaTV Setup завершилась с ошибкой.' }
 $installerFinalPath = [System.IO.Path]::GetFullPath($OutputPath)

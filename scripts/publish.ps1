@@ -14,6 +14,11 @@ foreach ($runnerFile in @('DzhiggaTV.Setup.exe', 'DzhiggaTV.Setup.dll', 'Dzhigga
     Copy-Item -LiteralPath (Join-Path $runnerStage $runnerFile) -Destination $stage
 }
 if ((Get-Item -LiteralPath (Join-Path $stage 'DzhiggaTV.Setup.dll')).Length -gt 2MB) { throw 'В локальный updater попал полный установочный архив.' }
+# The player already supplies this runtime. Do not retain a second 140 MB copy per release in work/.
+$runnerWorkRoot = [IO.Path]::GetFullPath((Join-Path $RepositoryRoot 'work'))
+$resolvedRunnerStage = [IO.Path]::GetFullPath($runnerStage)
+if ([IO.Path]::GetDirectoryName($resolvedRunnerStage) -ne $runnerWorkRoot -or [IO.Path]::GetFileName($resolvedRunnerStage) -notmatch '^update-runner-[0-9a-f]{32}$') { throw 'Unexpected updater staging path.' }
+Remove-Item -LiteralPath $resolvedRunnerStage -Recurse -Force
 foreach ($required in @('DzhiggaTV.exe', 'DzhiggaTV.dll', 'coreclr.dll', 'native\libmpv-2.dll')) {
     if (!(Test-Path -LiteralPath (Join-Path $stage $required))) { throw "Выпуск неполон: отсутствует $required." }
 }

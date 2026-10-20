@@ -245,6 +245,7 @@ public sealed class LogoService : IDisposable
         {
             var files = Directory.EnumerateFiles(_cache, "*", SearchOption.AllDirectories).Select(x => new FileInfo(x)).Where(x => x.Extension is not ".tmp" and not ".json").ToArray();
             var size = files.Sum(x => x.Length);
+            if (size <= MaximumCacheBytes) return;
             foreach (var file in files.OrderBy(x => x.LastAccessTimeUtc))
             {
                 if (size <= MaximumCacheBytes) break;

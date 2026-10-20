@@ -6,7 +6,9 @@ namespace DzhiggaTV.App;
 internal sealed class SportsScreenPanel(SportsProgrammePanel programme) : Panel
 {
     private SportsTile[] _screens = [];
+    private SportsTile? _focused;
     public void SetScreens(IEnumerable<SportsTile> screens) { _screens = screens.ToArray(); InvalidateMeasure(); }
+    public void Focus(SportsTile? tile) { _focused = tile; InvalidateMeasure(); }
 
     private MultiscreenPlacement Placement(Size available)
     {
@@ -22,6 +24,16 @@ internal sealed class SportsScreenPanel(SportsProgrammePanel programme) : Panel
     {
         var size = new Size(double.IsFinite(availableSize.Width) ? availableSize.Width : 1200,
             double.IsFinite(availableSize.Height) ? availableSize.Height : 700);
+        if (_focused is not null)
+        {
+            foreach (UIElement child in InternalChildren)
+            {
+                child.Visibility = ReferenceEquals(child, _focused) ? Visibility.Visible : Visibility.Collapsed;
+                child.Measure(ReferenceEquals(child, _focused) ? size : new());
+            }
+            return size;
+        }
+        foreach (var tile in _screens) tile.Visibility = Visibility.Visible;
         var placement = Placement(size);
         programme.Visibility = placement.Programme.IsEmpty ? Visibility.Collapsed : Visibility.Visible;
         foreach (UIElement child in InternalChildren)
@@ -33,6 +45,11 @@ internal sealed class SportsScreenPanel(SportsProgrammePanel programme) : Panel
     }
     protected override Size ArrangeOverride(Size finalSize)
     {
+        if (_focused is not null)
+        {
+            foreach (UIElement child in InternalChildren) child.Arrange(ReferenceEquals(child, _focused) ? new Rect(finalSize) : new Rect());
+            return finalSize;
+        }
         var placement = Placement(finalSize);
         foreach (UIElement child in InternalChildren)
         {

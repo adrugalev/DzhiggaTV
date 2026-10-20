@@ -27,6 +27,10 @@ public static partial class XmlTvParser
             IgnoreComments = true, IgnoreWhitespace = true, MaxCharactersInDocument = maximumDecompressedBytes,
             CloseInput = false
         });
+        // Parsing is sequential. Reuse one chunk buffer for the whole feed instead of
+        // allocating 4 KiB for every title/description/category in a multi-day guide.
+        var textBuffer = new char[2048];
+        var text = new StringBuilder(256);
         int channels = 0, programmes = 0, rejected = 0;
         bool tv = false;
         while (await reader.ReadAsync().ConfigureAwait(false))
@@ -43,7 +47,7 @@ public static partial class XmlTvParser
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (sub.NodeType != XmlNodeType.Element || sub.Depth != 1) continue;
-                    if (sub.LocalName == "display-name") names.Add(await ReadTextAsync(sub, cancellationToken).ConfigureAwait(false));
+                    if (sub.LocalName == "display-name") names.Add(await ReadTextAsync(sub, textBuffer, text, cancellationToken).ConfigureAwait(false));
                     else if (sub.LocalName == "icon") logo ??= sub.GetAttribute("src");
                 }
                 if (!string.IsNullOrWhiteSpace(id))
@@ -64,9 +68,9 @@ public static partial class XmlTvParser
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (sub.NodeType != XmlNodeType.Element || sub.Depth != 1) continue;
-                    if (sub.LocalName == "title") { var text = await ReadTextAsync(sub, cancellationToken).ConfigureAwait(false); if (title.Length == 0) title = text; }
-                    else if (sub.LocalName == "desc") description ??= await ReadTextAsync(sub, cancellationToken).ConfigureAwait(false);
-                    else if (sub.LocalName == "category") category ??= await ReadTextAsync(sub, cancellationToken).ConfigureAwait(false);
+                    if (sub.LocalName == "title") { var value = await ReadTextAsync(sub, textBuffer, text, cancellationToken).ConfigureAwait(false); if (title.Length == 0) title = value; }
+                    else if (sub.LocalName == "desc") description ??= await ReadTextAsync(sub, textBuffer, text, cancellationToken).ConfigureAwait(false);
+                    else if (sub.LocalName == "category") category ??= await ReadTextAsync(sub, textBuffer, text, cancellationToken).ConfigureAwait(false);
                 }
                 if (validStart && validEnd && end > start && !string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(title))
                 {
@@ -80,10 +84,10 @@ public static partial class XmlTvParser
         return new(channels, programmes, rejected);
     }
 
-    private static async Task<string> ReadTextAsync(XmlReader reader, CancellationToken cancellationToken)
+    private static async Task<string> ReadTextAsync(XmlReader reader, char[] buffer, StringBuilder builder, CancellationToken cancellationToken)
     {
         if (reader.IsEmptyElement) return "";
-        var builder = new StringBuilder(); var buffer = new char[2048];
+        builder.Clear();
         var depth = reader.Depth;
         while (await reader.ReadAsync().ConfigureAwait(false))
         {
