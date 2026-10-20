@@ -99,6 +99,7 @@ public partial class MainWindow : Window
             if (_initialized && DateTime.Now.Second % 30 == 0) await GuardAsync(Model.UpdateNowNextAsync);
         };
         Closing += OnClosing;
+        WindowState = WindowState.Maximized;
     }
     private string? Argument(string name) { var i = Array.IndexOf(_args, name); return i >= 0 && i + 1 < _args.Length ? _args[i + 1] : null; }
     private async Task LoadedAsync()

@@ -15,7 +15,6 @@ public sealed class SportsEveningWindow : Window
     private readonly SportsProgrammePanel _programme = new();
     private readonly Dictionary<string, SportsTile> _tiles = new(StringComparer.Ordinal);
     private IReadOnlyList<ChannelItem?> _layout = [];
-    private readonly List<Border> _vacancies = [];
     private readonly SportsAudioFocus _audio = new();
     private readonly DispatcherTimer _guideTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private readonly DispatcherTimer _layoutTimer = new() { Interval = TimeSpan.FromSeconds(1) };
@@ -130,24 +129,13 @@ public sealed class SportsEveningWindow : Window
         _tiles.Clear();
         foreach (var tile in next) _tiles.Add(tile.Channel.Id, tile);
         var columns = SportsLayout.ColumnsFor(_layout.Count);
-        foreach (var vacancy in _vacancies) _screens.Children.Remove(vacancy);
-        _vacancies.Clear();
         for (int i = 0; i < _layout.Count; i++)
         {
-            FrameworkElement screen;
-            if (_layout[i] is { } channel) screen = _tiles[channel.Id];
-            else
-            {
-                var label = new TextBlock { Text = $"Экран {i + 1} · выбрать канал", FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-                label.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
-                var vacancy = new Border { Child = label, Margin = new(4), CornerRadius = new(8), BorderThickness = new(1), Cursor = Cursors.Hand, Background = Brushes.Transparent };
-                vacancy.SetResourceReference(BorderBrushProperty, "BorderBrush");
-                vacancy.MouseLeftButtonUp += (_, _) => ChooseChannels();
-                _vacancies.Add(vacancy); _screens.Children.Add(vacancy); screen = vacancy;
-            }
+            if (_layout[i] is not { } channel) continue;
+            var screen = _tiles[channel.Id];
             Grid.SetRow(screen, i / columns); Grid.SetColumn(screen, i % columns);
         }
-        _screens.SetCount(_layout.Count);
+        _screens.SetScreens(next);
         _empty.Visibility = next.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         _model.LoadLogos(selection); _ = LoadGuideAsync(selection);
         SaveSelection(); RefreshAudio();

@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        WindowAppearance.Attach(this);
         DestinationText.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "DzhiggaTV");
         using var archive = App.OpenArchive();
         if (archive == null) { InstallButton.IsEnabled = false; StatusText.Text = "В этой сборке отсутствует установочный архив."; }

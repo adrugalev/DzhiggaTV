@@ -73,6 +73,7 @@ internal static class Program
             main = (MainWindow)Application.Current.MainWindow;
             await WaitAsync(() => main.Model.AllChannels.Count == 180 && main.Player.State == PlaybackState.Playing);
             Check(main.Player.Volume == 0, "Opening the main controls preserves saved master volume");
+            Check(main.WindowState == WindowState.Maximized && !main.IsFullscreen, "Startup opens maximized while retaining the normal application controls");
             await Task.Delay(700);
             if (!args.Contains("--visual-only")) await VerifyCategoryScrollAsync(main);
             var mainVideoHandle = Descendants<NativeVideoHost>(main).Single().VideoHandle;
@@ -104,6 +105,7 @@ internal static class Program
             sports.SetChannels(main.Model.AllChannels.Take(6));
             await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
             await VerifyVideoLayoutAsync(args, main, sports);
+            await VerifyRemovalReflowAsync(main, sports);
             var four = Tiles(sports); var positions = four.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
             var mainPosition = main.Player.GetStatistics().PlaybackPositionSeconds;
             await Task.Delay(1300);
@@ -184,10 +186,9 @@ internal static class Program
             ((Button)picker.FindName("Watch")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await WaitAsync(() => Tiles(sports).Length == 3 && Tiles(sports).All(Playing));
             var placed = Tiles(sports);
-            Check(Grid.GetRow(placed.Single(t => t.Channel.Id == "sport-1")) == 1 && Grid.GetColumn(placed.Single(t => t.Channel.Id == "sport-1")) == 1 &&
-                Grid.GetRow(placed.Single(t => t.Channel.Id == "sport-2")) == 1 && Grid.GetColumn(placed.Single(t => t.Channel.Id == "sport-2")) == 0 &&
-                Grid.GetRow(placed.Single(t => t.Channel.Id == "sport-3")) == 0 && Grid.GetColumn(placed.Single(t => t.Channel.Id == "sport-3")) == 0,
-                "Watch applies exact scheme positions including an empty top-right screen");
+            Check(JsonSerializer.Deserialize<string?[]>(main.Model.Setting("sports.layout"))!.SequenceEqual(["sport-3", null, "sport-2", "sport-1"]) &&
+                !Descendants<TextBlock>(sports).Any(t => t.Text.StartsWith("Экран ", StringComparison.Ordinal)),
+                "Watch preserves the edited order while compacting empty positions during playback");
             Check(placed.All(t => Descendants<NativeVideoHost>(t).Single().VideoHandle == retainedHandles[t.Channel.Id] && Playing(t)), "Rearranging existing channels preserves their native surfaces and playback");
             sports.SetChannels(finalChannels); sports.SelectAudio("sport-3");
             await WaitAsync(() => Tiles(sports).All(Playing));
@@ -253,6 +254,31 @@ internal static class Program
             if (main is not null) { Console.WriteLine("Closing isolated main window…"); main.Close(); await WaitAsync(() => !main.IsVisible); Console.WriteLine("Main window closed."); }
         }
     }
+    private static async Task VerifyRemovalReflowAsync(MainWindow main, SportsEveningWindow sports)
+    {
+        static NativeVideoHost Host(SportsTile tile) => Descendants<NativeVideoHost>(tile).Single();
+        static double Area(SportsTile tile) => Host(tile).ActualWidth * Host(tile).ActualHeight;
+        var original = Tiles(sports).ToDictionary(t => t.Channel.Id, t => new { Tile = t, Handle = Host(t).VideoHandle, Area = Area(t) });
+        foreach (string id in new[] { "sport-4", "sport-3", "sport-2" })
+        {
+            var remove = Tiles(sports).Single(t => t.Channel.Id == id);
+            sports.SelectAudio(id);
+            Descendants<Button>(remove).Single(b => System.Windows.Automation.AutomationProperties.GetName(b).StartsWith("Убрать:", StringComparison.Ordinal))
+                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(350); sports.UpdateLayout();
+            var remaining = Tiles(sports);
+            Check(remove.Player.State == PlaybackState.Disposed && remaining.All(t => Host(t).VideoHandle == original[t.Channel.Id].Handle && Playing(t)),
+                "Removing " + id + " releases only that player and preserves the other streams");
+            Check(remaining.Sum(Area) > remaining.Sum(t => original[t.Channel.Id].Area) * 1.2 &&
+                !Descendants<TextBlock>(sports).Any(t => t.Text.StartsWith("Экран ", StringComparison.Ordinal)),
+                remaining.Length + " remaining videos grow without vacancy placeholders");
+            Check(remaining.Count(t => !t.IsMuted) == 1, "Removal transfers sound to a remaining source");
+            Check(remaining.All(t => Math.Abs(Host(t).ActualWidth / Host(t).ActualHeight - t.VideoAspect) < .015), "Reflow preserves source proportions");
+        }
+        sports.SetChannels(main.Model.AllChannels.Take(4));
+        await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
+    }
+
     private static async Task VerifyVideoLayoutAsync(string[] args, MainWindow main, SportsEveningWindow sports)
     {
         static NativeVideoHost Host(SportsTile tile) => Descendants<NativeVideoHost>(tile).Single();

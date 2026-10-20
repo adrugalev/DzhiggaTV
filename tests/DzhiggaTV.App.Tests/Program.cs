@@ -32,6 +32,7 @@ internal static class Program
             ("Multiscreen drag placement, checkbox selection, reset and four-screen limit agree", MultiscreenLayoutAsync),
             ("Multiscreen persists exact empty positions and migrates larger legacy selections", MultiscreenLayoutSaveAsync),
             ("Multiscreen fits mixed display aspects without bars, clipping or overlapping its programme panel", MultiscreenGeometryAsync),
+            ("Multiscreen gives remaining videos more space and fills two- and three-screen layouts", MultiscreenReflowAsync),
             ("Cold startup displays all three cached cards while background EPG import blocks saving", StartupGuideDuringImportAsync),
             ("Late viewport guide loading notifies all active programme cards", ActiveViewportGuideAsync),
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
@@ -92,10 +93,32 @@ internal static class Program
         }
         var beside = MultiscreenGeometry.Fit(new(2400, 800), [16d / 9, 16d / 9, 16d / 9, 16d / 9]);
         Assert(!beside.Programme.IsEmpty && beside.Programme.Left > beside.Screens.Max(s => s.Right), "A wide window uses spare width for the programme.");
-        var below = MultiscreenGeometry.Fit(new(1200, 1000), [16d / 9, 16d / 9]);
-        Assert(!below.Programme.IsEmpty && below.Programme.Top > below.Screens.Max(s => s.Bottom), "A tall window uses spare height for the programme.");
+        var below = MultiscreenGeometry.Fit(new(1800, 900), [16d / 9, 16d / 9]);
+        Assert(!below.Programme.IsEmpty && below.Programme.Top > below.Screens.Max(s => s.Bottom), "Spare height below the larger-video layout is used for the programme.");
         var unknown = MultiscreenGeometry.Fit(new(1200, 700), [double.NaN, 0]);
         Assert(unknown.Screens.All(s => double.IsFinite(s.Width) && s.Width > 0), "Unknown source metadata needs a valid initial layout.");
+        return Task.CompletedTask;
+    }
+
+    private static Task MultiscreenReflowAsync()
+    {
+        static double Area(System.Windows.Rect r) => (r.Width - MultiscreenGeometry.ChromeWidth) * (r.Height - MultiscreenGeometry.ChromeHeight);
+        var size = new System.Windows.Size(1440, 740);
+        var four = MultiscreenGeometry.Fit(size, Enumerable.Repeat(16d / 9, 4).ToArray());
+        foreach (int count in new[] { 3, 2, 1 })
+        {
+            var result = MultiscreenGeometry.Fit(size, Enumerable.Repeat(16d / 9, count).ToArray());
+            Assert(result.Screens.Count == count && result.Screens.Sum(Area) > four.Screens.Take(count).Sum(Area) * 1.2,
+                "Removing channels must increase the remaining video area instead of retaining empty cells.");
+            double width = result.Screens.Max(r => r.Right) - result.Screens.Min(r => r.Left);
+            double height = result.Screens.Max(r => r.Bottom) - result.Screens.Min(r => r.Top);
+            Assert(Math.Abs(result.Screens.Sum(r => r.Width * r.Height) - width * height) < .001,
+                "Remaining tiles must fill their layout without a vacant quadrant.");
+        }
+        var pair = MultiscreenGeometry.Fit(size, [16d / 9, 16d / 9]).Screens;
+        Assert(Math.Abs(pair[0].Top - pair[1].Top) < .001 && pair[1].Left > pair[0].Left, "A wide window should use a large horizontal pair.");
+        var tallPair = MultiscreenGeometry.Fit(new(900, 1500), [16d / 9, 16d / 9]).Screens;
+        Assert(tallPair[1].Top > tallPair[0].Top && Math.Abs(tallPair[0].Left - tallPair[1].Left) < .001, "A tall window should use a large vertical pair.");
         return Task.CompletedTask;
     }
 
