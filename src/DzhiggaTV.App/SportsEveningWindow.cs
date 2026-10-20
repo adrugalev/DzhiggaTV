@@ -13,6 +13,8 @@ public sealed class SportsEveningWindow : Window
     private readonly MainViewModel _model;
     private readonly Grid _screens = new();
     private readonly Dictionary<string, SportsTile> _tiles = new(StringComparer.Ordinal);
+    private IReadOnlyList<ChannelItem?> _layout = [];
+    private readonly List<Border> _vacancies = [];
     private readonly SportsAudioFocus _audio = new();
     private readonly DispatcherTimer _guideTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private bool _guideLoading;
@@ -65,7 +67,7 @@ public sealed class SportsEveningWindow : Window
         Loaded += (_, _) =>
         {
             var opening = SportsSelection.ForOpening(_model);
-            if (opening.Channels.Count > 0) SetChannels(opening.Channels, opening.AudioId);
+            if (opening.Channels.Count > 0) SetLayout(opening.Layout, opening.AudioId);
             if (opening.ShowChannelPicker) ChooseChannels();
             if (!_closed) _guideTimer.Start();
         };
@@ -75,7 +77,7 @@ public sealed class SportsEveningWindow : Window
             if (_closed) return;
             _closed = true;
             _guideTimer.Stop();
-            SportsSelection.Save(_model, _tiles.Values.Select(t => t.Channel), _audio.SelectedId);
+            SaveSelection();
             _audio.Replace([]);
             foreach (var tile in _tiles.Values) tile.Dispose();
             _tiles.Clear();
@@ -85,16 +87,20 @@ public sealed class SportsEveningWindow : Window
 
     private void ChooseChannels()
     {
-        var initial = _tiles.Count > 0 ? _tiles.Values.Select(t => t.Channel) :
+        var initial = _layout.Count > 0 ? _layout :
             _model.Active is { } active && _model.IsAllowed(active) ? new[] { active } : [];
         var picker = new SportsChannelPicker(this, _model, initial);
-        if (picker.ShowDialog() == true && !_closed) SetChannels(picker.Selection);
+        if (picker.ShowDialog() == true && !_closed) SetLayout(picker.Layout);
     }
 
     public void SetChannels(IEnumerable<ChannelItem> channels, string? preferredAudioId = null)
+        => SetLayout(SportsSelection.Resolve(_model, channels.Select(c => c.Id)), preferredAudioId);
+
+    public void SetLayout(IEnumerable<ChannelItem?> slots, string? preferredAudioId = null)
     {
         if (_closed) return;
-        var selection = SportsSelection.Resolve(_model, channels.Select(c => c.Id));
+        _layout = SportsSelection.ResolveLayout(_model, slots.Select(c => c?.Id));
+        var selection = _layout.OfType<ChannelItem>().ToArray();
         var next = selection.Select(c => _tiles.TryGetValue(c.Id, out var existing) ? existing : new SportsTile(c, _model)).ToArray();
         _audio.Replace(next.Select(t => new KeyValuePair<string, ISportsAudio>(t.Channel.Id, t)), preferredAudioId);
         foreach (var removed in _tiles.Values.Where(t => !next.Contains(t)).ToArray())
@@ -106,26 +112,42 @@ public sealed class SportsEveningWindow : Window
             if (_tiles.ContainsKey(tile.Channel.Id)) continue;
             _tiles.Add(tile.Channel.Id, tile);
             tile.AudioRequested += (_, _) => SelectAudio(tile.Channel.Id);
-            tile.RemoveRequested += (_, _) => SetChannels(_tiles.Values.Where(t => t != tile).Select(t => t.Channel).ToArray());
+            tile.RemoveRequested += (_, _) => SetLayout(_layout.Select(c => c?.Id == tile.Channel.Id ? null : c).ToArray());
             tile.FullscreenRequested += (_, _) => ToggleFullscreen();
             _screens.Children.Add(tile);
         }
         // Dictionary slots may be reused after removals; persist the visible order explicitly.
         _tiles.Clear();
         foreach (var tile in next) _tiles.Add(tile.Channel.Id, tile);
-        var columns = next.Length switch { <= 1 => 1, <= 4 => 2, _ => 3 };
-        var rows = Math.Max(1, (int)Math.Ceiling(next.Length / (double)columns));
+        var columns = SportsLayout.ColumnsFor(_layout.Count);
+        var rows = Math.Max(1, (int)Math.Ceiling(_layout.Count / (double)columns));
         _screens.ColumnDefinitions.Clear(); _screens.RowDefinitions.Clear();
         for (int i = 0; i < columns; i++) _screens.ColumnDefinitions.Add(new());
         for (int i = 0; i < rows; i++) _screens.RowDefinitions.Add(new());
-        for (int i = 0; i < next.Length; i++) { Grid.SetRow(next[i], i / columns); Grid.SetColumn(next[i], i % columns); }
+        foreach (var vacancy in _vacancies) _screens.Children.Remove(vacancy);
+        _vacancies.Clear();
+        for (int i = 0; i < _layout.Count; i++)
+        {
+            FrameworkElement screen;
+            if (_layout[i] is { } channel) screen = _tiles[channel.Id];
+            else
+            {
+                var label = new TextBlock { Text = $"Экран {i + 1} · выбрать канал", FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+                label.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+                var vacancy = new Border { Child = label, Margin = new(4), CornerRadius = new(8), BorderThickness = new(1), Cursor = Cursors.Hand, Background = Brushes.Transparent };
+                vacancy.SetResourceReference(BorderBrushProperty, "BorderBrush");
+                vacancy.MouseLeftButtonUp += (_, _) => ChooseChannels();
+                _vacancies.Add(vacancy); _screens.Children.Add(vacancy); screen = vacancy;
+            }
+            Grid.SetRow(screen, i / columns); Grid.SetColumn(screen, i % columns);
+        }
         _empty.Visibility = next.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         _model.LoadLogos(selection); _ = LoadGuideAsync(selection);
         SaveSelection(); RefreshAudio();
     }
 
     public void SelectAudio(string id) { _audio.Select(id); SaveSelection(); RefreshAudio(); }
-    private void SaveSelection() => SportsSelection.Save(_model, _tiles.Values.Select(t => t.Channel), _audio.SelectedId);
+    private void SaveSelection() => SportsSelection.SaveLayout(_model, _layout, _audio.SelectedId);
     private async Task LoadGuideAsync(IReadOnlyList<ChannelItem> channels)
     {
         if (_closed || _guideLoading) return;

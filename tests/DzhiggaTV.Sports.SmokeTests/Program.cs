@@ -64,26 +64,26 @@ internal static class Program
             Check(Tiles(sports).Select(t => t.Channel.Id).ToHashSet().SetEquals(["sport-1", "sport-3", "sport-4"]) &&
                 !Application.Current.Windows.OfType<SportsChannelPicker>().Any(w => w.IsVisible),
                 "Opening preserves the other two channels and does not show the channel picker");
-            sports.SetChannels(main.Model.AllChannels.Take(9));
-            await WaitAsync(() => Tiles(sports).Length == 9 && Tiles(sports).All(Playing));
-            var nine = Tiles(sports); var positions = nine.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
+            sports.SetChannels(main.Model.AllChannels.Take(6));
+            await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
+            var four = Tiles(sports); var positions = four.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
             var mainPosition = main.Player.GetStatistics().PlaybackPositionSeconds;
             await Task.Delay(1300);
-            Check(nine.All(t => t.Player.GetStatistics().PlaybackPositionSeconds > positions[t.Channel.Id]), "All nine video timelines advance concurrently");
+            Check(four.All(t => t.Player.GetStatistics().PlaybackPositionSeconds > positions[t.Channel.Id]), "All four video timelines advance concurrently");
             Check(mainPosition is not null && main.Player.GetStatistics().PlaybackPositionSeconds > mainPosition + 0.5 && !main.Player.IsPaused && main.Player.IsMuted,
-                "Main stream timeline also advances while nine sports channels play");
-            Check(nine.All(t => t.Player.GetTracks().Any(x => x.Type == "audio")), "Each tile has a real audio track");
-            foreach (var tile in nine)
+                "Main stream timeline also advances while four sports channels play");
+            Check(four.All(t => t.Player.GetTracks().Any(x => x.Type == "audio")), "Each tile has a real audio track");
+            foreach (var tile in four)
             {
                 sports.SelectAudio(tile.Channel.Id);
-                Check(nine.Count(t => !t.IsMuted) == 1 && !tile.IsMuted, "Exclusive native audio: " + tile.Channel.Id);
+                Check(four.Count(t => !t.IsMuted) == 1 && !tile.IsMuted, "Exclusive native audio: " + tile.Channel.Id);
             }
-            var handles = nine.ToDictionary(t => t.Channel.Id, t => Descendants<NativeVideoHost>(t).Single().VideoHandle);
+            var handles = four.ToDictionary(t => t.Channel.Id, t => Descendants<NativeVideoHost>(t).Single().VideoHandle);
             sports.ToggleFullscreen(); await Task.Delay(600); sports.ToggleFullscreen(); await Task.Delay(600);
-            Check(nine.All(t => Descendants<NativeVideoHost>(t).Single().VideoHandle == handles[t.Channel.Id] && Playing(t)), "Fullscreen preserves all nine native surfaces and streams");
-            sports.SetChannels(main.Model.AllChannels.Take(4)); await Task.Delay(400);
-            Check(nine.Skip(4).All(t => t.Player.State == PlaybackState.Disposed), "Removed tiles release their native players");
-            Check(nine.Take(4).All(t => Descendants<NativeVideoHost>(t).Single().VideoHandle == handles[t.Channel.Id] && Playing(t)), "Grid resizing preserves retained streams");
+            Check(four.All(t => Descendants<NativeVideoHost>(t).Single().VideoHandle == handles[t.Channel.Id] && Playing(t)), "Fullscreen preserves all four native surfaces and streams");
+            sports.SetChannels(main.Model.AllChannels.Take(3)); await Task.Delay(400);
+            Check(four.Single(t => t.Channel.Id == "sport-4").Player.State == PlaybackState.Disposed, "Removed tiles release their native players");
+            Check(four.Where(t => t.Channel.Id != "sport-4").All(t => Descendants<NativeVideoHost>(t).Single().VideoHandle == handles[t.Channel.Id] && Playing(t)), "Grid resizing preserves retained streams");
             Check(Tiles(sports).Count(t => !t.IsMuted) == 1, "Removing audio source transfers sound to one remaining tile");
             var unavailable = new ChannelItem(new("broken", "local", "Недоступный канал", "Тест", Path.Combine(profile, "missing-media.mkv")));
             main.Model.AllChannels.Add(unavailable);
@@ -96,6 +96,55 @@ internal static class Program
             _ = sports.Dispatcher.BeginInvoke(new Action(() => Descendants<Button>(sports).Single(b => Equals(b.Content, "Выбрать каналы")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent))));
             await WaitAsync(() => Application.Current.Windows.OfType<SportsChannelPicker>().Any());
             var picker = Application.Current.Windows.OfType<SportsChannelPicker>().Single();
+            var scheme = (Grid)picker.FindName("Scheme");
+            var chooserChannels = (ListBox)picker.FindName("Channels");
+            var search = (TextBox)picker.FindName("Search");
+            var choices = chooserChannels.Items.Cast<SportsChannelChoice>().ToArray();
+            Check(((ComboBox)picker.FindName("ScreenCount")).Items.Cast<int>().SequenceEqual([1, 2, 3, 4]), "Only one to four screens are offered");
+            var fifthCheckbox = Descendants<CheckBox>(picker).Single(c => c.DataContext is SportsChannelChoice choice && choice.Channel.Id == "sport-5");
+            fifthCheckbox.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
+            await Task.Delay(80);
+            Check(picker.Selection.Count == 4 && !choices.Single(c => c.Channel.Id == "sport-5").IsSelected && fifthCheckbox.IsChecked == false,
+                "A fifth checkbox stays visibly unchecked and cannot exceed the four-screen limit");
+            search.Text = "no matching channels";
+            ((Button)picker.FindName("Reset")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(choices.All(c => !c.IsSelected) && !((Button)picker.FindName("Watch")).IsEnabled && scheme.Children.Count == 4,
+                "Reset clears even filtered-out checkboxes and preserves four empty positions");
+            search.Clear();
+            void Drop(string id, int slot)
+            {
+                if (!picker.PlaceChannel(id, slot)) throw new InvalidOperationException("Channel placement failed.");
+            }
+            Drop("sport-1", 3); Drop("sport-2", 0); Drop("sport-1", 0);
+            Check(picker.Layout.Select(c => c?.Id).SequenceEqual(["sport-1", null, null, "sport-2"]) && choices.Count(c => c.IsSelected) == 2,
+                "Dropping on precise positions and swapping updates the same checkbox selection");
+            Drop("sport-3", 0);
+            Check(!choices.Single(c => c.Channel.Id == "sport-1").IsSelected && choices.Single(c => c.Channel.Id == "sport-3").IsSelected,
+                "Replacing a screen unchecks only its previous channel");
+            choices.Single(c => c.Channel.Id == "sport-4").IsSelected = true;
+            Check(picker.Layout[1]?.Id == "sport-4", "Checkbox selection fills the first available screen");
+            picker.Close(); await Task.Delay(150);
+            Check(sports.IsVisible && Tiles(sports).All(Playing) && Tiles(sports).Length == 4, "Cancelling edited selection leaves the playing session unchanged");
+            var retainedHandles = Tiles(sports).ToDictionary(t => t.Channel.Id, t => Descendants<NativeVideoHost>(t).Single().VideoHandle);
+            _ = sports.Dispatcher.BeginInvoke(new Action(() => Descendants<Button>(sports).Single(b => Equals(b.Content, "Выбрать каналы")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent))));
+            await WaitAsync(() => Application.Current.Windows.OfType<SportsChannelPicker>().Any());
+            picker = Application.Current.Windows.OfType<SportsChannelPicker>().Single();
+            scheme = (Grid)picker.FindName("Scheme");
+            ((Button)picker.FindName("Reset")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Drop("sport-1", 3); Drop("sport-2", 2); Drop("sport-3", 0);
+            ((Button)picker.FindName("Watch")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await WaitAsync(() => Tiles(sports).Length == 3 && Tiles(sports).All(Playing));
+            var placed = Tiles(sports);
+            Check(Grid.GetRow(placed.Single(t => t.Channel.Id == "sport-1")) == 1 && Grid.GetColumn(placed.Single(t => t.Channel.Id == "sport-1")) == 1 &&
+                Grid.GetRow(placed.Single(t => t.Channel.Id == "sport-2")) == 1 && Grid.GetColumn(placed.Single(t => t.Channel.Id == "sport-2")) == 0 &&
+                Grid.GetRow(placed.Single(t => t.Channel.Id == "sport-3")) == 0 && Grid.GetColumn(placed.Single(t => t.Channel.Id == "sport-3")) == 0,
+                "Watch applies exact scheme positions including an empty top-right screen");
+            Check(placed.All(t => Descendants<NativeVideoHost>(t).Single().VideoHandle == retainedHandles[t.Channel.Id] && Playing(t)), "Rearranging existing channels preserves their native surfaces and playback");
+            sports.SetChannels(finalChannels); sports.SelectAudio("sport-3");
+            await WaitAsync(() => Tiles(sports).All(Playing));
+            _ = sports.Dispatcher.BeginInvoke(new Action(() => Descendants<Button>(sports).Single(b => Equals(b.Content, "Выбрать каналы")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent))));
+            await WaitAsync(() => Application.Current.Windows.OfType<SportsChannelPicker>().Any());
+            picker = Application.Current.Windows.OfType<SportsChannelPicker>().Single();
             picker.Close(); await Task.Delay(150);
             Check(sports.IsVisible && Tiles(sports).All(Playing), "Cancelling channel selection leaves the sports session playing");
             var mainPositionBeforeReturn = main.Player.GetStatistics().PlaybackPositionSeconds;
@@ -106,7 +155,7 @@ internal static class Program
             }
             else sports.Close();
             await WaitAsync(() => sportsRun is { IsCompleted: true });
-            Check(nine.All(t => t.Player.State == PlaybackState.Disposed), "Closing sports disposes every native player");
+            Check(four.All(t => t.Player.State == PlaybackState.Disposed), "Closing sports disposes every native player");
             Check(!main.Player.IsPaused && !main.Player.IsMuted, "Returning restores main audio without pausing playback");
             await Task.Delay(300);
             Check(Descendants<NativeVideoHost>(main).Single().VideoHandle == mainVideoHandle && mainPositionBeforeReturn is not null &&
@@ -114,7 +163,7 @@ internal static class Program
                 "Returning preserves the main video surface and continuously advancing timeline");
             Check(main.Player.Volume == 0, "Sports preserves the master volume on return");
             var saved = await main.Model.Store.LoadUserStateAsync();
-            Check(JsonSerializer.Deserialize<string[]>(saved.Settings["sports.channels"])!.Length is >= 1 and <= 9, "Grid selection persists to encrypted user state");
+            Check(JsonSerializer.Deserialize<string[]>(saved.Settings["sports.channels"])!.Length is >= 1 and <= 4, "Grid selection persists to encrypted user state");
             if (!args.Contains("--interactive")) Check(JsonSerializer.Deserialize<string[]>(saved.Settings["sports.channels"])!.SequenceEqual(finalChannels.Select(c => c.Id)) && saved.Settings["sports.audio"] == "sport-3", "Visible channel order and chosen audio source survive saving");
             if (!args.Contains("--interactive"))
             {
@@ -145,7 +194,7 @@ internal static class Program
                 sports.Close(); await WaitAsync(() => firstUseRun is { IsCompleted: true });
                 Check(firstUseTile.Player.State == PlaybackState.Disposed, "First-use multiscreen closes cleanly");
             }
-            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, nativePlayers = 9 }));
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, nativePlayers = 4 }));
             return 0;
         }
         catch (Exception error) { Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, failure = error.GetType().Name, stack = error.StackTrace })); return 1; }

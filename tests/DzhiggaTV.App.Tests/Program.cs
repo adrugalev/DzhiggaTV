@@ -28,7 +28,9 @@ internal static class Program
             ("Sports audio never overlaps when switching, muting, replacing or removing sources", SportsAudioAsync),
             ("Sports selection persists ordered unique allowed channels and safely restores stale settings", SportsSelectionAsync),
             ("Multiscreen opens with the main channel first and selected for audio, including full and empty grids", MultiscreenOpeningAsync),
-            ("Multiscreen preserves every saved grid size from one to nine when the main channel changes", MultiscreenCountAsync),
+            ("Multiscreen preserves every saved grid size from one to four when the main channel changes", MultiscreenCountAsync),
+            ("Multiscreen drag placement, checkbox selection, reset and four-screen limit agree", MultiscreenLayoutAsync),
+            ("Multiscreen persists exact empty positions and migrates larger legacy selections", MultiscreenLayoutSaveAsync),
             ("Cold startup displays all three cached cards while background EPG import blocks saving", StartupGuideDuringImportAsync),
             ("Late viewport guide loading notifies all active programme cards", ActiveViewportGuideAsync),
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
@@ -98,8 +100,8 @@ internal static class Program
         model.AllChannels.Add(new(new("adult-sport", "fixture", "Restricted", "Для взрослых", "https://example.invalid/unused")));
         var ids = new[] { "missing", "sport-0", "adult-sport", "sport-3", "sport-3", "sport-2" }.Concat(Enumerable.Range(0, 12).Select(i => "sport-" + i));
         var chosen = SportsSelection.Resolve(model, ids);
-        Assert(chosen.Count == 9 && chosen.Select(c => c.Id).Distinct().Count() == 9 && chosen[0].Id == "sport-3" && chosen[1].Id == "sport-2",
-            "Selection must preserve order, remove duplicates and limit the grid to nine allowed channels.");
+        Assert(chosen.Count == 4 && chosen.Select(c => c.Id).Distinct().Count() == 4 && chosen[0].Id == "sport-3" && chosen[1].Id == "sport-2",
+            "Selection must preserve order, remove duplicates and limit the grid to four allowed channels.");
         Assert(chosen.All(model.IsAllowed), "Hidden/adult channels must not bypass library restrictions.");
         SportsSelection.Save(model, chosen, "sport-2"); await model.SaveAsync();
         Assert(SportsSelection.Restore(model).Select(c => c.Id).SequenceEqual(chosen.Select(c => c.Id)) && model.Setting("sports.audio") == "sport-2", "Selected IDs and audio source must round-trip.");
@@ -117,11 +119,11 @@ internal static class Program
         var active = model.AllChannels.Single();
         var others = Enumerable.Range(0, 10).Select(i => new ChannelItem(new("multi-" + i, "fixture", "Channel " + i, "Тест", "https://example.invalid/unused"))).ToArray();
         model.AllChannels.AddRange(others); model.Active = active;
-        SportsSelection.Save(model, others.Take(9), others[3].Id);
+        SportsSelection.Save(model, others.Take(4), others[3].Id);
         var full = SportsSelection.ForOpening(model);
-        Assert(full.Channels.Select(c => c.Id).SequenceEqual(new[] { active.Id }.Concat(others.Skip(1).Take(8).Select(c => c.Id))) && full.AudioId == active.Id && !full.ShowChannelPicker,
-            "The playing main channel must replace the first slot and take audio focus while preserving the other eight screens.");
-        Assert(SportsSelection.Restore(model).Count == 9 && model.Setting("sports.audio") == others[3].Id,
+        Assert(full.Channels.Select(c => c.Id).SequenceEqual(new[] { active.Id }.Concat(others.Skip(1).Take(3).Select(c => c.Id))) && full.AudioId == active.Id && !full.ShowChannelPicker,
+            "The playing main channel must replace the first slot and take audio focus while preserving the other three screens.");
+        Assert(SportsSelection.Restore(model).Count == 4 && model.Setting("sports.audio") == others[3].Id,
             "Planning startup must not alter saved state before the window applies its selection.");
         SportsSelection.Save(model, [others[0], active, others[1]], others[1].Id);
         var included = SportsSelection.ForOpening(model);
@@ -173,6 +175,46 @@ internal static class Program
                 included.Channels[0] == model.Active && included.AudioId == model.Active.Id,
                 "An already included main channel must move to the first screen without duplication or loss of other channels.");
         }
+    }
+
+    private static Task MultiscreenLayoutAsync()
+    {
+        var layout = new SportsLayout(["a", "b", "c", "d"]);
+        Assert(layout.Place("a", 3) && layout.Slots.SequenceEqual(["d", "b", "c", "a"]), "Dragging a selected channel onto another must swap without duplication.");
+        Assert(layout.Place("e", 1) && layout.Slots.SequenceEqual(["d", "e", "c", "a"]), "Dragging a new channel onto an occupied slot must replace only that slot.");
+        layout.Remove("c");
+        Assert(layout.Slots[2] is null && layout.Select("f") && layout.Slots[2] == "f", "A checkbox must fill the first empty screen without moving other channels.");
+        layout.Remove("d"); layout.Place("a", 0);
+        Assert(layout.Slots.SequenceEqual(["a", "e", "f", null]), "Moving onto an empty slot must leave the old position empty.");
+        Assert(!layout.Resize(2) && layout.Slots.Count == 4 && layout.Resize(3), "Shrinking cannot silently discard assigned channels.");
+        Assert(layout.Select("g") && !layout.Select("fifth") && !layout.Resize(5), "All entry points must enforce the four-screen limit.");
+        Assert(layout.Count == 4 && layout.Columns == 2, "Four screens must use two columns.");
+        layout.Reset();
+        Assert(layout.Count == 0 && layout.Slots.Count == 4 && layout.Slots.All(id => id is null), "Reset must clear every checkbox and preserve the chosen geometry.");
+        layout.Place("last", 3); layout.Select("first");
+        Assert(layout.Slots[0] == "first" && layout.Slots[3] == "last", "Checkbox and drop must compose after reset, retaining exact target positions.");
+        Assert(!layout.Place("ignored", 4) && !layout.Place("", 0), "Invalid drops must leave the layout unchanged.");
+        return Task.CompletedTask;
+    }
+
+    private static async Task MultiscreenLayoutSaveAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        var channels = Enumerable.Range(1, 9).Select(i => new ChannelItem(new("slot-" + i, "fixture", "Channel " + i, "Тест", "https://example.invalid/unused"))).ToArray();
+        model.AllChannels.AddRange(channels); model.Active = null;
+        SportsSelection.SaveLayout(model, [channels[0], null, channels[1], channels[2]], channels[2].Id);
+        var opening = SportsSelection.ForOpening(model);
+        Assert(opening.Layout.Select(c => c?.Id).SequenceEqual(["slot-1", null, "slot-2", "slot-3"]) && opening.AudioId == "slot-3", "Empty positions, order and audio must survive saving.");
+        model.Active = channels[3];
+        Assert(SportsSelection.ForOpening(model).Layout.Select(c => c?.Id).SequenceEqual(["slot-4", null, "slot-2", "slot-3"]), "Changing the main channel must preserve the other exact positions.");
+        model.State.Hidden.Add("slot-2"); model.Active = null;
+        Assert(SportsSelection.ForOpening(model).Layout[2] is null, "A hidden channel must become an empty position without shifting its neighbours.");
+        model.SetSetting("sports.channels", System.Text.Json.JsonSerializer.Serialize(channels.Select(c => c.Id)));
+        model.SetSetting("sports.layout", System.Text.Json.JsonSerializer.Serialize(channels.Select(c => c.Id)));
+        var migrated = SportsSelection.ForOpening(model);
+        Assert(migrated.Channels.Count <= 4 && migrated.Layout.Count <= 4 && migrated.Channels.All(model.IsAllowed), "Legacy nine-screen sets must migrate safely to at most four allowed streams.");
+        model.SetSetting("sports.layout", "broken");
+        Assert(SportsSelection.ForOpening(model).Channels.Count == 4, "Corrupt geometry must fall back to the valid selected channels.");
     }
 
     private static async Task FavoriteToggleAsync()

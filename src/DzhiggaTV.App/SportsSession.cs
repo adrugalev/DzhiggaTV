@@ -4,7 +4,7 @@ namespace DzhiggaTV.App;
 
 public static class SportsSelection
 {
-    public const int MaximumChannels = 9;
+    public const int MaximumChannels = 4;
 
     public static IReadOnlyList<ChannelItem> Resolve(MainViewModel model, IEnumerable<string> ids)
     {
@@ -18,26 +18,49 @@ public static class SportsSelection
         catch (JsonException) { return []; }
     }
 
-    public static (IReadOnlyList<ChannelItem> Channels, string? AudioId, bool ShowChannelPicker) ForOpening(MainViewModel model)
+    public static IReadOnlyList<ChannelItem?> ResolveLayout(MainViewModel model, IEnumerable<string?> ids)
+    {
+        var allowed = model.AllChannels.Where(model.IsAllowed).ToDictionary(c => c.Id);
+        return new SportsLayout(ids).Slots.Select(id => id is not null && allowed.TryGetValue(id, out var channel) ? channel : null).ToArray();
+    }
+
+    public static (IReadOnlyList<ChannelItem> Channels, string? AudioId, bool ShowChannelPicker, IReadOnlyList<ChannelItem?> Layout) ForOpening(MainViewModel model)
     {
         var saved = Restore(model);
+        var slots = saved.Cast<ChannelItem?>().ToList();
+        try
+        {
+            var layout = ResolveLayout(model, JsonSerializer.Deserialize<string?[]>(model.Setting("sports.layout", "[]")) ?? []);
+            // Ignore stale geometry if an older client or a reset changed the channel selection.
+            if (layout.OfType<ChannelItem>().Select(c => c.Id).SequenceEqual(saved.Select(c => c.Id))) slots = layout.ToList();
+        }
+        catch (JsonException) { }
         var active = model.Active is { } current
             ? model.AllChannels.FirstOrDefault(c => c.Id == current.Id && model.IsAllowed(c)) : null;
-        IReadOnlyList<ChannelItem> channels = saved;
         if (active is not null)
         {
-            // Reuse the first screen for a different main channel; opening must not grow the grid.
-            var remaining = saved.Any(c => c.Id == active.Id) ? saved.Where(c => c.Id != active.Id) : saved.Skip(1);
-            channels = Resolve(model, new[] { active.Id }.Concat(remaining.Select(c => c.Id)));
+            int index = slots.FindIndex(c => c?.Id == active.Id);
+            if (index >= 0) { slots.RemoveAt(index); slots.Insert(0, active); }
+            else if (slots.Count > 0) slots[0] = active;
+            else slots.Add(active);
         }
+        var channels = slots.OfType<ChannelItem>().ToArray();
         var savedAudioId = model.Setting("sports.audio", "");
         var audioId = active?.Id ?? (channels.Any(c => c.Id == savedAudioId) ? savedAudioId : channels.FirstOrDefault()?.Id);
-        return (channels, audioId, channels.Count == 0);
+        return (channels, audioId, channels.Length == 0, slots);
     }
 
     public static void Save(MainViewModel model, IEnumerable<ChannelItem> channels, string? audioId)
     {
         var selected = Resolve(model, channels.Select(c => c.Id));
+        SaveLayout(model, selected, audioId);
+    }
+
+    public static void SaveLayout(MainViewModel model, IEnumerable<ChannelItem?> slots, string? audioId)
+    {
+        var layout = ResolveLayout(model, slots.Select(c => c?.Id));
+        var selected = layout.OfType<ChannelItem>().ToArray();
+        model.SetSetting("sports.layout", JsonSerializer.Serialize(layout.Select(c => c?.Id)));
         model.SetSetting("sports.channels", JsonSerializer.Serialize(selected.Select(c => c.Id)));
         model.SetSetting("sports.audio", selected.Any(c => c.Id == audioId) ? audioId! : selected.FirstOrDefault()?.Id ?? "");
     }
