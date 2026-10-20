@@ -23,13 +23,15 @@ public sealed class ReleaseNotesWindow : Window
         current.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); heading.Children.Add(current);
         DockPanel.SetDock(heading, Dock.Top); root.Children.Add(heading);
 
-        var footer = new StackPanel { Margin = new(0, 16, 0, 0) };
-        var status = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new(3, 0, 3, 8), Visibility = Visibility.Collapsed };
+        var footer = new Grid { Margin = new(0, 16, 0, 0) };
+        footer.ColumnDefinitions.Add(new()); footer.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
+        var status = new TextBlock { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new(3, 0, 14, 0), VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
         status.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         System.Windows.Automation.AutomationProperties.SetName(status, "Результат проверки обновлений");
         System.Windows.Automation.AutomationProperties.SetLiveSetting(status, System.Windows.Automation.AutomationLiveSetting.Polite);
         footer.Children.Add(status);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+        Grid.SetColumn(buttons, 1);
         var check = new Button { Content = "Проверить обновления", MinWidth = 190 };
         check.SetResourceReference(BorderBrushProperty, "AccentBrush");
         System.Windows.Automation.AutomationProperties.SetName(check, "Проверить обновления");
@@ -64,6 +66,7 @@ public sealed class ReleaseNotesWindow : Window
         var notes = new StackPanel();
         (string Version, string Summary)[] releases =
         [
+            ("1.2.8", "«Каналы» получили янтарный телевизор, «Телепрограмма» — фиолетовый лист расписания с часами; зелёный «Мультиэкран» сохранён. Иконки больше не остаются цветными после клика и закрытия окна. Сообщение об актуальной версии перенесено слева от кнопки. В выборе мультиэкрана исправлено обрезанное поле числа экранов и добавлена загрузка логотипов видимых каналов при открытии, поиске и прокрутке. Переносимая карточка стала квадратной и плавно вырастает до размера ячейки."),
             ("1.2.7", "При ручной проверке без новых выпусков рядом с кнопкой появляется надпись «Версия актуальна. Новых версий не найдено», без отдельного окна. В выборе каналов «Мультиэкрана» карточка с логотипом следует за мышью, место назначения плавно подсвечивается, а перенос завершается мягкой анимацией. Логотипы в схеме увеличены, названия стали крупнее и полужирными. Учитывается настройка сокращения анимаций."),
             ("1.2.6", "Выбор каналов «Мультиэкрана» дополнен схемой: перетаскивайте каналы на нужные места, меняйте экраны местами или заменяйте канал. Галочки заполняют свободные места, кнопка «Сброс» снимает весь выбор. Расположение и пустые ячейки сохраняются. Одновременно можно смотреть до четырёх каналов в сетке 2 × 2; прежние большие наборы автоматически сокращаются."),
             ("1.2.5", "«Мультиэкран» открывается с тем же количеством экранов, которое было при последнем использовании. Текущий канал основного плеера занимает первое место и получает звук: если его не было в наборе, он заменяет прежний первый канал. При первом запуске с текущим каналом открывается один экран без автоматического окна выбора; добавлять и убирать каналы можно кнопкой «Выбрать каналы»."),

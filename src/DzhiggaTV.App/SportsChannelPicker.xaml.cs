@@ -4,6 +4,7 @@ using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 
 namespace DzhiggaTV.App;
 
@@ -15,9 +16,12 @@ public partial class SportsChannelPicker : Window
     private readonly MainViewModel _model;
     private readonly ListCollectionView _view;
     private bool _changing;
+    private bool _logosQueued, _closed;
     private Point _dragStart;
     private FrameworkElement? _dragSource;
     private ChannelDragCard? _dragCard;
+    private ChannelDragCard? _arrivalCard;
+    private Border? _arrivalTarget;
     private string? _dragId;
     private FrameworkElement? _lifted;
     private Border? _dropTarget;
@@ -40,14 +44,14 @@ public partial class SportsChannelPicker : Window
         ScreenCount.ItemsSource = Enumerable.Range(1, SportsSelection.MaximumChannels);
         Category.ItemsSource = new[] { "Все категории", "Избранное" }.Concat(_choices.Select(c => c.Channel.Group).Distinct().OrderBy(g => g)).ToArray();
         Category.SelectedIndex = 0; RefreshSelection();
-        Loaded += (_, _) => Search.Focus();
+        Loaded += (_, _) => { Search.Focus(); QueueVisibleLogos(); };
         // ListBox captures the mouse on press. Observe movement on the window so
         // a row can still start dragging after that capture redirects its events.
         PreviewMouseMove += Drag_Move;
         PreviewMouseLeftButtonDown += (_, _) => _dragSource = null;
         PreviewMouseLeftButtonUp += Drag_Up;
         LostMouseCapture += (_, _) => { if (_dragCard is not null && Mouse.Captured != this) CancelDrag(); };
-        Deactivated += (_, _) => CancelDrag(); Closed += (_, _) => CancelDrag();
+        Deactivated += (_, _) => CancelDrag(); Closed += (_, _) => { _closed = true; CancelDrag(); };
         PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape && _dragCard is not null) { CancelDrag(); e.Handled = true; } };
     }
 
@@ -74,6 +78,7 @@ public partial class SportsChannelPicker : Window
         RenderScheme();
         // Request selected picons only, rather than the entire library.
         _model.LoadLogos(Selection);
+        QueueVisibleLogos();
     }
 
     private void RenderScheme()
@@ -145,6 +150,7 @@ public partial class SportsChannelPicker : Window
         e.Handled = true;
         Mouse.Capture(null);
         if (!Mouse.Capture(this, CaptureMode.SubTree)) return;
+        CancelArrival();
         _dragId = id; _lifted = source; _liftedOpacity = source.Opacity; source.Opacity = .3;
         _dragCard = new ChannelDragCard(channel, Animate); DragSurface.Children.Add(_dragCard);
         _previousCursor = Mouse.OverrideCursor; Mouse.OverrideCursor = Cursors.Hand;
@@ -168,13 +174,26 @@ public partial class SportsChannelPicker : Window
         if (_dragCard is null) return;
         FollowDrag(e.GetPosition(this));
         var id = _dragId; var position = _dropTarget?.Tag as int?;
+        var card = _dragCard;
+        Rect? destination = null;
+        if (_dropTarget is { } cell)
+        {
+            var center = cell.TranslatePoint(new(cell.ActualWidth / 2, cell.ActualHeight / 2), DragSurface);
+            destination = new Rect(center.X - cell.ActualWidth / 2, center.Y - cell.ActualHeight / 2, cell.ActualWidth, cell.ActualHeight);
+        }
         CancelDrag(); e.Handled = true;
-        if (id is not null && position is { } target) PlaceChannel(id, target);
+        if (id is null || position is not { } target || !PlaceChannel(id, target) || !Animate || destination is not { } bounds) return;
+        _arrivalCard = card; _arrivalTarget = Scheme.Children.OfType<Border>().Single(b => Equals(b.Tag, target));
+        _arrivalTarget.BeginAnimation(OpacityProperty, null); _arrivalTarget.Opacity = 0;
+        _arrivalTarget.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(80)) { BeginTime = TimeSpan.FromMilliseconds(180) });
+        DragSurface.Children.Add(card);
+        card.GrowInto(bounds, () => { if (ReferenceEquals(_arrivalCard, card)) CancelArrival(); });
     }
 
     private void CancelDrag()
     {
         _dragSource = null;
+        CancelArrival();
         if (_dragCard is null) return;
         DragSurface.Children.Remove(_dragCard); _dragCard = null; _dragId = null;
         if (_lifted is not null) _lifted.Opacity = _liftedOpacity;
@@ -183,6 +202,33 @@ public partial class SportsChannelPicker : Window
         _dropTarget = null;
         Mouse.OverrideCursor = _previousCursor;
         if (Mouse.Captured == this) Mouse.Capture(null);
+    }
+
+    private void CancelArrival()
+    {
+        if (_arrivalCard is not null) DragSurface.Children.Remove(_arrivalCard);
+        _arrivalCard = null;
+        if (_arrivalTarget is not null) { _arrivalTarget.BeginAnimation(OpacityProperty, null); _arrivalTarget.Opacity = 1; }
+        _arrivalTarget = null;
+    }
+
+    private void Channels_Scrolled(object sender, ScrollChangedEventArgs e) => QueueVisibleLogos();
+    private void Channels_SizeChanged(object sender, SizeChangedEventArgs e) => QueueVisibleLogos();
+    private void QueueVisibleLogos()
+    {
+        if (_model is null || _logosQueued || _closed) return;
+        _logosQueued = true;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            _logosQueued = false;
+            if (_closed || !IsVisible || Channels.ActualWidth <= 0 || Channels.ActualHeight <= 0) return;
+            var viewport = new Rect(Channels.RenderSize);
+            var visible = MainWindow.FindVisualChildren<ListBoxItem>(Channels)
+                .Where(row => row.IsVisible && row.ActualHeight > 0 &&
+                    row.TransformToAncestor(Channels).TransformBounds(new Rect(row.RenderSize)).IntersectsWith(viewport))
+                .Select(row => row.DataContext).OfType<SportsChannelChoice>().Select(choice => choice.Channel).ToArray();
+            _model.LoadLogos(visible);
+        }));
     }
 
     private void HighlightSlot(Border slot, bool active)
@@ -228,6 +274,7 @@ public partial class SportsChannelPicker : Window
             (group is null or "Все категории" || (group == "Избранное" ? choice.Channel.IsFavorite : choice.Channel.Group == group)) &&
             (query.Length == 0 || choice.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase));
         Empty.Visibility = _view.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+        QueueVisibleLogos();
     }
     private void Watch_Click(object sender, RoutedEventArgs e) { if (_layout.Count > 0) DialogResult = true; }
 }

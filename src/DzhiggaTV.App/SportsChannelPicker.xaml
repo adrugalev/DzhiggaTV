@@ -28,7 +28,7 @@
    </Grid>
    <ComboBox x:Name="Category" Grid.Column="1" SelectionChanged="Category_Changed" ToolTip="Категория" AutomationProperties.Name="Категория каналов мультиэкрана"/>
   </Grid>
-  <Grid Grid.Row="1"><ListBox x:Name="Channels" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+  <Grid Grid.Row="1"><ListBox x:Name="Channels" BorderThickness="0" ScrollViewer.ScrollChanged="Channels_Scrolled" SizeChanged="Channels_SizeChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate></Setter.Value></Setter></Style></ListBox.ItemContainerStyle>
    <ListBox.ItemTemplate><DataTemplate><Border Padding="7,9" Margin="0,1" CornerRadius="7"><Border.Style><Style TargetType="Border"><Setter Property="Background" Value="Transparent"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource CardBrush}"/></Trigger></Style.Triggers></Style></Border.Style>
     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="26"/><ColumnDefinition/></Grid.ColumnDefinitions>
@@ -44,10 +44,10 @@
   </ListBox><TextBlock x:Name="Empty" Text="Каналы не найдены" Visibility="Collapsed" IsHitTestVisible="False" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid>
   </Grid>
   <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-   <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="70"/></Grid.ColumnDefinitions>
+   <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
     <TextBlock Text="Расположение" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
     <TextBlock Grid.Column="1" Text="Экранов" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="8,0"/>
-    <ComboBox x:Name="ScreenCount" Grid.Column="2" SelectionChanged="ScreenCount_Changed" AutomationProperties.Name="Количество экранов"/>
+    <ComboBox x:Name="ScreenCount" Grid.Column="2" Width="84" SelectionChanged="ScreenCount_Changed" AutomationProperties.Name="Количество экранов"/>
    </Grid>
    <Border Grid.Row="1" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8"><Grid x:Name="Scheme"/></Border>
    <TextBlock Grid.Row="2" Text="Перетащите на пустое место, чтобы добавить канал. Занятые экраны можно менять местами или заменять другим каналом." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,12,0,0"/>

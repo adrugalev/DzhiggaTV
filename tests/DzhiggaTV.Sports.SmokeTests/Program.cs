@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using DzhiggaTV.App;
 using DzhiggaTV.Core;
 using DzhiggaTV.Player;
@@ -35,7 +36,13 @@ internal static class Program
     }
     private static async Task SeedAsync(string profile, string media)
     {
-        var channels = Enumerable.Range(1, 10).Select(i => new Channel("sport-" + i, "local", "Спортивный канал " + i, i <= 5 ? "Спорт" : "Другие", Path.GetFullPath(media), Order: i - 1)).ToArray();
+        Directory.CreateDirectory(profile);
+        string logo = Path.Combine(profile, "fixture-logo.png");
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(2, 2, 96, 96, PixelFormats.Bgra32, null,
+            Enumerable.Repeat(new byte[] { 205, 217, 99, 255 }, 4).SelectMany(p => p).ToArray(), 8)));
+        using (var output = File.Create(logo)) encoder.Save(output);
+        var channels = Enumerable.Range(1, 10).Select(i => new Channel("sport-" + i, "local", "Спортивный канал " + i, i <= 5 ? "Спорт" : "Другие", Path.GetFullPath(media), Logo: logo, Order: i - 1)).ToArray();
         using var store = new SqliteStore(Path.Combine(profile, "library.db"));
         await store.InitializeAsync(); await store.SavePlaylistAsync(new("local", "Sports smoke", "local-only.m3u"), channels);
         var state = new UserState();
@@ -93,6 +100,7 @@ internal static class Program
             var finalChannels = main.Model.AllChannels.Take(4).Reverse().ToArray();
             sports.SetChannels(finalChannels); sports.SelectAudio("sport-3");
             await WaitAsync(() => Tiles(sports).All(Playing));
+            foreach (var channel in main.Model.AllChannels.Where(c => !finalChannels.Contains(c))) main.Model.InvalidateLogo(channel.Id);
             _ = sports.Dispatcher.BeginInvoke(new Action(() => Descendants<Button>(sports).Single(b => Equals(b.Content, "Выбрать каналы")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent))));
             await WaitAsync(() => Application.Current.Windows.OfType<SportsChannelPicker>().Any());
             var picker = Application.Current.Windows.OfType<SportsChannelPicker>().Single();
@@ -100,6 +108,8 @@ internal static class Program
             var chooserChannels = (ListBox)picker.FindName("Channels");
             var search = (TextBox)picker.FindName("Search");
             var choices = chooserChannels.Items.Cast<SportsChannelChoice>().ToArray();
+            await WaitAsync(() => main.Model.AllChannels.Single(c => c.Id == "sport-5").LogoPath is not null);
+            Check(!choices.Single(c => c.Channel.Id == "sport-5").IsSelected, "An unselected visible channel loads its logo without being checked");
             Check(((ComboBox)picker.FindName("ScreenCount")).Items.Cast<int>().SequenceEqual([1, 2, 3, 4]), "Only one to four screens are offered");
             var fifthCheckbox = Descendants<CheckBox>(picker).Single(c => c.DataContext is SportsChannelChoice choice && choice.Channel.Id == "sport-5");
             fifthCheckbox.SetCurrentValue(System.Windows.Controls.Primitives.ToggleButton.IsCheckedProperty, true);
@@ -111,6 +121,14 @@ internal static class Program
             Check(choices.All(c => !c.IsSelected) && !((Button)picker.FindName("Watch")).IsEnabled && scheme.Children.Count == 4,
                 "Reset clears even filtered-out checkboxes and preserves four empty positions");
             search.Clear();
+            var tenth = choices.Single(c => c.Channel.Id == "sport-10");
+            main.Model.InvalidateLogo(tenth.Channel.Id); chooserChannels.ScrollIntoView(tenth);
+            await WaitAsync(() => tenth.Channel.LogoPath is not null);
+            Check(!tenth.IsSelected, "Scrolling the picker loads newly visible channel logos without selecting them");
+            main.Model.InvalidateLogo(tenth.Channel.Id); search.Text = tenth.Channel.Name;
+            await WaitAsync(() => tenth.Channel.LogoPath is not null);
+            Check(chooserChannels.Items.Count == 1, "Search refreshes logos for its own visible results");
+            search.Clear(); chooserChannels.ScrollIntoView(choices[0]);
             void Drop(string id, int slot)
             {
                 if (!picker.PlaceChannel(id, slot)) throw new InvalidOperationException("Channel placement failed.");
