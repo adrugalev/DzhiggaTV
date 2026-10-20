@@ -28,7 +28,7 @@ public sealed class SportsEveningWindow : Window
     {
         _model = main.Model;
         Theme.Window(this); WindowBounds.Attach(this, () => _isFullscreen);
-        Owner = main; Title = "DzhiggaTV · Спортивный вечер";
+        Owner = main; Title = "DzhiggaTV · Мультиэкран";
         Width = Math.Min(1440, SystemParameters.WorkArea.Width - 24); Height = Math.Min(900, SystemParameters.WorkArea.Height - 36);
         MinWidth = Math.Min(860, Width); MinHeight = Math.Min(500, Height); WindowStartupLocation = WindowStartupLocation.CenterOwner;
         _audio.Volume = volume; _audio.IsMuted = muted;
@@ -36,11 +36,11 @@ public sealed class SportsEveningWindow : Window
         root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var toolbar = new Grid { Margin = new(4, 0, 0, 12) };
         toolbar.ColumnDefinitions.Add(new()); toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        toolbar.Children.Add(new TextBlock { Text = "Спортивный вечер", FontSize = 22, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        toolbar.Children.Add(new TextBlock { Text = "Мультиэкран", FontSize = 22, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
         var actions = new StackPanel { Orientation = Orientation.Horizontal }; Grid.SetColumn(actions, 1); toolbar.Children.Add(actions);
         var choose = Button("Выбрать каналы", "Добавить или убрать каналы"); choose.SetResourceReference(BorderBrushProperty, "AccentBrush");
         _fullscreen = Button("Полный экран", "Полный экран (F11)");
-        var close = Button("Вернуться", "Завершить спортивный вечер и вернуться к плееру");
+        var close = Button("Вернуться", "Закрыть мультиэкран и вернуться к плееру");
         actions.Children.Add(choose); actions.Children.Add(_fullscreen); actions.Children.Add(close); root.Children.Add(toolbar);
         var viewing = new Grid(); Grid.SetRow(viewing, 1); root.Children.Add(viewing); viewing.Children.Add(_screens); viewing.Children.Add(_empty);
         var footer = new Grid { Margin = new(4, 10, 4, 0) };
@@ -51,7 +51,7 @@ public sealed class SportsEveningWindow : Window
         var soundControls = new StackPanel { Orientation = Orientation.Horizontal }; Grid.SetColumn(soundControls, 2); footer.Children.Add(soundControls);
         _mute = Button("", "Выключить / включить звук (M)"); _mute.MinWidth = 98; soundControls.Children.Add(_mute);
         var slider = new Slider { Minimum = 0, Maximum = 100, Value = volume, Width = 100, VerticalAlignment = VerticalAlignment.Center, Margin = new(8, 0, 0, 0), ToolTip = "Громкость" };
-        System.Windows.Automation.AutomationProperties.SetName(slider, "Громкость спортивного вечера"); soundControls.Children.Add(slider);
+        System.Windows.Automation.AutomationProperties.SetName(slider, "Громкость мультиэкрана"); soundControls.Children.Add(slider);
         slider.ValueChanged += (_, e) => _audio.Volume = e.NewValue;
         Grid.SetRow(footer, 2); root.Children.Add(footer); _empty.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         choose.Click += (_, _) => ChooseChannels(); _fullscreen.Click += (_, _) => ToggleFullscreen(); close.Click += (_, _) => Close();
