@@ -17,6 +17,7 @@ internal sealed class SportsFullscreenOverlay : Window
     private readonly ProgressBar _progress = new() { Height = 3, Maximum = 100, Margin = new(0, 12, 0, 0) };
     private Programme? _programme;
     private DateTime _lastMove;
+    private readonly PointerRevealGate _pointerReveal = new();
     private bool _closed;
     private bool _keyboardNavigation;
 
@@ -33,14 +34,19 @@ internal sealed class SportsFullscreenOverlay : Window
         _scroll = new() { Content = _description, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(_scroll, 1); content.Children.Add(_scroll); Grid.SetRow(_progress, 2); content.Children.Add(_progress);
         Content = new Border { Child = content, Padding = new(14), CornerRadius = new(10), Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromArgb(230, 17, 25, 31)) };
-        MouseMove += (_, _) => { _keyboardNavigation = false; _lastMove = DateTime.UtcNow; };
+        MouseMove += (_, _) => PointerMoved();
         PreviewKeyDown += (_, e) => { _keyboardNavigation = true; if (e.Key is Key.Escape or Key.F11) { e.Handled = true; _owner.ToggleChannelFullscreen(channel.Id); } };
         Loaded += (_, _) => Sync(); SizeChanged += (_, _) => Sync(); Closed += (_, _) => _closed = true;
     }
     public void Reveal()
     {
         if (_closed || _channel.Current is null) return;
+        _pointerReveal.Reset(Mouse.GetPosition(_owner));
         _keyboardNavigation = false; _lastMove = DateTime.UtcNow; Refresh(); Sync(); if (!IsVisible) Show();
+    }
+    public void PointerMoved()
+    {
+        if (_pointerReveal.Moved(Mouse.GetPosition(_owner), PointerRevealGate.FullscreenDistance)) Reveal();
     }
     public void Tick()
     {

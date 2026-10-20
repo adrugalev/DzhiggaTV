@@ -28,6 +28,7 @@ public sealed record MediaTrack(long Id, string Type, string? Language, string? 
 }
 
 public sealed record AudioOutputDevice(string Name, string Description);
+public sealed record PlaybackTimeline(double? Position, double? Duration, bool Seekable);
 
 /// <summary>Only actual libmpv values. A null value means unavailable, never zero or an inferred capability.</summary>
 public sealed record PlaybackStatistics

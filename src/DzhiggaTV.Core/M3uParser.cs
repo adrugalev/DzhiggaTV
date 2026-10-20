@@ -48,6 +48,7 @@ public sealed partial class M3uParser
         public List<Channel> Channels { get; } = [];
         private readonly Dictionary<string, int> _duplicates = new(StringComparer.Ordinal);
         private Dictionary<string, string> _attributes = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _defaults = new(StringComparer.OrdinalIgnoreCase);
         private string? _name;
         private string? _group;
 
@@ -55,12 +56,19 @@ public sealed partial class M3uParser
         {
             var line = raw.Trim().TrimStart('\uFEFF');
             if (line.Length == 0) return;
+            if (line.StartsWith("#EXTM3U", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (Match match in AttributePattern().Matches(line))
+                    if (match.Groups[1].Value.StartsWith("catchup", StringComparison.OrdinalIgnoreCase) || match.Groups[1].Value is "tvg-rec" or "timeshift")
+                        _defaults[match.Groups[1].Value] = match.Groups[2].Success ? match.Groups[2].Value : match.Groups[3].Success ? match.Groups[3].Value : match.Groups[4].Value;
+                return;
+            }
             if (line.StartsWith("#EXTINF:", StringComparison.OrdinalIgnoreCase))
             {
                 // A comma inside a quoted attribute is part of that attribute, not the title separator.
                 var comma = TitleSeparator(line);
                 _name = comma >= 0 ? line[(comma + 1)..].Trim() : null;
-                _attributes = new(StringComparer.OrdinalIgnoreCase);
+                _attributes = new(_defaults, StringComparer.OrdinalIgnoreCase);
                 var metadata = comma >= 0 ? line[..comma] : line;
                 foreach (Match match in AttributePattern().Matches(metadata))
                 {

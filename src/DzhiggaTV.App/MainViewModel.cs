@@ -57,19 +57,32 @@ public sealed class MainViewModel : Observable, IDisposable
     public ChannelItem? Active { get => _active; set { if (Set(ref _active, value)) RaisePlayback(); } }
     public string? PreviousId { get; set; }
     public string ActiveName => Active?.Name ?? "Сейчас смотрю";
-    public string CurrentTitle => Active?.Current?.Title ?? "Программа пока недоступна";
-    public string CurrentDescription => Active?.Current?.Description?.Trim() ?? "";
+    private Programme? _archiveProgramme, _archiveNext, _archiveAfterNext;
+    private DateTimeOffset? _archivePosition;
+    public bool IsArchive => _archiveProgramme is not null;
+    public string PlaybackProgrammeLabel => IsArchive ? "АРХИВ" : "СЕЙЧАС В ЭФИРЕ";
+    public Programme? PlayingProgramme => _archiveProgramme ?? Active?.Current;
+    public Programme? PlayingNext => IsArchive ? _archiveNext : Active?.Next;
+    public Programme? PlayingAfterNext => IsArchive ? _archiveAfterNext : Active?.AfterNext;
+    public void SetArchiveProgramme(Programme? programme, Programme? next = null, Programme? afterNext = null)
+    {
+        _archiveProgramme = programme; _archiveNext = next; _archiveAfterNext = afterNext; _archivePosition = programme?.Start;
+        Raise(nameof(IsArchive)); Raise(nameof(PlaybackProgrammeLabel)); RaisePlayback();
+    }
+    public void SetArchivePosition(DateTimeOffset time) { _archivePosition = time; Raise(nameof(CurrentProgress)); }
+    public string CurrentTitle => PlayingProgramme?.Title ?? "Программа пока недоступна";
+    public string CurrentDescription => PlayingProgramme?.Description?.Trim() ?? "";
     public string CurrentDescriptionCompact => string.Join(" ", CurrentDescription.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
-    public ProgrammeText CurrentProgrammeText => ProgrammeText.From(Active?.Current);
+    public ProgrammeText CurrentProgrammeText => ProgrammeText.From(PlayingProgramme);
     public string CurrentDescriptionPreview => CurrentProgrammeText is { Synopsis.Length: > 0 } text ? text.Synopsis : CurrentDescription;
-    public string CurrentTime => Active?.Current is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "Подключите EPG.ONE в настройках";
-    public double CurrentProgress => Active?.Progress ?? 0;
-    public string NextTitle => Active?.Next?.Title ?? "Нет данных о следующей передаче";
-    public string NextDescription => Active?.Next?.Description?.Trim() ?? "";
-    public string NextTime => Active?.Next is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "";
-    public string AfterNextTitle => Active?.AfterNext?.Title ?? "Дальнейшая программа пока недоступна";
-    public string AfterNextDescription => Active?.AfterNext?.Description?.Trim() ?? "";
-    public string AfterNextTime => Active?.AfterNext is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "";
+    public string CurrentTime => PlayingProgramme is { } p ? $"{(IsArchive ? p.Start.ToLocalTime().ToString("dd.MM · ") : "")}{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "Подключите EPG.ONE в настройках";
+    public double CurrentProgress => IsArchive && PlayingProgramme is { } p && p.End > p.Start ? Math.Clamp(((_archivePosition ?? p.Start) - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : Active?.Progress ?? 0;
+    public string NextTitle => PlayingNext?.Title ?? "Нет данных о следующей передаче";
+    public string NextDescription => PlayingNext?.Description?.Trim() ?? "";
+    public string NextTime => PlayingNext is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "";
+    public string AfterNextTitle => PlayingAfterNext?.Title ?? "Дальнейшая программа пока недоступна";
+    public string AfterNextDescription => PlayingAfterNext?.Description?.Trim() ?? "";
+    public string AfterNextTime => PlayingAfterNext is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "";
     private string _status = "Готов к просмотру. Добавьте свой плейлист.";
     public string Status { get => _status; set => Set(ref _status, value); }
     private string _playbackStatus = "Выберите канал";

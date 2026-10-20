@@ -11,10 +11,13 @@ public partial class OverlayWindow : Window
 {
     private readonly MainWindow _main;
     private DateTime _lastMove = DateTime.UtcNow;
-    private Point _lastPoint;
+    private readonly PointerRevealGate _pointerReveal = new();
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
     private Programme? _descriptionProgramme;
     private bool _volumeReady, _syncingVolume;
+    private bool _syncingSeek, _seeking;
+    private ArchiveTimeline? _archiveTimeline;
+    private string? _seekChannelId;
     private (double Width, double Height, Visibility Metadata)? _compactLayout;
     public OverlayWindow(MainWindow main)
     {
@@ -24,25 +27,33 @@ public partial class OverlayWindow : Window
         VolumeSlider.Value = volume; _volumeReady = true;
         Loaded += (_, _) => { RefreshHoverState(); UpdateVisibility(); };
         SizeChanged += (_, _) => { UpdateCompactLayout(); RefreshHoverState(); UpdateVisibility(); };
-        IsVisibleChanged += (_, _) => { RefreshHoverState(); UpdateVisibility(); };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) _seeking = false; RefreshHoverState(); UpdateVisibility(); };
+        ControlsPanel.SizeChanged += (_, _) => FullscreenProgrammeInfo.Margin = new(16, 0, 0, Math.Max(48, ControlsPanel.ActualHeight + 12));
     }
     public void Reveal()
     {
         // Playback changes and owner shortcuts also call Reveal. They must not show
         // controls while the pointer is over the channel list or another window.
         RefreshHoverState();
+        _pointerReveal.Reset(Mouse.GetPosition(OverlayRoot));
         if (_pointerInside) _lastMove = DateTime.UtcNow;
         UpdateVisibility();
     }
+    public void PointerMoved()
+    {
+        if (!_pointerReveal.Moved(Mouse.GetPosition(OverlayRoot), _main.IsFullscreen ? PointerRevealGate.FullscreenDistance : 2)) return;
+        _keyboardNavigation = false;
+        Reveal();
+    }
     public void RefreshState()
     {
-        if (_descriptionProgramme != _main.Model.Active?.Current)
+        if (_descriptionProgramme != _main.Model.PlayingProgramme)
         {
-            _descriptionProgramme = _main.Model.Active?.Current;
+            _descriptionProgramme = _main.Model.PlayingProgramme;
             FullscreenSynopsisScroll.ScrollToHome(); FullscreenMetadataScroll.ScrollToHome();
         }
         Welcome.Visibility = _main.HasPlayback ? Visibility.Collapsed : Visibility.Visible;
-        PauseButton.Content = _main.Player.IsPaused ? "▶" : "Ⅱ";
+        PauseButton.Content = _main.Player.IsPaused || _main.Player.State is PlaybackState.Idle or PlaybackState.Error ? "▶" : "Ⅱ";
         MuteButton.Content = _main.Player.IsMuted ? "⊘" : "♪";
         if (!VolumeSlider.IsMouseCaptureWithin)
         {
@@ -50,7 +61,9 @@ public partial class OverlayWindow : Window
             try { VolumeSlider.Value = _main.Player.Volume; }
             finally { _syncingVolume = false; }
         }
-        RemainingTimeValue.Text = ProgrammeTiming.Remaining(_main.Model.Active?.Current, DateTimeOffset.UtcNow);
+        RefreshArchiveTimeline();
+        RemainingTimeValue.Text = _main.IsArchivePlayback && _archiveTimeline is { } archive
+            ? $"{Math.Max(0, (int)Math.Ceiling((archive.End - archive.Position).TotalMinutes))} мин" : ProgrammeTiming.Remaining(_main.Model.PlayingProgramme, DateTimeOffset.UtcNow);
         RemainingTimeText.Visibility = RemainingTimeValue.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateVisibility();
     }
@@ -72,13 +85,17 @@ public partial class OverlayWindow : Window
     private void UpdateVisibility()
     {
         if (ControlsPanel is null) return;
-        var keyboardControls = _keyboardNavigation && (ControlsPanel.IsKeyboardFocusWithin || FullscreenProgrammeInfo.IsKeyboardFocusWithin);
+        var keyboardControls = _seeking || _keyboardNavigation && (ControlsPanel.IsKeyboardFocusWithin || FullscreenProgrammeInfo.IsKeyboardFocusWithin);
         var readingDescription = _pointerInside && FullscreenProgrammeReadingArea.IsMouseOver;
         var idle = (_main.IsFullscreen || _main.IsMini) && _main.HasPlayback &&
             Drawer.Visibility != Visibility.Visible && !_menuOpen && !keyboardControls && !readingDescription &&
             DateTime.UtcNow - _lastMove > TimeSpan.FromSeconds(3.5);
         ControlsPanel.Visibility = _menuOpen || keyboardControls || (_pointerInside && !idle) ? Visibility.Visible : Visibility.Collapsed;
-        FullscreenProgrammeInfo.Visibility = ControlsPanel.Visibility == Visibility.Visible && _main.IsFullscreen && _main.Model.Active?.Current is not null ? Visibility.Visible : Visibility.Collapsed;
+        MiniWindowActions.Visibility = _main.IsMini ? ControlsPanel.Visibility : Visibility.Collapsed;
+        MiniPinButton.Foreground = (System.Windows.Media.Brush)FindResource(_main.Topmost ? "AccentBrush" : "TextBrush");
+        MiniPinButton.ToolTip = _main.Topmost ? "Поверх всех окон · выключить" : "Закрепить поверх всех окон";
+        System.Windows.Automation.AutomationProperties.SetHelpText(MiniPinButton, _main.Topmost ? "Закреплён поверх окон" : "Без закрепления");
+        FullscreenProgrammeInfo.Visibility = ControlsPanel.Visibility == Visibility.Visible && _main.IsFullscreen && _main.Model.PlayingProgramme is not null ? Visibility.Visible : Visibility.Collapsed;
         Cursor = _pointerInside && idle ? Cursors.None : Cursors.Arrow;
     }
     private void UpdateCompactLayout()
@@ -102,7 +119,9 @@ public partial class OverlayWindow : Window
     }
     private void Overlay_MouseEnter(object sender, MouseEventArgs e)
     {
-        _pointerInside = true; _lastMove = DateTime.UtcNow; UpdateVisibility();
+        _pointerInside = true;
+        if (_main.IsFullscreen) { PointerMoved(); UpdateVisibility(); }
+        else Reveal();
     }
     private void Description_MouseWheel(object sender, MouseWheelEventArgs e)
     {
@@ -117,9 +136,7 @@ public partial class OverlayWindow : Window
     }
     private void Overlay_MouseMove(object sender, MouseEventArgs e)
     {
-        var point = e.GetPosition(this);
-        if ((point - _lastPoint).Length <= 2) return;
-        _lastPoint = point; _keyboardNavigation = false; Reveal();
+        PointerMoved();
     }
     private void Overlay_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -134,7 +151,7 @@ public partial class OverlayWindow : Window
         Reveal();
         if (e.OriginalSource is not Grid) return;
         if (e.ClickCount == 2) _main.ToggleFullscreen();
-        else if (_main.IsMini && e.LeftButton == MouseButtonState.Pressed) DragMove();
+        else if (_main.IsMini && e.LeftButton == MouseButtonState.Pressed) _main.DragMove();
     }
     private async void Overlay_KeyDown(object sender, KeyEventArgs e)
     {
@@ -157,11 +174,52 @@ public partial class OverlayWindow : Window
     private async void Import_Click(object sender, RoutedEventArgs e) => await _main.ImportPlaylistAsync();
     private async void ChannelBack_Click(object sender, RoutedEventArgs e) => await _main.NextChannelAsync(-1);
     private async void ChannelNext_Click(object sender, RoutedEventArgs e) => await _main.NextChannelAsync(1);
-    private void Pause_Click(object sender, RoutedEventArgs e) { _main.Player.TogglePause(); RefreshState(); }
+    private async void Pause_Click(object sender, RoutedEventArgs e) { await _main.GuardAsync(_main.TogglePlaybackPauseAsync); RefreshState(); }
+    private void RefreshArchiveTimeline()
+    {
+        if (_seeking) return;
+        _archiveTimeline = _main.GetArchiveTimeline();
+        ArchiveTimelinePanel.Visibility = _archiveTimeline is null ? Visibility.Collapsed : Visibility.Visible;
+        if (_archiveTimeline is not { } timeline) return;
+        _syncingSeek = true;
+        try { ArchiveSeekSlider.Maximum = Math.Max(1, (timeline.End - timeline.Start).TotalSeconds); ArchiveSeekSlider.Value = Math.Clamp((timeline.Position - timeline.Start).TotalSeconds, 0, ArchiveSeekSlider.Maximum); }
+        finally { _syncingSeek = false; }
+        ArchiveBadge.Text = timeline.IsArchive ? _main.Player.State == PlaybackState.Idle ? "АРХИВ · ЗАВЕРШЁН" : _main.Player.State == PlaybackState.Error ? "АРХИВ · НЕ УДАЛОСЬ ЗАГРУЗИТЬ" : "АРХИВ" : "ПРЯМОЙ ЭФИР";
+        ReturnLiveButton.Visibility = timeline.IsArchive ? Visibility.Visible : Visibility.Collapsed;
+        if (timeline.IsArchive) ShowSeekTime(timeline.Position);
+        else ArchivePositionText.Text = $"С начала передачи · {timeline.Start.ToLocalTime():HH:mm} — {timeline.End.ToLocalTime():HH:mm}";
+    }
+    private void ShowSeekTime(DateTimeOffset time)
+    {
+        if (_archiveTimeline is not { } timeline) return;
+        ArchivePositionText.Text = $"{time.ToLocalTime():dd.MM · HH:mm:ss}   /   {timeline.End.ToLocalTime():HH:mm:ss}";
+    }
+    private void ArchiveSeek_Down(object sender, MouseButtonEventArgs e) { _seeking = true; _seekChannelId = _main.Model.Active?.Id; _lastMove = DateTime.UtcNow; }
+    private async void ArchiveSeek_Up(object sender, MouseButtonEventArgs e) => await CommitSeekAsync();
+    private void ArchiveSeek_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key is Key.Left or Key.Right)
+        { ArchiveSeekSlider.Value = Math.Clamp(ArchiveSeekSlider.Value + (e.Key == Key.Left ? -60 : 60), 0, ArchiveSeekSlider.Maximum); e.Handled = true; }
+    }
+    private async void ArchiveSeek_KeyUp(object sender, KeyEventArgs e)
+    { if (e.Key is Key.Left or Key.Right or Key.Home or Key.End) await CommitSeekAsync(); }
+    private void ArchiveSeek_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    { if (!_syncingSeek && _archiveTimeline is { } timeline) { if (!_seeking) _seekChannelId = _main.Model.Active?.Id; _seeking = true; ShowSeekTime(timeline.Start.AddSeconds(e.NewValue)); } }
+    private async Task CommitSeekAsync()
+    {
+        var timeline = _archiveTimeline; var offset = ArchiveSeekSlider.Value;
+        _seeking = false;
+        if (timeline is not null && _seekChannelId == _main.Model.Active?.Id) await _main.GuardAsync(() => _main.SeekArchiveToAsync(timeline.Start.AddSeconds(offset)));
+        _lastMove = DateTime.UtcNow; RefreshState();
+    }
+    private async void ArchiveTime_Click(object sender, RoutedEventArgs e) => await _main.ChooseArchiveTimeAsync();
+    private async void ReturnLive_Click(object sender, RoutedEventArgs e) => await _main.GuardAsync(_main.ReturnToLiveAsync);
     private void Mute_Click(object sender, RoutedEventArgs e) { _main.Player.IsMuted = !_main.Player.IsMuted; RefreshState(); }
     private void Volume_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) { if (_volumeReady && !_syncingVolume) _main.Player.Volume = e.NewValue; }
     private async void Favorite_Click(object sender, RoutedEventArgs e) { if (_main.Model.Active is { } c) await _main.Model.ToggleFavoriteAsync(c); }
     private void Mini_Click(object sender, RoutedEventArgs e) => _main.ToggleMini();
+    private void MiniPin_Click(object sender, RoutedEventArgs e) { _main.ToggleMiniPin(); Reveal(); }
+    private void MiniClose_Click(object sender, RoutedEventArgs e) => _main.Close();
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => _main.ToggleFullscreen();
     public void ToggleDrawer() { Drawer.Visibility = Drawer.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; Reveal(); }
     private async void Drawer_Selected(object sender, SelectionChangedEventArgs e) { if (sender is ListBox { SelectedItem: ChannelItem c }) { await _main.PlayAsync(c); Drawer.Visibility = Visibility.Collapsed; Reveal(); } }

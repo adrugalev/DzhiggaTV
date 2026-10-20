@@ -22,6 +22,7 @@ var tests = new List<(string Name, Func<Task> Run)>
     ("Private fixture: 3227 channels, 12 EXTGRP categories", TestRealPlaylist)
 };
 tests.AddRange(ServicesTests.Cases);
+tests.AddRange(CatchupTests.Cases);
 
 var failed = 0;
 foreach (var (name, test) in tests)

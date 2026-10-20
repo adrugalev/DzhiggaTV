@@ -73,13 +73,17 @@ public partial class MainWindow : Window
         Top = workArea.Top + Math.Max(0, (workArea.Height - Height) / 2);
         VideoHost.HandleReady += (_, _) => InitializeEngine();
         VideoHost.DoubleClicked += (_, _) => ToggleFullscreen();
-        VideoHost.PointerActivity += (_, e) => { _overlay?.Reveal(); if (e.Kind == NativePointerKind.Wheel) Player.Volume = Math.Clamp(Player.Volume + Math.Sign(e.WheelDelta) * 5, 0, 100); };
+        VideoHost.PointerActivity += (_, e) =>
+        {
+            if (e.Kind == NativePointerKind.Move) _overlay?.PointerMoved(); else _overlay?.Reveal();
+            if (e.Kind == NativePointerKind.Wheel) Player.Volume = Math.Clamp(Player.Volume + Math.Sign(e.WheelDelta) * 5, 0, 100);
+        };
         Player.StateChanged += (_, e) => Dispatcher.BeginInvoke(() =>
         {
             if (_closing) return;
             Model.PlaybackStatus = e.Message;
             if (e.State == PlaybackState.Error) Model.Status = e.Message;
-            HasPlayback = e.State is PlaybackState.Playing or PlaybackState.Paused or PlaybackState.Buffering or PlaybackState.Reconnecting or PlaybackState.Loading;
+            HasPlayback = e.State is PlaybackState.Playing or PlaybackState.Paused or PlaybackState.Buffering or PlaybackState.Reconnecting or PlaybackState.Loading || IsArchivePlayback && e.State is PlaybackState.Idle or PlaybackState.Error;
             _overlay?.RefreshState();
         });
         Loaded += async (_, _) => await LoadedAsync();
@@ -104,6 +108,7 @@ public partial class MainWindow : Window
         _timer.Tick += async (_, _) =>
         {
             ClockText.Text = DateTime.Now.ToString("HH:mm"); _overlay?.Tick();
+            if (IsArchivePlayback && _overlay?.IsVisible != true) GetArchiveTimeline();
             if (_initialized && DateTime.Now.Second % 30 == 0) await GuardAsync(Model.UpdateNowNextAsync);
         };
         Closing += OnClosing;
@@ -144,6 +149,7 @@ public partial class MainWindow : Window
     public async Task PlayAsync(ChannelItem item)
     {
         if (!_engineReady || !Model.IsAllowed(item)) return;
+        ClearArchivePlayback();
         var generation = ++_playGeneration;
         _playCancellation?.Cancel(); _playCancellation?.Dispose(); _playCancellation = new();
         var token = _playCancellation.Token;
@@ -162,6 +168,7 @@ public partial class MainWindow : Window
     public async Task PlayLocalAsync(string file)
     {
         if (!_engineReady) return;
+        ClearArchivePlayback();
         await Player.PlayAsync(Path.GetFullPath(file)); HasPlayback = true; _overlay?.RefreshState();
     }
     private async void Channel_Selected(object sender, SelectionChangedEventArgs e)
@@ -364,11 +371,21 @@ public partial class MainWindow : Window
         if (IsMini) { RestoreWindow(); return; }
         if (IsFullscreen) RestoreWindow();
         RememberWindow(); IsMini = true;
-        WindowChrome.SetWindowChrome(this, null);
-        WindowState = WindowState.Normal; WindowStyle = WindowStyle.ToolWindow; ResizeMode = ResizeMode.CanResizeWithGrip; Topmost = true;
+        WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResizeWithGrip; Topmost = true;
+        WindowChrome.SetWindowChrome(this, new WindowChrome
+        {
+            CaptionHeight = 0, ResizeBorderThickness = new(5), GlassFrameThickness = new(0),
+            CornerRadius = new(0), UseAeroCaptionButtons = false
+        });
         MinWidth = 420; MinHeight = 260; Width = Parse("mini.width", 560); Height = Parse("mini.height", 350);
         Left = Parse("mini.left", Math.Max(0, SystemParameters.WorkArea.Right - Width - 24)); Top = Parse("mini.top", Math.Max(0, SystemParameters.WorkArea.Bottom - Height - 24));
         ClampToScreen(); CollapseChrome(); WindowAppearance.Apply(this); _overlay?.Reveal(); QueueOverlayLayout();
+    }
+    public void ToggleMiniPin()
+    {
+        if (!IsMini) return;
+        Topmost = !Topmost;
+        if (_overlay is not null) _overlay.Topmost = Topmost;
     }
     private double Parse(string key, double fallback) => double.TryParse(Model.Setting(key), CultureInfo.InvariantCulture, out var value) && double.IsFinite(value) ? value : fallback;
     private void RememberWindow() => _snapshot = new(Left, Top, ActualWidth, ActualHeight, WindowState);
@@ -433,11 +450,14 @@ public partial class MainWindow : Window
         }
         if (_programmePreview.Panel.IsKeyboardFocusWithin || CurrentProgrammeDetails.IsKeyboardFocusWithin || NextProgrammeDetails.IsKeyboardFocusWithin || AfterNextProgrammeDetails.IsKeyboardFocusWithin) return;
         if (e.OriginalSource is TextBox || e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase) return;
+        if (e.OriginalSource is Slider && key is Key.Left or Key.Right or Key.Home or Key.End) return;
         switch (key)
         {
             case Key.F11: ToggleFullscreen(); break;
             case Key.Enter when Keyboard.Modifiers.HasFlag(ModifierKeys.Alt): ToggleFullscreen(); break;
-            case Key.Space: Player.TogglePause(); break;
+            case Key.Space: await TogglePlaybackPauseAsync(); break;
+            case Key.Left: await SeekPlaybackByAsync(Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ? -60 : -10); break;
+            case Key.Right: await SeekPlaybackByAsync(Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ? 60 : 10); break;
             case Key.M when Keyboard.Modifiers.HasFlag(ModifierKeys.Control): ToggleMini(); break;
             case Key.M: Player.IsMuted = !Player.IsMuted; break;
             case Key.I: _overlay?.ToggleStatistics(); break;

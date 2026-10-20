@@ -97,7 +97,13 @@ public sealed class MpvPlayer : IDisposable
     }
 
     /// <summary>Accepts an unmodified source URL. Completion means libmpv accepted loadfile; Playing arrives as an event.</summary>
-    public async Task PlayAsync(string url, CancellationToken cancellationToken = default)
+    public Task PlayAsync(string url, CancellationToken cancellationToken = default) => StartPlaybackAsync(url, null, cancellationToken);
+    public Task PlayArchiveAsync(string url, double duration, CancellationToken cancellationToken = default)
+    {
+        if (!double.IsFinite(duration) || duration <= 0) throw new ArgumentOutOfRangeException(nameof(duration));
+        return StartPlaybackAsync(url, duration, cancellationToken);
+    }
+    private async Task StartPlaybackAsync(string url, double? duration, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(url) || url.IndexOf('\0') >= 0) throw new ArgumentException("Некорректный адрес потока.", nameof(url));
         cancellationToken.ThrowIfCancellationRequested();
@@ -106,7 +112,7 @@ public sealed class MpvPlayer : IDisposable
         PlaybackRequest? previous;
         lock (_requestGate)
         {
-            request = new PlaybackRequest(++_generation, url, cancellationToken);
+            request = new PlaybackRequest(++_generation, url, cancellationToken, duration);
             previous = _request;
             _request = request;
         }
@@ -153,6 +159,21 @@ public sealed class MpvPlayer : IDisposable
         set => WriteProperty("pause", value ? "yes" : "no");
     }
     public void TogglePause() => IsPaused = !IsPaused;
+    public PlaybackTimeline GetTimeline()
+    {
+        double? position = ReadDouble("time-pos");
+        lock (_requestGate) if (_request is { Duration: not null } request && _activeGeneration == request.Generation && _loadedEntryId == _activeEntryId && position >= 0) request.ResumePosition = position.Value;
+        return new(position, ReadDouble("duration"), ReadString("seekable") == "yes");
+    }
+    public async Task<bool> SeekAsync(double seconds)
+    {
+        if (!double.IsFinite(seconds) || seconds < 0) return false;
+        PlaybackRequest? request; lock (_requestGate) request = _activeGeneration == _generation && _loadedEntryId == _activeEntryId ? _request : null;
+        if (request is null || ReadString("seekable") != "yes") return false;
+        await CommandAsync(request, "seek", seconds.ToString("0.###", CultureInfo.InvariantCulture), "absolute+exact").ConfigureAwait(false);
+        lock (_requestGate) if (IsCurrentLocked(request)) request.ResumePosition = seconds;
+        return IsCurrent(request);
+    }
     public double Volume
     {
         get => ReadDouble("volume") ?? _volume;
@@ -237,7 +258,9 @@ public sealed class MpvPlayer : IDisposable
         try
         {
             if (!IsCurrent(request)) throw new OperationCanceledException(request.Token);
-            await CommandAsync(request, "loadfile", request.Url, "replace").ConfigureAwait(false);
+            if (request.Duration is { } duration)
+                await CommandAsync(request, "loadfile", request.Url, "replace", "-1", $"start={Math.Min(request.ResumePosition, Math.Max(0, duration - 1)).ToString("0.###", CultureInfo.InvariantCulture)},end={duration.ToString("0.###", CultureInfo.InvariantCulture)}").ConfigureAwait(false);
+            else await CommandAsync(request, "loadfile", request.Url, "replace").ConfigureAwait(false);
             if (!IsCurrent(request)) throw new OperationCanceledException(request.Token);
             var entry = ReadLong("playlist/0/id");
             lock (_requestGate)
@@ -361,6 +384,7 @@ public sealed class MpvPlayer : IDisposable
             }
         }
         if (!IsCurrent(request)) return;
+        if (request.Duration is not null && ended.Error >= 0) { SetState(PlaybackState.Idle, "Просмотр архива завершён", request); return; }
         if (!request.IsNetwork) { SetState(ended.Error < 0 ? PlaybackState.Error : PlaybackState.Idle, ended.Error < 0 ? "Не удалось открыть видео." : "Воспроизведение завершено", request); return; }
         ScheduleReconnect(request);
     }
@@ -566,12 +590,15 @@ public sealed class MpvPlayer : IDisposable
         public string Url { get; }
         public CancellationToken Token { get; }
         public bool IsNetwork { get; }
+        public double? Duration { get; }
+        public double ResumePosition { get; set; }
         public int Attempts;
         public int ReconnectPending;
         private int _cancelled;
-        public PlaybackRequest(long generation, string url, CancellationToken token)
+        public PlaybackRequest(long generation, string url, CancellationToken token, double? duration = null)
         {
             Generation = generation;
+            Duration = duration;
             Url = url;
             _cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
             Token = _cancellation.Token;

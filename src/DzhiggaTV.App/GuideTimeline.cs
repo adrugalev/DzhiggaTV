@@ -60,10 +60,12 @@ public sealed class GuideSelection
         Row = null; Programme = null; Changed?.Invoke(this, EventArgs.Empty);
     }
     public async Task<bool> ClickAsync(GuideRow row, Programme? programme, int clickCount, Func<ChannelItem, Task> play)
+        => await ClickAsync(row, programme, clickCount, (channel, _) => play(channel));
+    public async Task<bool> ClickAsync(GuideRow row, Programme? programme, int clickCount, Func<ChannelItem, Programme?, Task> play)
     {
         Select(row, programme);
         if (clickCount != 2) return false;
-        await play(row.Channel); return true;
+        await play(row.Channel, programme); return true;
     }
 }
 

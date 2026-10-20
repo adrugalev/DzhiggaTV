@@ -51,7 +51,8 @@ internal static class Program
             ("Guide playlist, category and programme search compose without leaking other rows", GuideFiltersAsync),
             ("Playing a guide channel selects it and reveals it through conflicting library filters", PlaybackSelectionAsync),
             ("Library search finds current and future titles across all channels without stale or restricted results", ProgrammeSearchAsync),
-            ("Maximized bounds respect taskbars and secondary monitors while F11 fills the monitor", WindowBoundsAsync)
+            ("Maximized bounds respect taskbars and secondary monitors while F11 fills the monitor", WindowBoundsAsync),
+            ("Fullscreen controls ignore pointer jitter while deliberate movement reveals them", PointerRevealAsync)
         ];
         var failed = 0;
         foreach (var (name, test) in cases)
@@ -61,6 +62,21 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static Task PointerRevealAsync()
+    {
+        var gate = new PointerRevealGate();
+        const double threshold = PointerRevealGate.FullscreenDistance;
+        Assert(!gate.Moved(new(500, 400), threshold), "The initial native mouse event must only establish a position.");
+        for (int i = 0; i < 100; i++)
+            Assert(!gate.Moved(new(500 + i % 5 - 2, 400 + i % 7 - 3), threshold), "Repeated jitter must not accumulate artificial movement.");
+        Assert(!gate.Moved(new(506, 400), threshold) && !gate.Moved(new(511, 400), threshold), "Movement below the reveal distance must remain hidden.");
+        Assert(gate.Moved(new(512, 400), threshold), "Intentional displacement across multiple events must reveal controls.");
+        Assert(!gate.Moved(new(513, 401), threshold), "Revealing controls starts a fresh motion threshold.");
+        gate.Reset(new(100, 100));
+        Assert(!gate.Moved(new(108, 108), threshold) && gate.Moved(new(109, 109), threshold), "Diagonal movement uses distance, with an explicit action resetting the anchor.");
+        return Task.CompletedTask;
     }
 
     private static Task MultiscreenGeometryAsync()

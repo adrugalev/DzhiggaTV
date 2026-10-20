@@ -86,6 +86,7 @@ public sealed class TimelineItem : FrameworkElement
                 if (rect.IsEmpty) continue;
                 bool current = programme.Start <= state.Now && programme.End > state.Now;
                 bool selected = state.Selection.Row?.Channel.Id == row.Channel.Id && state.Selection.Programme == programme;
+                bool archived = programme.End <= state.Now && row.Channel.Archive?.Contains(programme.Start, state.Now) == true;
                 var background = selected ? GuideDrawing.Color("#244846", "#CAE6E4") : current ? GuideDrawing.Color("#193831", "#E0F2EE") : GuideDrawing.Brush("CardBrush");
                 Pen? border = selected ? new(GuideDrawing.Brush("AccentBrush"), 1.5) : programme == _hover ? new(GuideDrawing.Brush("MutedBrush"), 1) : null;
                 dc.DrawRoundedRectangle(background, border, rect, 7, 7);
@@ -93,7 +94,7 @@ public sealed class TimelineItem : FrameworkElement
                 dc.PushClip(new RectangleGeometry(rect));
                 GuideDrawing.Text(dc, programme.Title, new(rect.X + 9, rect.Y + 8), 12.5, GuideDrawing.Brush("TextBrush"), rect.Width - 18, 32, dpi, selected);
                 if (rect.Width >= 74)
-                    GuideDrawing.Text(dc, $"{programme.Start.ToLocalTime():HH:mm}–{programme.End.ToLocalTime():HH:mm}", new(rect.X + 9, rect.Bottom - 19), 10,
+                    GuideDrawing.Text(dc, $"{(archived ? "↶ " : "")}{programme.Start.ToLocalTime():HH:mm}–{programme.End.ToLocalTime():HH:mm}", new(rect.X + 9, rect.Bottom - 19), 10,
                         GuideDrawing.Brush("MutedBrush"), rect.Width - 18, 15, dpi);
                 dc.Pop();
             }
@@ -114,7 +115,8 @@ public sealed class TimelineItem : FrameworkElement
             dc.DrawImage(logo, target);
         }
         else GuideDrawing.Text(dc, row.Channel.Initials, new(logoRect.X + 5, logoRect.Y + 10), 10, GuideDrawing.Brush("MutedBrush"), 28, 17, dpi, true);
-        GuideDrawing.Text(dc, row.Channel.Name, new(58, 15), 12.5, GuideDrawing.Brush(channelSelected ? "AccentBrush" : "TextBrush"), GuideLayout.ChannelWidth - 76, 43, dpi, true);
+        GuideDrawing.Text(dc, row.Channel.Name, new(58, 15), 12.5, GuideDrawing.Brush(channelSelected ? "AccentBrush" : "TextBrush"), GuideLayout.ChannelWidth - 76, row.Channel.Archive is null ? 43 : 32, dpi, true);
+        if (row.Channel.Archive is { } archive) GuideDrawing.Text(dc, $"↶ АРХИВ {archive.Days} ДН.", new(58, 52), 9, GuideDrawing.Brush("AccentBrush"), GuideLayout.ChannelWidth - 76, 15, dpi);
     }
 }
 

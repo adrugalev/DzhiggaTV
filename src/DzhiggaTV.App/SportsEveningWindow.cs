@@ -149,7 +149,7 @@ public sealed class SportsEveningWindow : Window
             tile.RemoveRequested += (_, _) => SetLayout(_layout.Select(c => c?.Id == tile.Channel.Id ? null : c).ToArray());
             tile.FullscreenRequested += (_, _) => ToggleChannelFullscreen(tile.Channel.Id);
             tile.VideoPressed += (_, e) => BeginPress(tile, PointFromScreen(new(e.ScreenX, e.ScreenY)));
-            tile.VideoMoved += (_, _) => { if (_expandedChannelId == tile.Channel.Id) _focusedOverlay?.Reveal(); };
+            tile.VideoMoved += (_, _) => { if (_expandedChannelId == tile.Channel.Id) _focusedOverlay?.PointerMoved(); };
             tile.AspectChanged += (_, _) => _screens.InvalidateMeasure();
             _screens.Children.Add(tile);
         }

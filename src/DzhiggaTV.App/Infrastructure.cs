@@ -21,6 +21,7 @@ public sealed class ActionCommand(Action<object?> action) : ICommand
 public sealed class ChannelItem(Channel channel) : Observable
 {
     public Channel Channel { get; } = channel;
+    public CatchupSource? Archive { get; } = Catchup.From(channel);
     public string Id => Channel.Id;
     public int Number { get; init; } = channel.Order + 1;
     private string _name = channel.Name;

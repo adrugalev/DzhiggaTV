@@ -140,6 +140,23 @@ internal static class Program
                 Assert(true, "embedded subtitle enable and disable");
                 Console.WriteLine(JsonSerializer.Serialize(new { compressedVideo = new { compressed.VideoCodec, compressed.AudioCodec, compressed.VideoDecoder, compressed.HardwareDecoder, compressed.SourceTransfer, compressed.TargetTransfer, compressed.VideoOutput } }));
             }
+            if (args.Length >= 3)
+            {
+                await player.PlayArchiveAsync(args[2], 30);
+                await WaitUntil(() => player.State == PlaybackState.Playing && player.GetTimeline().Seekable);
+                player.IsPaused = true;
+                Assert(await player.SeekAsync(15), "bounded archive supports a real native absolute seek");
+                await WaitUntil(() => player.GetTimeline().Position is > 14 and < 16);
+                Assert(player.IsPaused && Math.Abs(player.Volume - 40) < .01 && player.IsMuted, "archive seek preserves pause, volume and mute");
+                await player.PlayArchiveAsync(args[2], 2);
+                await WaitUntil(() => player.State == PlaybackState.Idle, 8000);
+                await Task.Delay(1200);
+                Assert(player.State == PlaybackState.Idle, "finite archive EOF stays completed without reconnecting");
+                await player.PlayAsync(args[2]);
+                await WaitUntil(() => player.State == PlaybackState.Playing);
+                await Task.Delay(2400);
+                Assert(player.State == PlaybackState.Playing, "returning to live clears archive start and end options");
+            }
             using (var errors = new TcpListener(IPAddress.Loopback, 0))
             using (var errorCancellation = new CancellationTokenSource())
             {

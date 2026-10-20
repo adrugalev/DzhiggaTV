@@ -14,6 +14,7 @@ public sealed class GuideWindow : Window
 {
     private readonly MainWindow _main;
     private readonly Func<ChannelItem, Task> _play;
+    private readonly Func<ChannelItem, Programme, Task> _playArchive;
     private readonly Func<DateTimeOffset> _clock;
     private readonly GuideViewport _viewport = new();
     private readonly ListBox _rows = new() { Padding = new(0), BorderThickness = new(0) };
@@ -44,6 +45,7 @@ public sealed class GuideWindow : Window
     private readonly Grid _detailContent = new();
     private readonly ScrollViewer _descriptionScroll;
     private readonly Button _watch;
+    private readonly Button _live;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private readonly DispatcherTimer _searchTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private CancellationTokenSource? _loading;
@@ -52,14 +54,15 @@ public sealed class GuideWindow : Window
     private bool _closed, _changingDate, _changingSelection, _changingOffset, _followNow = true, _activating;
     private int _generation;
 
-    public GuideWindow(MainWindow main, Func<ChannelItem, Task>? play = null, Func<DateTimeOffset>? clock = null)
+    public GuideWindow(MainWindow main, Func<ChannelItem, Task>? play = null, Func<DateTimeOffset>? clock = null, Func<ChannelItem, Programme, Task>? playArchive = null)
     {
         _main = main; _play = play ?? main.PlayAsync; _clock = clock ?? (() => DateTimeOffset.Now);
+        _playArchive = playArchive ?? main.PlayArchiveAsync;
         _viewport.RequestLogo = channel => _main.Model.LoadLogos([channel]);
         Theme.Window(this); Owner = main; Title = "DzhiggaTV · Телепрограмма";
         Width = Math.Min(1280, SystemParameters.WorkArea.Width - 32); Height = Math.Min(800, SystemParameters.WorkArea.Height - 40);
         MinWidth = 900; MinHeight = Math.Min(560, Height); WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        _date.SelectedDate = _clock().LocalDateTime.Date; _date.DisplayDate = _date.SelectedDate.Value;
+        _date.SelectedDate = main.IsArchivePlayback ? main.Model.PlayingProgramme?.Start.LocalDateTime.Date ?? _clock().LocalDateTime.Date : _clock().LocalDateTime.Date; _date.DisplayDate = _date.SelectedDate.Value;
         ConfigureDatePicker();
         _axis = new(_viewport) { Height = GuideLayout.HeaderHeight, Margin = new(0, 0, Theme.ScrollBarThickness, 0) };
         _nowLine = new(_viewport) { IsHitTestVisible = false, Margin = new(0, 0, Theme.ScrollBarThickness, 0) };
@@ -105,7 +108,9 @@ public sealed class GuideWindow : Window
         ConfigureRows();
         var detailsDock = new DockPanel { Margin = new(18) };
         _watch = CompactButton("Смотреть канал", "Переключиться на этот канал", double.NaN); _watch.Height = 38; _watch.Margin = new(0, 16, 0, 0);
-        _watch.SetResourceReference(BorderBrushProperty, "AccentBrush"); DockPanel.SetDock(_watch, Dock.Bottom); detailsDock.Children.Add(_watch);
+        _watch.SetResourceReference(BorderBrushProperty, "AccentBrush");
+        _live = CompactButton("Прямой эфир", "Открыть канал в прямом эфире", double.NaN); _live.Height = 30; _live.Margin = new(0, 7, 0, 0);
+        var playback = new StackPanel(); playback.Children.Add(_watch); playback.Children.Add(_live); DockPanel.SetDock(playback, Dock.Bottom); detailsDock.Children.Add(playback);
         var heading = new StackPanel(); heading.Children.Add(_badge); heading.Children.Add(_title); heading.Children.Add(_channel); heading.Children.Add(_time);
         _detailContent.ColumnDefinitions.Add(new()); _detailContent.ColumnDefinitions.Add(new() { Width = new(0) });
         _detailContent.RowDefinitions.Add(new() { Height = GridLength.Auto }); _detailContent.RowDefinitions.Add(new() { Height = GridLength.Auto });
@@ -130,7 +135,8 @@ public sealed class GuideWindow : Window
         _searchTimer.Tick += (_, _) => { _searchTimer.Stop(); ApplyFilter(true); };
         _search.KeyDown += (_, e) => { if (e.Key == Key.Enter) { _searchTimer.Stop(); ApplyFilter(true); e.Handled = true; } };
         _date.SelectedDateChanged += async (_, _) => { if (!_changingDate) await LoadDayAsync(); };
-        _watch.Click += async (_, _) => { if (_viewport.Selection.Row is { } row) await PlayChannelAsync(row.Channel); };
+        _watch.Click += async (_, _) => { if (_viewport.Selection.Row is { } row) await PlaySelectionAsync(row.Channel, _viewport.Selection.Programme); };
+        _live.Click += async (_, _) => { if (_viewport.Selection.Row is { } row) await PlayChannelAsync(row.Channel); };
         _timer.Tick += async (_, _) => await TickAsync();
         PreviewKeyDown += async (_, e) =>
         {
@@ -216,7 +222,7 @@ public sealed class GuideWindow : Window
             programme ??= row.At(_viewport.Now);
             e.Handled = true; _changingSelection = true; _rows.SelectedItem = row; _changingSelection = false;
             (_rows.ItemContainerGenerator.ContainerFromItem(row) as ListBoxItem)?.Focus();
-            await _viewport.Selection.ClickAsync(row, programme, e.ClickCount, PlayChannelAsync);
+            await _viewport.Selection.ClickAsync(row, programme, e.ClickCount, (channel, selected) => PlaySelectionAsync(channel, point.X < GuideLayout.ChannelWidth ? null : selected));
         };
         _rows.SelectionChanged += (_, _) =>
         {
@@ -226,7 +232,7 @@ public sealed class GuideWindow : Window
         _rows.PreviewKeyDown += async (_, e) =>
         {
             if (_viewport.Selection.Row is not { } row) return;
-            if (e.Key == Key.Enter) { e.Handled = true; await PlayChannelAsync(row.Channel); }
+            if (e.Key == Key.Enter) { e.Handled = true; await PlaySelectionAsync(row.Channel, _viewport.Selection.Programme); }
             else if (e.Key is Key.Left or Key.Right && row.Programmes.Count > 0)
             {
                 int index = row.Programmes.ToList().FindIndex(p => p == _viewport.Selection.Programme);
@@ -326,7 +332,15 @@ public sealed class GuideWindow : Window
     private void ShowEmptySelection()
     {
         _title.Text = "Выберите передачу"; _description.Show(null, "Нажмите на ячейку, чтобы прочитать полное описание.");
-        _channel.Text = _time.Text = _badge.Text = ""; _watch.Visibility = Visibility.Collapsed;
+        _channel.Text = _time.Text = _badge.Text = ""; _watch.Visibility = _live.Visibility = Visibility.Collapsed;
+    }
+    public bool SelectProgramme(string channelId, DateTimeOffset start)
+    {
+        var row = _allRows.FirstOrDefault(r => r.Channel.Id == channelId);
+        var programme = row?.Programmes.FirstOrDefault(p => p.Start == start);
+        if (row is null || programme is null) return false;
+        _changingSelection = true; _rows.SelectedItem = row; _changingSelection = false;
+        _viewport.Selection.Select(row, programme); FocusTime(start); CenterChannel(row); return true;
     }
     private void ShowSelection()
     {
@@ -336,20 +350,34 @@ public sealed class GuideWindow : Window
         _title.Text = programme?.Title ?? "Нет данных о передаче"; _channel.Text = row.Channel.Name;
         _time.Text = programme is null ? "" : $"{programme.Start.ToLocalTime():dd.MM} · {programme.Start.ToLocalTime():HH:mm} — {programme.End.ToLocalTime():HH:mm}";
         _description.Show(programme, "Подробного описания в телепрограмме нет.");
-        _watch.Visibility = Visibility.Visible; _descriptionScroll.ScrollToHome(); UpdateBadge(); RefreshTimeline();
+        _watch.Visibility = _live.Visibility = Visibility.Visible; _descriptionScroll.ScrollToHome(); UpdateBadge(); RefreshTimeline();
     }
     private void UpdateBadge()
     {
         if (_viewport.Selection.Row is null) { _badge.Text = ""; return; }
         var programme = _viewport.Selection.Programme;
-        _badge.Text = programme is null ? "ТЕЛЕПРОГРАММА" : programme.Start <= _viewport.Now && programme.End > _viewport.Now ? "СЕЙЧАС В ЭФИРЕ" : programme.Start > _viewport.Now ? "ПРЕДСТОЯЩИЙ ЭФИР" : "ЭФИР ЗАВЕРШЁН";
+        var channel = _viewport.Selection.Row.Channel;
+        bool archive = programme is not null && Catchup.CanPlay(channel.Channel, programme, _clock());
+        bool past = programme is not null && programme.End <= _clock(), future = programme is not null && programme.Start > _clock();
+        _watch.IsEnabled = !_activating && (!past && !future || archive);
+        _watch.Content = archive ? past ? "Смотреть в архиве" : "Смотреть с начала" : past ? "Архив недоступен" : future ? "Передача ещё не началась" : "Смотреть канал";
+        _watch.ToolTip = archive ? $"Архив канала · {channel.Archive!.Days} дн." : past ? channel.Archive is null ? "У этого канала нет архива" : "Передача за пределами доступного архива" : "Смотреть прямой эфир";
+        _badge.Text = archive ? $"АРХИВ · {channel.Archive!.Days} ДН." : programme is null ? "ТЕЛЕПРОГРАММА" : programme.Start <= _viewport.Now && programme.End > _viewport.Now ? "СЕЙЧАС В ЭФИРЕ" : future ? "ПРЕДСТОЯЩИЙ ЭФИР" : "ЭФИР ЗАВЕРШЁН";
         _badge.SetResourceReference(TextBlock.ForegroundProperty, programme is not null && programme.Start <= _viewport.Now && programme.End > _viewport.Now ? "AccentBrush" : "MutedBrush");
     }
     private async Task PlayChannelAsync(ChannelItem channel)
+        => await ActivateAsync(() => _play(channel));
+    private async Task PlaySelectionAsync(ChannelItem channel, Programme? programme)
+    {
+        if (programme is not null && Catchup.CanPlay(channel.Channel, programme, _clock())) await ActivateAsync(() => _playArchive(channel, programme));
+        else if (programme is null || programme.Start <= _clock() && programme.End > _clock()) await PlayChannelAsync(channel);
+        else UpdateBadge();
+    }
+    private async Task ActivateAsync(Func<Task> action)
     {
         if (_activating || _closed) return;
         _activating = true; _watch.IsEnabled = false;
-        try { await _play(channel); if (!_closed) Close(); }
+        try { await action(); if (!_closed) Close(); }
         catch { if (!_closed) _badge.Text = "Не удалось открыть канал. Попробуйте ещё раз."; }
         finally { _activating = false; if (!_closed) _watch.IsEnabled = true; }
     }

@@ -99,8 +99,10 @@ public sealed class NavigationIcon : Grid
     private void Deactivated(object? sender, EventArgs e) { _keyboardNavigation = false; Refresh(); }
     // A click may leave keyboard focus on the launcher after its dialog closes.
     // Highlight keyboard focus only when the user actually navigates with keys.
-    private void Refresh() => Animate(_window?.IsActive != false &&
-        (_button?.IsMouseOver == true || _keyboardNavigation && _button?.IsKeyboardFocusWithin == true));
+    // Pointer hover works even while another app (or the owned video overlay)
+    // has keyboard focus. Only keyboard highlighting depends on activation.
+    private void Refresh() => Animate(_button?.IsMouseOver == true ||
+        _window?.IsActive != false && _keyboardNavigation && _button?.IsKeyboardFocusWithin == true);
     private void Animate(bool active)
     {
         var owner = Window.GetWindow(this);

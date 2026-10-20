@@ -34,7 +34,7 @@ internal sealed class ProgrammePreview
 
     public ProgrammePreview(MainWindow main, Button current, Button next, Button afterNext)
         : this(main, main.Model, [current, next, afterNext],
-            index => index switch { 0 => main.Model.Active?.Current, 1 => main.Model.Active?.Next, _ => main.Model.Active?.AfterNext },
+            index => index switch { 0 => main.Model.PlayingProgramme, 1 => main.Model.PlayingNext, _ => main.Model.PlayingAfterNext },
             () => !main.IsFullscreen && !main.IsMini, () => main.ProgrammePanel.ActualWidth)
     {
         main.Model.PropertyChanged += (_, e) =>
