@@ -13,6 +13,7 @@
     <Compile Include="../../src/DzhiggaTV.App/Infrastructure.cs" Link="Infrastructure.cs" />
     <Compile Include="../../src/DzhiggaTV.App/SportsSession.cs" Link="SportsSession.cs" />
     <Compile Include="../../src/DzhiggaTV.App/SportsLayout.cs" Link="SportsLayout.cs" />
+    <Compile Include="../../src/DzhiggaTV.App/MultiscreenGeometry.cs" Link="MultiscreenGeometry.cs" />
     <Compile Include="../../src/DzhiggaTV.App/ProgrammeTiming.cs" Link="ProgrammeTiming.cs" />
     <Compile Include="../../src/DzhiggaTV.App/GuideTimeline.cs" Link="GuideTimeline.cs" />
     <Compile Include="../../src/DzhiggaTV.App/WindowBoundsGeometry.cs" Link="WindowBoundsGeometry.cs" />

@@ -88,9 +88,9 @@ public sealed class GuideWindow : Window
         filters.Children.Add(_resetFilters); controls.Children.Add(filters);
         System.Windows.Automation.AutomationProperties.SetName(_playlist, "Плейлист телепрограммы");
         System.Windows.Automation.AutomationProperties.SetName(_categoryFilter, "Категория телепрограммы");
-        _playlist.SelectionChanged += (_, _) => { if (!_changingFilters) { UpdateCategories(); ApplyFilter(true); } };
-        _categoryFilter.SelectionChanged += (_, _) => { if (!_changingFilters) ApplyFilter(true); };
-        _resetFilters.Click += (_, _) => { _changingFilters = true; _playlist.SelectedIndex = 0; _changingFilters = false; UpdateCategories(false); ApplyFilter(true); };
+        _playlist.SelectionChanged += (_, _) => { if (!_changingFilters) { UpdateCategories(); ApplyFilter(true, startAtTop: true); } };
+        _categoryFilter.SelectionChanged += (_, _) => { if (!_changingFilters) ApplyFilter(true, startAtTop: true); };
+        _resetFilters.Click += (_, _) => { _changingFilters = true; _playlist.SelectedIndex = 0; _changingFilters = false; UpdateCategories(false); ApplyFilter(true, startAtTop: true); };
         System.Windows.Automation.AutomationProperties.SetName(_search, "Поиск по каналам и передачам");
         _search.ToolTip = "Поиск по каналам и передачам выбранного дня (Ctrl+F)";
         Grid.SetRow(_body, 1); _body.Margin = new(0, 14, 0, 0); _body.ColumnDefinitions.Add(new()); _body.ColumnDefinitions.Add(_detailsColumn);
@@ -262,7 +262,9 @@ public sealed class GuideWindow : Window
             _playlistSources = sources;
             _allRows = channels.Select(c => new GuideRow(c.Channel, c.EpgId is not null && programmes.TryGetValue(c.EpgId, out var entries) ? entries : [])).ToList();
             UpdateFilters();
-            ApplyFilter(_search.Text.Trim().Length > 0); if (_search.Text.Trim().Length == 0) SelectInitial();
+            bool filtered = SelectedPlaylist is not null || SelectedCategory is not null;
+            ApplyFilter(_search.Text.Trim().Length > 0 || filtered, startAtTop: filtered);
+            if (_search.Text.Trim().Length == 0 && !filtered) SelectInitial();
         }
         catch (OperationCanceledException) { }
         catch
@@ -272,7 +274,7 @@ public sealed class GuideWindow : Window
         }
     }
 
-    private void ApplyFilter(bool focusMatch)
+    private void ApplyFilter(bool focusMatch, bool startAtTop = false)
     {
         string query = _search.Text.Trim();
         var visible = GuideFiltering.Filter(_allRows, SelectedPlaylist, SelectedCategory, query);
@@ -283,7 +285,7 @@ public sealed class GuideWindow : Window
         _empty.Visibility = visible.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (focusMatch && query.Length == 0 && visible.Count > 0)
         {
-            SelectInitial(); FocusTime(ReferenceTime()); _followNow = _viewport.Range.Contains(_clock());
+            SelectInitial(startAtTop); FocusTime(ReferenceTime()); _followNow = _viewport.Range.Contains(_clock());
         }
         else if (focusMatch && visible.Count > 0)
         {
@@ -291,16 +293,17 @@ public sealed class GuideWindow : Window
             Select(row, programme); if (programme is not null) FocusTime(programme.Start); _followNow = false;
         }
         else if (visible.Count == 0) { _viewport.Selection.Clear(); ShowEmptySelection(); }
+        if (startAtTop) ChannelListScroll.ResetToTop(_rows);
         RefreshTimeline();
     }
-    private void SelectInitial()
+    private void SelectInitial(bool startAtTop = false)
     {
         var visible = (_rows.ItemsSource as IEnumerable<GuideRow>)?.ToArray() ?? [];
         var reference = ReferenceTime();
-        var row = visible.FirstOrDefault(r => r.Channel.Id == (_preferredChannelId ?? _main.Model.Active?.Id)) ?? visible.FirstOrDefault(r => r.At(reference) is not null) ?? visible.FirstOrDefault();
+        var row = startAtTop ? visible.FirstOrDefault() : visible.FirstOrDefault(r => r.Channel.Id == (_preferredChannelId ?? _main.Model.Active?.Id)) ?? visible.FirstOrDefault(r => r.At(reference) is not null) ?? visible.FirstOrDefault();
         if (row is null) { ShowEmptySelection(); return; }
         Select(row, row.At(reference) ?? row.Programmes.FirstOrDefault(p => p.Start >= reference) ?? row.Programmes.FirstOrDefault());
-        CenterChannel(row);
+        if (!startAtTop) CenterChannel(row);
     }
     private void Select(GuideRow row, Programme? programme)
     {

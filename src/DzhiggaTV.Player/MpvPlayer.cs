@@ -200,6 +200,15 @@ public sealed class MpvPlayer : IDisposable
             .Select(item => new AudioOutputDevice(GetText(item, "name")!, GetText(item, "description") ?? GetText(item, "name")!)).ToArray();
     }
 
+    public double? GetVideoAspectRatio()
+    {
+        // Display aspect includes non-square pixels (for example anamorphic SD TV).
+        double? aspect = ReadDouble("video-out-params/aspect") ?? ReadDouble("video-params/aspect");
+        if (aspect is not > 0) return null;
+        long rotation = ReadLong("video-out-params/rotate") ?? ReadLong("video-params/rotate") ?? 0;
+        return Math.Abs(rotation % 180) == 90 ? 1 / aspect : aspect;
+    }
+
     public PlaybackStatistics GetStatistics()
     {
         // Poll at most once per second in the UI. Unknown/unsupported properties stay null.

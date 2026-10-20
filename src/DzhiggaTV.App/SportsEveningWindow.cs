@@ -11,12 +11,14 @@ namespace DzhiggaTV.App;
 public sealed class SportsEveningWindow : Window
 {
     private readonly MainViewModel _model;
-    private readonly Grid _screens = new();
+    private readonly SportsScreenPanel _screens;
+    private readonly SportsProgrammePanel _programme = new();
     private readonly Dictionary<string, SportsTile> _tiles = new(StringComparer.Ordinal);
     private IReadOnlyList<ChannelItem?> _layout = [];
     private readonly List<Border> _vacancies = [];
     private readonly SportsAudioFocus _audio = new();
     private readonly DispatcherTimer _guideTimer = new() { Interval = TimeSpan.FromSeconds(30) };
+    private readonly DispatcherTimer _layoutTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private bool _guideLoading;
     private readonly TextBlock _sound = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
     private readonly TextBlock _empty = new() { Text = "Выберите каналы для одновременного просмотра", FontSize = 18, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
@@ -29,6 +31,7 @@ public sealed class SportsEveningWindow : Window
     public SportsEveningWindow(MainWindow main, double volume, bool muted)
     {
         _model = main.Model;
+        _screens = new(_programme); _screens.Children.Add(_programme);
         Theme.Window(this); WindowBounds.Attach(this, () => _isFullscreen);
         Owner = main; Title = "DzhiggaTV · Мультиэкран";
         Width = Math.Min(1440, SystemParameters.WorkArea.Width - 24); Height = Math.Min(900, SystemParameters.WorkArea.Height - 36);
@@ -52,7 +55,7 @@ public sealed class SportsEveningWindow : Window
         hint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(hint, 1); footer.Children.Add(hint);
         var soundControls = new StackPanel { Orientation = Orientation.Horizontal }; Grid.SetColumn(soundControls, 2); footer.Children.Add(soundControls);
         _mute = Button("", "Выключить / включить звук (M)"); _mute.MinWidth = 98; soundControls.Children.Add(_mute);
-        var slider = new Slider { Minimum = 0, Maximum = 100, Value = volume, Width = 100, VerticalAlignment = VerticalAlignment.Center, Margin = new(8, 0, 0, 0), ToolTip = "Громкость" };
+        var slider = new Slider { Minimum = 0, Maximum = 100, Value = volume, IsMoveToPointEnabled = true, Width = 100, VerticalAlignment = VerticalAlignment.Center, Margin = new(8, 0, 0, 0), ToolTip = "Громкость" };
         System.Windows.Automation.AutomationProperties.SetName(slider, "Громкость мультиэкрана"); soundControls.Children.Add(slider);
         slider.ValueChanged += (_, e) => _audio.Volume = e.NewValue;
         Grid.SetRow(footer, 2); root.Children.Add(footer); _empty.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
@@ -69,14 +72,20 @@ public sealed class SportsEveningWindow : Window
             var opening = SportsSelection.ForOpening(_model);
             if (opening.Channels.Count > 0) SetLayout(opening.Layout, opening.AudioId);
             if (opening.ShowChannelPicker) ChooseChannels();
-            if (!_closed) _guideTimer.Start();
+            if (!_closed) { _guideTimer.Start(); _layoutTimer.Start(); }
         };
         _guideTimer.Tick += async (_, _) => await LoadGuideAsync(_tiles.Values.Select(t => t.Channel).ToArray());
+        _layoutTimer.Tick += (_, _) =>
+        {
+            foreach (var tile in _tiles.Values) tile.RefreshVideoAspect();
+            RefreshProgramme();
+        };
         Closing += (_, _) =>
         {
             if (_closed) return;
             _closed = true;
             _guideTimer.Stop();
+            _layoutTimer.Stop();
             SaveSelection();
             _audio.Replace([]);
             foreach (var tile in _tiles.Values) tile.Dispose();
@@ -114,16 +123,13 @@ public sealed class SportsEveningWindow : Window
             tile.AudioRequested += (_, _) => SelectAudio(tile.Channel.Id);
             tile.RemoveRequested += (_, _) => SetLayout(_layout.Select(c => c?.Id == tile.Channel.Id ? null : c).ToArray());
             tile.FullscreenRequested += (_, _) => ToggleFullscreen();
+            tile.AspectChanged += (_, _) => _screens.InvalidateMeasure();
             _screens.Children.Add(tile);
         }
         // Dictionary slots may be reused after removals; persist the visible order explicitly.
         _tiles.Clear();
         foreach (var tile in next) _tiles.Add(tile.Channel.Id, tile);
         var columns = SportsLayout.ColumnsFor(_layout.Count);
-        var rows = Math.Max(1, (int)Math.Ceiling(_layout.Count / (double)columns));
-        _screens.ColumnDefinitions.Clear(); _screens.RowDefinitions.Clear();
-        for (int i = 0; i < columns; i++) _screens.ColumnDefinitions.Add(new());
-        for (int i = 0; i < rows; i++) _screens.RowDefinitions.Add(new());
         foreach (var vacancy in _vacancies) _screens.Children.Remove(vacancy);
         _vacancies.Clear();
         for (int i = 0; i < _layout.Count; i++)
@@ -141,6 +147,7 @@ public sealed class SportsEveningWindow : Window
             }
             Grid.SetRow(screen, i / columns); Grid.SetColumn(screen, i % columns);
         }
+        _screens.SetCount(_layout.Count);
         _empty.Visibility = next.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         _model.LoadLogos(selection); _ = LoadGuideAsync(selection);
         SaveSelection(); RefreshAudio();
@@ -155,7 +162,7 @@ public sealed class SportsEveningWindow : Window
         try { await _model.UpdateNowNextAsync(channels); }
         catch (OperationCanceledException) { }
         catch { /* Guide availability must not stop independent video streams. */ }
-        finally { _guideLoading = false; }
+        finally { _guideLoading = false; if (!_closed) RefreshProgramme(); }
     }
     private void ToggleMute() { _audio.IsMuted = !_audio.IsMuted; RefreshAudio(); }
     private void RefreshAudio()
@@ -164,7 +171,9 @@ public sealed class SportsEveningWindow : Window
         _sound.Text = _audio.SelectedId is { } id && _tiles.TryGetValue(id, out var selected)
             ? $"{(_audio.IsMuted ? "Звук выключен · выбран" : "Звук")}: {selected.Channel.Name}" : "Звук: канал не выбран";
         _mute.Content = _audio.IsMuted ? "Включить звук" : "Без звука";
+        RefreshProgramme();
     }
+    private void RefreshProgramme() => _programme.Show(_audio.SelectedId is { } id && _tiles.TryGetValue(id, out var selected) ? selected.Channel : null);
 
     public void ToggleFullscreen()
     {
@@ -193,11 +202,13 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
     private readonly MainViewModel _model;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly Button _sound;
-    private readonly TextBlock _status = new() { FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(10, 2, 10, 6), Text = "Подключение к трансляции…" };
-    private bool _disposed;
+    private readonly TextBlock _status = new() { FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(10, 0, 10, 4), Text = "Подключение к трансляции…" };
+    private bool _disposed, _audioSelected, _compact;
     public event EventHandler? AudioRequested;
     public event EventHandler? RemoveRequested;
     public event EventHandler? FullscreenRequested;
+    public event EventHandler? AspectChanged;
+    public double VideoAspect { get; private set; } = MultiscreenGeometry.DefaultAspect;
     public bool IsMuted { get => Player.IsMuted; set => Player.IsMuted = value; }
     public double Volume { get => Player.Volume; set => Player.Volume = value; }
 
@@ -205,8 +216,8 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
     {
         Channel = channel; _model = model;
         Margin = new(4); BorderThickness = new(2); CornerRadius = new(8); SetResourceReference(BorderBrushProperty, "BorderBrush"); SetResourceReference(BackgroundProperty, "PanelBrush");
-        var root = new Grid(); Child = root;
-        root.RowDefinitions.Add(new() { Height = new(42) }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
+        var root = new Grid { ClipToBounds = true }; Child = root;
+        root.RowDefinitions.Add(new() { Height = new(42) }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = new(22) }); root.RowDefinitions.Add(new() { Height = new(16) });
         var header = new Grid { Margin = new(8, 4, 5, 4) };
         foreach (var width in new[] { new GridLength(28), new GridLength(1, GridUnitType.Star), GridLength.Auto, GridLength.Auto, GridLength.Auto }) header.ColumnDefinitions.Add(new() { Width = width });
         var logo = new Image { Width = 24, Height = 24, Stretch = Stretch.Uniform };
@@ -217,6 +228,16 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
         _sound.Click += (_, _) => AudioRequested?.Invoke(this, EventArgs.Empty); Grid.SetColumn(_sound, 2); header.Children.Add(_sound);
         var retry = SportsEveningWindow.Button("↻", "Переподключить этот канал"); retry.Width = 28; retry.Padding = new(0); retry.Click += async (_, _) => await PlayAsync(); Grid.SetColumn(retry, 3); header.Children.Add(retry);
         var remove = SportsEveningWindow.Button("×", $"Убрать канал: {channel.Name}"); remove.Width = 28; remove.Padding = new(0); remove.Click += (_, _) => RemoveRequested?.Invoke(this, EventArgs.Empty); Grid.SetColumn(remove, 4); header.Children.Add(remove);
+        SizeChanged += (_, _) =>
+        {
+            _compact = ActualWidth < 300;
+            _sound.Width = _compact ? 32 : 64;
+            _sound.Content = _compact ? _audioSelected ? "♪ ✓" : "♪" : _audioSelected ? "Звук ✓" : "Звук";
+            title.Visibility = ActualWidth < 180 ? Visibility.Collapsed : Visibility.Visible;
+            logo.Visibility = ActualWidth < 145 ? Visibility.Collapsed : Visibility.Visible;
+            header.ColumnDefinitions[0].Width = new(ActualWidth < 145 ? 0 : 28);
+            retry.Visibility = ActualWidth < 175 ? Visibility.Collapsed : Visibility.Visible;
+        };
         System.Windows.Automation.AutomationProperties.SetName(_sound, $"Звук: {channel.Name}");
         System.Windows.Automation.AutomationProperties.SetName(remove, $"Убрать: {channel.Name}");
         root.Children.Add(header);
@@ -250,14 +271,22 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
     }
     private void OnStateChanged(object? sender, PlaybackStateChangedEventArgs e) => Dispatcher.BeginInvoke(() =>
     {
-        if (!_disposed) _status.Text = e.State == PlaybackState.Playing ? "Прямой эфир" : e.Message;
+        if (!_disposed) { _status.Text = e.State == PlaybackState.Playing ? "Прямой эфир" : e.Message; if (e.State == PlaybackState.Playing) RefreshVideoAspect(); }
     });
+    public void RefreshVideoAspect()
+    {
+        if (_disposed) return;
+        var aspect = Player.GetVideoAspectRatio();
+        if (aspect is not > 0 || Math.Abs(VideoAspect - aspect.Value) < .0001) return;
+        VideoAspect = aspect.Value; AspectChanged?.Invoke(this, EventArgs.Empty);
+    }
     public void SetAudioSelected(bool selected, bool muted)
     {
+        _audioSelected = selected;
         SetResourceReference(BorderBrushProperty, selected ? "AccentBrush" : "BorderBrush");
         _sound.SetResourceReference(Control.BorderBrushProperty, selected ? "AccentBrush" : "BorderBrush");
         _sound.SetResourceReference(Control.ForegroundProperty, selected ? "AccentBrush" : "TextBrush");
-        _sound.Content = selected ? "Звук ✓" : "Звук";
+        _sound.Content = _compact ? selected ? "♪ ✓" : "♪" : selected ? "Звук ✓" : "Звук";
         _sound.ToolTip = selected ? muted ? "Источник выбран, общий звук выключен" : "Звук идёт с этого канала" : $"Выбрать звук: {Channel.Name}";
     }
     public void Dispose()

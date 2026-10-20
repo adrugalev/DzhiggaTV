@@ -42,10 +42,25 @@ internal static class Program
         encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(2, 2, 96, 96, PixelFormats.Bgra32, null,
             Enumerable.Repeat(new byte[] { 205, 217, 99, 255 }, 4).SelectMany(p => p).ToArray(), 8)));
         using (var output = File.Create(logo)) encoder.Save(output);
-        var channels = Enumerable.Range(1, 10).Select(i => new Channel("sport-" + i, "local", "Спортивный канал " + i, i <= 5 ? "Спорт" : "Другие", Path.GetFullPath(media), Logo: logo, Order: i - 1)).ToArray();
+        var channels = Enumerable.Range(1, 180).Select(i => new Channel("sport-" + i, "local",
+            (i <= 10 ? "Спортивный канал " : "Дополнительный канал ") + i,
+            i <= 5 || i > 10 && i % 2 == 1 ? "Спорт" : "Другие", Path.GetFullPath(media), Logo: logo, Order: i - 1)).ToArray();
         using var store = new SqliteStore(Path.Combine(profile, "library.db"));
         await store.InitializeAsync(); await store.SavePlaylistAsync(new("local", "Sports smoke", "local-only.m3u"), channels);
+        var guideChannels = channels.Take(10).Select(c => new EpgChannel("guide-" + c.Id, c.Name)).ToArray();
+        async IAsyncEnumerable<Programme> Guide()
+        {
+            await Task.CompletedTask;
+            var start = DateTimeOffset.Now.AddMinutes(-20);
+            foreach (var channel in guideChannels)
+            for (int i = 0; i < 3; i++)
+                yield return new(channel.Id, $"Передача {i + 1} · {channel.Name}", start.AddHours(i), start.AddHours(i + 1),
+                    "2026 г., Россия. Спорт.\n\nТестовое описание трансляции. Телепрограмма следует за выбранным источником звука.");
+        }
+        await store.ReplaceEpgAsync(Guide(), guideChannels);
+        await store.SaveMappingsAsync(channels.Take(10).Select(c => new ChannelMapping(c.Id, "guide-" + c.Id, c.Name, "Test", 1, true)).ToArray());
         var state = new UserState();
+        state.Favorites.AddRange(channels.Take(80).Select(c => c.Id));
         foreach (var (key, value) in new Dictionary<string, string> { ["epg.enabled"] = "False", ["epg.prompted"] = "True", ["resume"] = "True", ["last.channel"] = "sport-1", ["sports.channels"] = JsonSerializer.Serialize(channels.Skip(1).Take(3).Select(c => c.Id)), ["sports.audio"] = "sport-3", ["volume"] = "0" }) state.Settings[key] = value;
         await store.SaveUserStateAsync(state);
     }
@@ -56,14 +71,29 @@ internal static class Program
         {
             await WaitAsync(() => Application.Current.MainWindow is MainWindow);
             main = (MainWindow)Application.Current.MainWindow;
-            await WaitAsync(() => main.Model.AllChannels.Count == 10 && main.Player.State == PlaybackState.Playing);
+            await WaitAsync(() => main.Model.AllChannels.Count == 180 && main.Player.State == PlaybackState.Playing);
             Check(main.Player.Volume == 0, "Opening the main controls preserves saved master volume");
+            await Task.Delay(700);
+            if (!args.Contains("--visual-only")) await VerifyCategoryScrollAsync(main);
             var mainVideoHandle = Descendants<NativeVideoHost>(main).Single().VideoHandle;
             Task? sportsRun = null;
             _ = main.Dispatcher.BeginInvoke(new Action(() => sportsRun = main.ShowSportsEveningAsync()));
             await WaitAsync(() => Application.Current.Windows.OfType<SportsEveningWindow>().Any());
             sports = Application.Current.Windows.OfType<SportsEveningWindow>().Single();
             await WaitAsync(() => Tiles(sports).Length == 3 && Tiles(sports).All(Playing));
+            if (args.Contains("--visual-only"))
+            {
+                sports.SetChannels(main.Model.AllChannels.Take(4));
+                await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
+                foreach (var (flag, id) in new[] { ("--aspect-media", "sport-2"), ("--anamorphic-media", "sport-3"), ("--portrait-media", "sport-4") })
+                {
+                    int index = Array.IndexOf(args, flag);
+                    if (index >= 0 && index + 1 < args.Length) await Tiles(sports).Single(t => t.Channel.Id == id).Player.PlayAsync(Path.GetFullPath(args[index + 1]));
+                }
+                Console.WriteLine("VISUAL_READY " + profile);
+                while (sports.IsVisible) await Task.Delay(300);
+                return 0;
+            }
             Check(!main.Player.IsPaused && main.Player.IsMuted, "Main player keeps playing silently while sports plays");
             var initialMain = Tiles(sports).Single(t => t.Channel.Id == "sport-1");
             Check(Tiles(sports).Count(t => !t.IsMuted) == 1 && !initialMain.IsMuted && Grid.GetRow(initialMain) == 0 && Grid.GetColumn(initialMain) == 0,
@@ -73,6 +103,7 @@ internal static class Program
                 "Opening preserves the other two channels and does not show the channel picker");
             sports.SetChannels(main.Model.AllChannels.Take(6));
             await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
+            await VerifyVideoLayoutAsync(args, main, sports);
             var four = Tiles(sports); var positions = four.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
             var mainPosition = main.Player.GetStatistics().PlaybackPositionSeconds;
             await Task.Delay(1300);
@@ -221,6 +252,129 @@ internal static class Program
             if (sports?.IsVisible == true) sports.Close();
             if (main is not null) { Console.WriteLine("Closing isolated main window…"); main.Close(); await WaitAsync(() => !main.IsVisible); Console.WriteLine("Main window closed."); }
         }
+    }
+    private static async Task VerifyVideoLayoutAsync(string[] args, MainWindow main, SportsEveningWindow sports)
+    {
+        static NativeVideoHost Host(SportsTile tile) => Descendants<NativeVideoHost>(tile).Single();
+        void CheckAspects(string message)
+        {
+            sports.UpdateLayout();
+            Check(Tiles(sports).All(t => Host(t).ActualHeight > 0 && Math.Abs(Host(t).ActualWidth / Host(t).ActualHeight - t.VideoAspect) < .015), message);
+        }
+        string? Argument(string flag) { int index = Array.IndexOf(args, flag); return index >= 0 && index + 1 < args.Length ? args[index + 1] : null; }
+        var handles = Tiles(sports).ToDictionary(t => t.Channel.Id, t => Host(t).VideoHandle);
+        await Task.Delay(300); CheckAspects("Every native video surface fits its display aspect without added side bars");
+        Check(Descendants<Slider>(sports).Single().IsMoveToPointEnabled &&
+            Application.Current.Windows.OfType<OverlayWindow>().All(w => ((Slider)w.FindName("VolumeSlider")).IsMoveToPointEnabled),
+            "Both player volume controls jump directly to a clicked point");
+        var guide = Descendants<Border>(sports).Single(b => System.Windows.Automation.AutomationProperties.GetName(b) == "Телепрограмма канала со звуком");
+        Check(guide.IsVisible, "Spare window width displays the audio channel programme beside the videos");
+        foreach (string id in new[] { "sport-1", "sport-3" })
+        {
+            sports.SelectAudio(id); await Task.Delay(150);
+            string title = main.Model.AllChannels.Single(c => c.Id == id).Current!.Title;
+            Check(Descendants<TextBlock>(guide).Any(t => t.Text == title), "Programme details follow the audio source: " + id);
+        }
+        var originals = new List<SportsTile>();
+        foreach (var (flag, id, aspect) in new[] { ("--aspect-media", "sport-2", 4d / 3), ("--anamorphic-media", "sport-3", 16d / 9), ("--portrait-media", "sport-4", 9d / 16) })
+        {
+            if (Argument(flag) is not { } media) continue;
+            var tile = Tiles(sports).Single(t => t.Channel.Id == id); originals.Add(tile);
+            await tile.Player.PlayAsync(Path.GetFullPath(media));
+            await WaitAsync(() => Playing(tile) && Math.Abs((tile.Player.GetVideoAspectRatio() ?? 0) - aspect) < .001);
+            await Task.Delay(1200); CheckAspects("Mixed source proportions are preserved: " + flag);
+            if (flag == "--anamorphic-media")
+            {
+                var statistics = tile.Player.GetStatistics();
+                Check(statistics.Width == 360 && statistics.Height == 288 && Math.Abs(tile.VideoAspect - 16d / 9) < .001,
+                    "Anamorphic SD uses display aspect instead of raw pixel dimensions");
+            }
+        }
+        var original = new Size(sports.Width, sports.Height);
+        sports.Width = Math.Min(1040, SystemParameters.WorkArea.Width - 24); sports.Height = Math.Min(760, SystemParameters.WorkArea.Height - 36);
+        await Task.Delay(300); CheckAspects("Window resizing preserves every mixed video aspect");
+        sports.ToggleFullscreen(); await Task.Delay(500); CheckAspects("Fullscreen preserves every mixed video aspect");
+        sports.ToggleFullscreen(); await Task.Delay(300);
+        Check(Tiles(sports).All(t => Host(t).VideoHandle == handles[t.Channel.Id] && Playing(t)), "Aspect-aware layout preserves all native surfaces and uninterrupted streams");
+        sports.Width = original.Width; sports.Height = original.Height;
+        foreach (var tile in originals) await tile.Player.PlayAsync(Path.GetFullPath(args[0]));
+        await WaitAsync(() => Tiles(sports).All(Playing)); await Task.Delay(1200);
+    }
+    private static async Task VerifyCategoryScrollAsync(MainWindow main)
+    {
+        static ScrollViewer Scroll(ListBox list) => Descendants<ScrollViewer>(list).First();
+        static async Task AtBottom(ListBox list)
+        {
+            await list.Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+            list.UpdateLayout(); Scroll(list).ScrollToBottom();
+            await Task.Delay(250);
+            Console.WriteLine(JsonSerializer.Serialize(new { scrolling = list.Name, items = list.Items.Count, Scroll(list).VerticalOffset, Scroll(list).ScrollableHeight, Scroll(list).ViewportHeight }));
+            await WaitAsync(() => Scroll(list).VerticalOffset > 0); await Task.Delay(150);
+        }
+        static async Task AtTop(ListBox list, string message)
+        {
+            await Task.Delay(350); list.UpdateLayout();
+            Check(Scroll(list).VerticalOffset < .1 && list.Items.Count > 0 &&
+                list.ItemContainerGenerator.ContainerFromIndex(0) is FrameworkElement first &&
+                Math.Abs(first.TranslatePoint(new(), Scroll(list)).Y) < 8, message);
+        }
+        var list = (ListBox)main.FindName("ChannelList");
+        var category = (ComboBox)main.FindName("ChannelCategory");
+        foreach (string group in new[] { "Спорт", "Другие", "Все категории" })
+        {
+            await AtBottom(list); category.SetCurrentValue(ComboBox.SelectedItemProperty, group);
+            await AtTop(list, "Main category starts at the first row: " + group);
+        }
+        // Exercise the separate sidebar path, including reselecting the same category.
+        await AtBottom(list);
+        var categories = Descendants<Button>(main).Single(b => Equals(b.Tag, "categories"));
+        categories.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Task.Delay(150);
+        var menu = PresentationSource.CurrentSources.Cast<PresentationSource>().Select(s => s.RootVisual)
+            .OfType<DependencyObject>().SelectMany(Descendants<ContextMenu>).Single(m => m.IsOpen);
+        menu.Items.Cast<MenuItem>().First(m => m.Header is TextBlock { Text: "Все категории" })
+            .RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); menu.IsOpen = false;
+        await AtTop(list, "Reselecting the current sidebar category also resets scrolling");
+
+        var previousActive = main.Model.Active;
+        main.Model.Active = main.Model.AllChannels.Single(c => c.Id == "sport-179");
+        var guide = new GuideWindow(main); guide.Show();
+        try
+        {
+            var rows = Descendants<ListBox>(guide).Single();
+            await WaitAsync(() => rows.Items.Count == 180); await Task.Delay(350);
+            Check(Scroll(rows).VerticalOffset > 0 && rows.SelectedItem is GuideRow row && row.Channel.Id == "sport-179",
+                "Opening the guide still reveals the active channel near the end");
+            var guideCategory = Descendants<ComboBox>(guide).Single(c => Equals(c.ToolTip, "Категория"));
+            foreach (string group in new[] { "Спорт", "Другие", "Все категории" })
+            {
+                await AtBottom(rows); guideCategory.SelectedItem = group;
+                await AtTop(rows, "Guide category starts at the first row: " + group);
+            }
+            await AtBottom(rows);
+            Descendants<ComboBox>(guide).Single(c => Equals(c.ToolTip, "Плейлист")).SelectedIndex = 1;
+            await AtTop(rows, "Changing the guide playlist resets scrolling even with identical rows");
+            await AtBottom(rows);
+            Descendants<Button>(guide).Single(b => Equals(b.Content, "Сбросить")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await AtTop(rows, "Resetting guide filters starts at the first row");
+            Descendants<Button>(guide).Single(b => Equals(b.Content, "Сейчас")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(350);
+            Check(Scroll(rows).VerticalOffset > 0 && rows.SelectedItem is GuideRow current && current.Channel.Id == "sport-179",
+                "The guide Now button still returns to the active channel");
+        }
+        finally { guide.Close(); main.Model.Active = previousActive; }
+
+        var picker = new SportsChannelPicker(main, main.Model, main.Model.AllChannels.Take(4)); picker.Show();
+        try
+        {
+            var rows = (ListBox)picker.FindName("Channels"); var pickerCategory = (ComboBox)picker.FindName("Category");
+            await Task.Delay(250);
+            foreach (string group in new[] { "Спорт", "Другие", "Избранное", "Все категории" })
+            {
+                await AtBottom(rows); pickerCategory.SelectedItem = group;
+                await AtTop(rows, "Multiscreen category starts at the first row: " + group);
+            }
+        }
+        finally { picker.Close(); }
     }
     private static bool Playing(SportsTile tile) => tile.Player.State == PlaybackState.Playing && tile.Player.GetStatistics().Width > 0;
     private static SportsTile[] Tiles(SportsEveningWindow window) => Descendants<SportsTile>(window).ToArray();

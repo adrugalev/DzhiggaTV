@@ -31,6 +31,7 @@ internal static class Program
             ("Multiscreen preserves every saved grid size from one to four when the main channel changes", MultiscreenCountAsync),
             ("Multiscreen drag placement, checkbox selection, reset and four-screen limit agree", MultiscreenLayoutAsync),
             ("Multiscreen persists exact empty positions and migrates larger legacy selections", MultiscreenLayoutSaveAsync),
+            ("Multiscreen fits mixed display aspects without bars, clipping or overlapping its programme panel", MultiscreenGeometryAsync),
             ("Cold startup displays all three cached cards while background EPG import blocks saving", StartupGuideDuringImportAsync),
             ("Late viewport guide loading notifies all active programme cards", ActiveViewportGuideAsync),
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
@@ -59,6 +60,43 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static Task MultiscreenGeometryAsync()
+    {
+        double[] formats = [4d / 3, 16d / 9, 21d / 9, 9d / 16];
+        foreach (var size in new[] { new System.Windows.Size(860, 380), new(1440, 740), new(1920, 960), new(2560, 720), new(900, 1500) })
+        foreach (int count in Enumerable.Range(1, 4))
+        {
+            var result = MultiscreenGeometry.Fit(size, formats.Take(count).ToArray());
+            Assert(result.Screens.Count == count, "Every chosen position must be retained.");
+            var bounds = new System.Windows.Rect(new(), size);
+            bounds.Inflate(.000001, .000001);
+            for (int i = 0; i < count; i++)
+            {
+                var screen = result.Screens[i];
+                Assert(bounds.Contains(screen), $"A fitted screen must stay inside the window: {size}, {count} screens, {screen}.");
+                double aspect = (screen.Width - MultiscreenGeometry.ChromeWidth) / (screen.Height - MultiscreenGeometry.ChromeHeight);
+                Assert(Math.Abs(aspect - formats[i]) < .00001, "The native video area must keep its own display aspect without extra bars or cropping.");
+                foreach (var other in result.Screens.Skip(i + 1))
+                {
+                    var overlap = System.Windows.Rect.Intersect(screen, other);
+                    Assert(overlap.IsEmpty || overlap.Width < .001 || overlap.Height < .001, "Screen positions must not overlap.");
+                }
+                if (!result.Programme.IsEmpty)
+                {
+                    Assert(bounds.Contains(result.Programme), "Programme details must remain inside the window.");
+                    Assert(!screen.IntersectsWith(result.Programme), "Programme details must not cover a video surface.");
+                }
+            }
+        }
+        var beside = MultiscreenGeometry.Fit(new(2400, 800), [16d / 9, 16d / 9, 16d / 9, 16d / 9]);
+        Assert(!beside.Programme.IsEmpty && beside.Programme.Left > beside.Screens.Max(s => s.Right), "A wide window uses spare width for the programme.");
+        var below = MultiscreenGeometry.Fit(new(1200, 1000), [16d / 9, 16d / 9]);
+        Assert(!below.Programme.IsEmpty && below.Programme.Top > below.Screens.Max(s => s.Bottom), "A tall window uses spare height for the programme.");
+        var unknown = MultiscreenGeometry.Fit(new(1200, 700), [double.NaN, 0]);
+        Assert(unknown.Screens.All(s => double.IsFinite(s.Width) && s.Width > 0), "Unknown source metadata needs a valid initial layout.");
+        return Task.CompletedTask;
     }
 
     private static Task SportsAudioAsync()

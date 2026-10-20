@@ -47,8 +47,14 @@ public partial class MainWindow : Window
         InitializeComponent(); ApplyMainWindowChrome(); WindowBounds.Attach(this); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
         _programmePreview = new(this, CurrentProgrammeDetails, NextProgrammeDetails, AfterNextProgrammeDetails);
         ViewingPanel.SizeChanged += (_, _) => UpdateProgrammePanelLayout();
+        var channelGroup = Model.SelectedGroup;
         Model.PropertyChanged += (_, e) =>
         {
+            if (e.PropertyName == nameof(MainViewModel.SelectedGroup) && Model.SelectedGroup != channelGroup)
+            {
+                channelGroup = Model.SelectedGroup;
+                if (IsLoaded) ChannelListScroll.ResetToTop(ChannelList);
+            }
             if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription) or nameof(MainViewModel.AfterNextDescription)) UpdateProgrammePanelLayout();
             if (e.PropertyName == nameof(MainViewModel.SelectedChannel) && Model.SelectedChannel is { } selected)
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => { if (Model.SelectedChannel == selected && Model.VisibleChannels.Contains(selected)) ChannelList.ScrollIntoView(selected); });
@@ -261,7 +267,7 @@ public partial class MainWindow : Window
                 entry.Click += async (_, _) =>
                 {
                     Model.Search = ""; Model.SelectedGroup = group; Model.SetSection("all");
-                    if (Model.VisibleChannels.FirstOrDefault() is { } first) ChannelList.ScrollIntoView(first);
+                    ChannelListScroll.ResetToTop(ChannelList);
                     await GuardAsync(LoadViewportAsync);
                 };
                 menu.Items.Add(entry);

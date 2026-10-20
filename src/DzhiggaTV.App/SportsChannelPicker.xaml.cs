@@ -274,6 +274,7 @@ public partial class SportsChannelPicker : Window
             (group is null or "Все категории" || (group == "Избранное" ? choice.Channel.IsFavorite : choice.Channel.Group == group)) &&
             (query.Length == 0 || choice.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase));
         Empty.Visibility = _view.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
+        ChannelListScroll.ResetToTop(Channels);
         QueueVisibleLogos();
     }
     private void Watch_Click(object sender, RoutedEventArgs e) { if (_layout.Count > 0) DialogResult = true; }
