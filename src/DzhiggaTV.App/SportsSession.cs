@@ -23,10 +23,16 @@ public static class SportsSelection
         var saved = Restore(model);
         var active = model.Active is { } current
             ? model.AllChannels.FirstOrDefault(c => c.Id == current.Id && model.IsAllowed(c)) : null;
-        var channels = active is null ? saved : Resolve(model, new[] { active.Id }.Concat(saved.Select(c => c.Id)));
+        IReadOnlyList<ChannelItem> channels = saved;
+        if (active is not null)
+        {
+            // Reuse the first screen for a different main channel; opening must not grow the grid.
+            var remaining = saved.Any(c => c.Id == active.Id) ? saved.Where(c => c.Id != active.Id) : saved.Skip(1);
+            channels = Resolve(model, new[] { active.Id }.Concat(remaining.Select(c => c.Id)));
+        }
         var savedAudioId = model.Setting("sports.audio", "");
         var audioId = active?.Id ?? (channels.Any(c => c.Id == savedAudioId) ? savedAudioId : channels.FirstOrDefault()?.Id);
-        return (channels, audioId, saved.Count == 0);
+        return (channels, audioId, channels.Count == 0);
     }
 
     public static void Save(MainViewModel model, IEnumerable<ChannelItem> channels, string? audioId)

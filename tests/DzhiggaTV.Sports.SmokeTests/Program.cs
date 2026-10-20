@@ -56,11 +56,14 @@ internal static class Program
             _ = main.Dispatcher.BeginInvoke(new Action(() => sportsRun = main.ShowSportsEveningAsync()));
             await WaitAsync(() => Application.Current.Windows.OfType<SportsEveningWindow>().Any());
             sports = Application.Current.Windows.OfType<SportsEveningWindow>().Single();
-            await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
+            await WaitAsync(() => Tiles(sports).Length == 3 && Tiles(sports).All(Playing));
             Check(!main.Player.IsPaused && main.Player.IsMuted, "Main player keeps playing silently while sports plays");
             var initialMain = Tiles(sports).Single(t => t.Channel.Id == "sport-1");
             Check(Tiles(sports).Count(t => !t.IsMuted) == 1 && !initialMain.IsMuted && Grid.GetRow(initialMain) == 0 && Grid.GetColumn(initialMain) == 0,
-                "Opening adds the main channel in the first slot and selects its audio over saved focus");
+                "Opening replaces the first of three saved screens with the main channel and selects its audio");
+            Check(Tiles(sports).Select(t => t.Channel.Id).ToHashSet().SetEquals(["sport-1", "sport-3", "sport-4"]) &&
+                !Application.Current.Windows.OfType<SportsChannelPicker>().Any(w => w.IsVisible),
+                "Opening preserves the other two channels and does not show the channel picker");
             sports.SetChannels(main.Model.AllChannels.Take(9));
             await WaitAsync(() => Tiles(sports).Length == 9 && Tiles(sports).All(Playing));
             var nine = Tiles(sports); var positions = nine.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
@@ -121,13 +124,26 @@ internal static class Program
                 _ = main.Dispatcher.BeginInvoke(new Action(() => reopenedRun = main.ShowSportsEveningAsync()));
                 await WaitAsync(() => Application.Current.Windows.OfType<SportsEveningWindow>().Any());
                 sports = Application.Current.Windows.OfType<SportsEveningWindow>().Single();
-                await WaitAsync(() => Tiles(sports).Length == 5 && Tiles(sports).All(Playing));
+                await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
                 var reopenedTiles = Tiles(sports);
                 var newMain = reopenedTiles.Single(t => t.Channel.Id == "sport-10");
                 Check(reopenedTiles.Count(t => !t.IsMuted) == 1 && !newMain.IsMuted && Grid.GetRow(newMain) == 0 && Grid.GetColumn(newMain) == 0,
-                    "Reopening follows the newly playing main channel instead of the last multiscreen audio choice");
+                    "Reopening follows the new main channel while preserving the previous four-screen count");
+                Check(reopenedTiles.Select(t => t.Channel.Id).ToHashSet().SetEquals(["sport-10", "sport-3", "sport-2", "sport-1"]),
+                    "Changing the main channel replaces only the first saved screen");
                 sports.Close(); await WaitAsync(() => reopenedRun is { IsCompleted: true });
                 Check(reopenedTiles.All(t => t.Player.State == PlaybackState.Disposed), "Reopened multiscreen also releases every native player");
+                main.Model.SetSetting("sports.channels", "[]");
+                Task? firstUseRun = null;
+                _ = main.Dispatcher.BeginInvoke(new Action(() => firstUseRun = main.ShowSportsEveningAsync()));
+                await WaitAsync(() => Application.Current.Windows.OfType<SportsEveningWindow>().Any());
+                sports = Application.Current.Windows.OfType<SportsEveningWindow>().Single();
+                await WaitAsync(() => Tiles(sports).Length == 1 && Tiles(sports).All(Playing));
+                var firstUseTile = Tiles(sports).Single();
+                Check(firstUseTile.Channel.Id == "sport-10" && !firstUseTile.IsMuted && !Application.Current.Windows.OfType<SportsChannelPicker>().Any(w => w.IsVisible),
+                    "First use opens the current main channel directly without an automatic picker");
+                sports.Close(); await WaitAsync(() => firstUseRun is { IsCompleted: true });
+                Check(firstUseTile.Player.State == PlaybackState.Disposed, "First-use multiscreen closes cleanly");
             }
             Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, nativePlayers = 9 }));
             return 0;

@@ -28,6 +28,7 @@ internal static class Program
             ("Sports audio never overlaps when switching, muting, replacing or removing sources", SportsAudioAsync),
             ("Sports selection persists ordered unique allowed channels and safely restores stale settings", SportsSelectionAsync),
             ("Multiscreen opens with the main channel first and selected for audio, including full and empty grids", MultiscreenOpeningAsync),
+            ("Multiscreen preserves every saved grid size from one to nine when the main channel changes", MultiscreenCountAsync),
             ("Cold startup displays all three cached cards while background EPG import blocks saving", StartupGuideDuringImportAsync),
             ("Late viewport guide loading notifies all active programme cards", ActiveViewportGuideAsync),
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
@@ -118,8 +119,8 @@ internal static class Program
         model.AllChannels.AddRange(others); model.Active = active;
         SportsSelection.Save(model, others.Take(9), others[3].Id);
         var full = SportsSelection.ForOpening(model);
-        Assert(full.Channels.Select(c => c.Id).SequenceEqual(new[] { active.Id }.Concat(others.Take(8).Select(c => c.Id))) && full.AudioId == active.Id && !full.ShowChannelPicker,
-            "The playing main channel must take the first slot and audio focus even when nine other channels were saved.");
+        Assert(full.Channels.Select(c => c.Id).SequenceEqual(new[] { active.Id }.Concat(others.Skip(1).Take(8).Select(c => c.Id))) && full.AudioId == active.Id && !full.ShowChannelPicker,
+            "The playing main channel must replace the first slot and take audio focus while preserving the other eight screens.");
         Assert(SportsSelection.Restore(model).Count == 9 && model.Setting("sports.audio") == others[3].Id,
             "Planning startup must not alter saved state before the window applies its selection.");
         SportsSelection.Save(model, [others[0], active, others[1]], others[1].Id);
@@ -128,8 +129,8 @@ internal static class Program
             "An already included main channel must move to the first slot without duplication and override the saved audio source.");
         model.Active = others[5];
         var changed = SportsSelection.ForOpening(model);
-        Assert(changed.Channels[0] == others[5] && changed.AudioId == others[5].Id,
-            "A different main channel must win on the next opening.");
+        Assert(changed.Channels.Select(c => c.Id).SequenceEqual([others[5].Id, active.Id, others[1].Id]) && changed.AudioId == others[5].Id,
+            "A different main channel must replace the first screen without increasing the previous three-screen count.");
         model.State.Hidden.Add(others[5].Id);
         var restricted = SportsSelection.ForOpening(model);
         Assert(restricted.Channels.All(model.IsAllowed) && restricted.AudioId == others[1].Id,
@@ -140,11 +141,38 @@ internal static class Program
         Assert(SportsSelection.ForOpening(model).AudioId == others[0].Id, "An invalid saved audio source must fall back to a visible channel.");
         model.Active = active; model.SetSetting("sports.channels", "[]");
         var firstUse = SportsSelection.ForOpening(model);
-        Assert(firstUse.Channels.SequenceEqual([active]) && firstUse.AudioId == active.Id && firstUse.ShowChannelPicker,
-            "First use must seed the main channel and offer the channel picker.");
+        Assert(firstUse.Channels.SequenceEqual([active]) && firstUse.AudioId == active.Id && !firstUse.ShowChannelPicker,
+            "First use must open the main channel directly without forcing the channel picker.");
         model.Active = null;
         var empty = SportsSelection.ForOpening(model);
         Assert(empty.Channels.Count == 0 && empty.AudioId is null && empty.ShowChannelPicker, "An empty library selection must still offer channel selection.");
+    }
+
+    private static async Task MultiscreenCountAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        var main = model.AllChannels.Single();
+        var others = Enumerable.Range(0, 10).Select(i => new ChannelItem(new("count-" + i, "fixture", "Channel " + i, "Тест", "https://example.invalid/unused"))).ToArray();
+        model.AllChannels.AddRange(others);
+        for (int count = 1; count <= SportsSelection.MaximumChannels; count++)
+        {
+            SportsSelection.Save(model, others.Take(count), others[0].Id); model.Active = main;
+            var opening = SportsSelection.ForOpening(model);
+            var expected = new[] { main.Id }.Concat(others.Skip(1).Take(count - 1).Select(c => c.Id));
+            Assert(opening.Channels.Select(c => c.Id).SequenceEqual(expected) && opening.AudioId == main.Id && !opening.ShowChannelPicker,
+                $"A new main channel must reuse the first of {count} screens and preserve all secondary channels.");
+            SportsSelection.Save(model, opening.Channels, opening.AudioId);
+            Assert(SportsSelection.ForOpening(model).Channels.Count == count, "Opening again with the same main channel must not change screen count.");
+            model.Active = others[^1];
+            var switched = SportsSelection.ForOpening(model);
+            Assert(switched.Channels.Count == count && switched.Channels[0] == others[^1] && switched.AudioId == others[^1].Id,
+                "Switching the main channel repeatedly must not accumulate extra screens.");
+            SportsSelection.Save(model, others.Take(count), others[0].Id); model.Active = others[count - 1];
+            var included = SportsSelection.ForOpening(model);
+            Assert(included.Channels.Count == count && included.Channels.Select(c => c.Id).ToHashSet().SetEquals(others.Take(count).Select(c => c.Id)) &&
+                included.Channels[0] == model.Active && included.AudioId == model.Active.Id,
+                "An already included main channel must move to the first screen without duplication or loss of other channels.");
+        }
     }
 
     private static async Task FavoriteToggleAsync()
