@@ -221,11 +221,9 @@ public partial class MainWindow : Window
         if (!_initialized || _sports is not null) return;
         await GuardAsync(() => WithModalAsync(async () =>
         {
-            var wasPaused = Player.IsPaused;
             var muted = Player.IsMuted;
-            // Keep the main stream silent even if a pending connection finishes while the grid is open.
+            // Keep the main stream playing live, but silent even if a pending connection finishes.
             Player.IsMuted = true;
-            if (_engineReady) Player.IsPaused = true;
             try
             {
                 _sports = new SportsEveningWindow(this, Player.Volume, muted);
@@ -237,7 +235,6 @@ public partial class MainWindow : Window
                 {
                     Player.Volume = _sports?.Volume ?? Player.Volume;
                     Player.IsMuted = _sports?.IsMuted ?? muted;
-                    if (_engineReady) Player.IsPaused = wasPaused;
                 }
                 _sports = null;
             }

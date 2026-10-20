@@ -51,18 +51,22 @@ internal static class Program
             main = (MainWindow)Application.Current.MainWindow;
             await WaitAsync(() => main.Model.AllChannels.Count == 10 && main.Player.State == PlaybackState.Playing);
             Check(main.Player.Volume == 0, "Opening the main controls preserves saved master volume");
+            var mainVideoHandle = Descendants<NativeVideoHost>(main).Single().VideoHandle;
             Task? sportsRun = null;
             _ = main.Dispatcher.BeginInvoke(new Action(() => sportsRun = main.ShowSportsEveningAsync()));
             await WaitAsync(() => Application.Current.Windows.OfType<SportsEveningWindow>().Any());
             sports = Application.Current.Windows.OfType<SportsEveningWindow>().Single();
             await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
-            Check(main.Player.IsPaused && main.Player.IsMuted, "Main player is paused and silent while sports plays");
+            Check(!main.Player.IsPaused && main.Player.IsMuted, "Main player keeps playing silently while sports plays");
             Check(Tiles(sports).Count(t => !t.IsMuted) == 1 && !Tiles(sports).Single(t => t.Channel.Id == "sport-3").IsMuted, "Four native players decode simultaneously with saved audio source");
             sports.SetChannels(main.Model.AllChannels.Take(9));
             await WaitAsync(() => Tiles(sports).Length == 9 && Tiles(sports).All(Playing));
             var nine = Tiles(sports); var positions = nine.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
+            var mainPosition = main.Player.GetStatistics().PlaybackPositionSeconds;
             await Task.Delay(1300);
             Check(nine.All(t => t.Player.GetStatistics().PlaybackPositionSeconds > positions[t.Channel.Id]), "All nine video timelines advance concurrently");
+            Check(mainPosition is not null && main.Player.GetStatistics().PlaybackPositionSeconds > mainPosition + 0.5 && !main.Player.IsPaused && main.Player.IsMuted,
+                "Main stream timeline also advances while nine sports channels play");
             Check(nine.All(t => t.Player.GetTracks().Any(x => x.Type == "audio")), "Each tile has a real audio track");
             foreach (var tile in nine)
             {
@@ -89,6 +93,7 @@ internal static class Program
             var picker = Application.Current.Windows.OfType<SportsChannelPicker>().Single();
             picker.Close(); await Task.Delay(150);
             Check(sports.IsVisible && Tiles(sports).All(Playing), "Cancelling channel selection leaves the sports session playing");
+            var mainPositionBeforeReturn = main.Player.GetStatistics().PlaybackPositionSeconds;
             if (args.Contains("--interactive"))
             {
                 Console.WriteLine("INTERACTIVE_READY " + profile);
@@ -97,7 +102,11 @@ internal static class Program
             else sports.Close();
             await WaitAsync(() => sportsRun is { IsCompleted: true });
             Check(nine.All(t => t.Player.State == PlaybackState.Disposed), "Closing sports disposes every native player");
-            Check(!main.Player.IsPaused && !main.Player.IsMuted, "Returning restores main playback and audio");
+            Check(!main.Player.IsPaused && !main.Player.IsMuted, "Returning restores main audio without pausing playback");
+            await Task.Delay(300);
+            Check(Descendants<NativeVideoHost>(main).Single().VideoHandle == mainVideoHandle && mainPositionBeforeReturn is not null &&
+                main.Player.GetStatistics().PlaybackPositionSeconds > mainPositionBeforeReturn,
+                "Returning preserves the main video surface and continuously advancing timeline");
             Check(main.Player.Volume == 0, "Sports preserves the master volume on return");
             var saved = await main.Model.Store.LoadUserStateAsync();
             Check(JsonSerializer.Deserialize<string[]>(saved.Settings["sports.channels"])!.Length is >= 1 and <= 9, "Grid selection persists to encrypted user state");
