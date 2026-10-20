@@ -25,7 +25,7 @@
   </Style>
  </Window.Resources>
  <Grid x:Name="LayoutRoot">
-  <Grid.RowDefinitions><RowDefinition x:Name="TopRow" Height="{x:Static local:MainWindow.TitleBarRowHeight}"/><RowDefinition Height="*"/><RowDefinition x:Name="StatusRow" Height="32"/></Grid.RowDefinitions>
+  <Grid.RowDefinitions><RowDefinition x:Name="TopRow" Height="{x:Static local:MainWindow.TitleBarRowHeight}"/><RowDefinition Height="*"/><RowDefinition x:Name="StatusRow" Height="{x:Static local:MainWindow.StatusBarRowHeight}"/></Grid.RowDefinitions>
   <Border x:Name="Header" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="16,6">
    <Grid><StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,142,0"><Image Source="Assets/DzhiggaTV-logo.png" Width="28" Height="28" Margin="0,0,10,0" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" AutomationProperties.Name="Логотип DzhiggaTV"/><TextBlock Text="Dzhigga" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text="TV" Foreground="{DynamicResource AccentBrush}" FontSize="18" FontWeight="Light" VerticalAlignment="Center"/><Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" Padding="6,0,0,0" Margin="12,0,0,0" VerticalAlignment="Center"><Button x:Name="VersionButton" Click="Version_Click" AutomationProperties.Name="Версия и обновления" Padding="8,3" Margin="0">
  <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -139,6 +139,6 @@
     </Grid>
    </Grid>
   </Grid>
-  <Border x:Name="StatusBar" Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="22,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding LibraryChannelCountText}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/><TextBlock Grid.Column="1" Text="F11  полный экран" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Right"/></Grid></Border>
+  <Border x:Name="StatusBar" Grid.Row="2" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="22,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding LibraryChannelCountText}" FontSize="11" Foreground="{DynamicResource MutedBrush}" TextTrimming="CharacterEllipsis" Margin="0,0,16,0" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="F11  полный экран" FontSize="10" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid></Border>
  </Grid>
 </Window>
