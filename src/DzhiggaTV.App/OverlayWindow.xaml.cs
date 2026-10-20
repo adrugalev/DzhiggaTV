@@ -86,7 +86,7 @@ public partial class OverlayWindow : Window
         var layout = (ActualWidth, ActualHeight, FullscreenMetadataScroll.Visibility);
         if (_compactLayout == layout) return;
         _compactLayout = layout;
-        FullscreenProgrammeInfo.Width = FullscreenProgrammeInfo.MaxWidth = Math.Max(0, ActualWidth * .25);
+        FullscreenProgrammeInfo.Width = FullscreenProgrammeInfo.MaxWidth = Math.Max(0, ActualWidth * .35);
         FullscreenSynopsisScroll.MaxHeight = Math.Max(30, Math.Min(180, ActualHeight * .20));
         FullscreenMetadataScroll.MaxHeight = Math.Max(24, Math.Min(110, ActualHeight * .12));
         FullscreenMetadataColumn.Width = FullscreenMetadataGap.Width = new(0);

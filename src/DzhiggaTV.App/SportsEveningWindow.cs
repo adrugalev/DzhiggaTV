@@ -40,7 +40,7 @@ public sealed class SportsEveningWindow : Window
     public SportsEveningWindow(MainWindow main, double volume, bool muted)
     {
         _model = main.Model;
-        _programme = new(_model);
+        _programme = new(this, _model);
         _screens = new(_programme); _screens.Children.Add(_programme);
         Theme.Window(this); WindowBounds.Attach(this, () => _isFullscreen);
         Owner = main; Title = "DzhiggaTV · Мультиэкран";

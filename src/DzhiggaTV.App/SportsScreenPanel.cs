@@ -35,6 +35,7 @@ internal sealed class SportsScreenPanel(SportsProgrammePanel programme) : Panel
         }
         foreach (var tile in _screens) tile.Visibility = Visibility.Visible;
         var placement = Placement(size);
+        programme.SetBottomLayout(!placement.Programme.IsEmpty && placement.Programme.Y > 0);
         programme.Visibility = placement.Programme.IsEmpty ? Visibility.Collapsed : Visibility.Visible;
         foreach (UIElement child in InternalChildren)
         {

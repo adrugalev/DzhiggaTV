@@ -13,6 +13,9 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
     private readonly ProgressBar _progress = new() { Height = 3, Maximum = 100, Margin = new(0, 10, 0, 0) };
     private readonly ProgrammeDescriptionView _description = new();
     private readonly Grid _reading = new();
+    private readonly Grid _compact = new() { Name = "MultiscreenProgrammeCards", Visibility = Visibility.Collapsed };
+    private readonly SportsProgrammeCard[] _cards;
+    private readonly ProgrammePreview _preview;
     private readonly StackPanel _now = new(), _upcoming = new() { Name = "MultiscreenUpcomingProgrammes" };
     private readonly ScrollViewer _nowScroll, _descriptionScroll, _upcomingScroll;
     private ChannelItem? _selected;
@@ -22,9 +25,9 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
     private CancellationTokenSource? _query;
     private DateTimeOffset _nextRead;
     private int _generation;
-    private bool _wide, _disposed;
+    private bool _bottom, _disposed;
 
-    public SportsProgrammePanel(MainViewModel model)
+    public SportsProgrammePanel(Window owner, MainViewModel model)
     {
         _model = model;
         Margin = new(4); Padding = new(16); CornerRadius = new(8); BorderThickness = new(1);
@@ -39,27 +42,41 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
         _nowScroll = Scroll(_now); _descriptionScroll = Scroll(_description);
         var upcoming = new DockPanel(); var label = Label("ДАЛЕЕ"); DockPanel.SetDock(label, Dock.Top); upcoming.Children.Add(label);
         _upcomingScroll = Scroll(_upcoming); upcoming.Children.Add(_upcomingScroll);
-        _reading.Children.Add(_nowScroll); _reading.Children.Add(_descriptionScroll); _reading.Children.Add(upcoming); root.Children.Add(_reading);
+        _reading.Children.Add(_nowScroll); _reading.Children.Add(_descriptionScroll); _reading.Children.Add(upcoming);
+        for (int i = 0; i < 3; i++)
+        {
+            _reading.RowDefinitions.Add(new() { Height = i == 2 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
+            var section = (FrameworkElement)_reading.Children[i]; Grid.SetRow(section, i); section.Margin = new(0, i == 0 ? 0 : 14, 0, 0);
+        }
+        _cards = [new("СЕЙЧАС В ЭФИРЕ", "MultiscreenCurrentCard", "Нет телепрограммы на это время", true),
+            new("ДАЛЕЕ", "MultiscreenNextCard", "Нет данных о следующей передаче"),
+            new("ЗАТЕМ", "MultiscreenAfterNextCard", "Дальнейшая программа пока недоступна")];
+        for (int i = 0; i < _cards.Length; i++)
+        {
+            _compact.ColumnDefinitions.Add(new()); Grid.SetColumn(_cards[i], i); _cards[i].Margin = new(i == 0 ? 0 : 8, 0, 0, 0); _compact.Children.Add(_cards[i]);
+        }
+        _preview = new(owner, model, _cards.Select(c => c.Details).ToArray(),
+            index => index switch { 0 => _selected?.Current, 1 => _selected?.Next, _ => _selected?.AfterNext },
+            () => _bottom && IsVisible, () => ActualWidth);
+        var content = new Grid(); content.Children.Add(_reading); content.Children.Add(_compact); root.Children.Add(content);
         SizeChanged += (_, _) => LayoutReading();
-        IsVisibleChanged += (_, _) => { if (IsVisible && !_disposed) Show(_selected); };
+        IsVisibleChanged += (_, _) => { if (IsVisible && !_disposed) Show(_selected); else _preview.Hide(); };
         LayoutReading();
     }
     private void LayoutReading()
     {
-        bool wide = ActualWidth >= 620 && ActualHeight < 340;
-        _descriptionScroll.MaxHeight = wide ? double.PositiveInfinity : Math.Clamp(ActualHeight * .14, 60, 120);
-        _nowScroll.MaxHeight = wide ? double.PositiveInfinity : Math.Clamp(ActualHeight * .24, 100, 170);
-        if (wide == _wide && _reading.RowDefinitions.Count > 0) return;
-        _wide = wide;
-        _reading.ColumnDefinitions.Clear(); _reading.RowDefinitions.Clear();
-        for (int i = 0; i < (_wide ? 3 : 1); i++) _reading.ColumnDefinitions.Add(new());
-        for (int i = 0; i < (_wide ? 1 : 3); i++) _reading.RowDefinitions.Add(new() { Height = _wide || i == 2 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
-        for (int i = 0; i < _reading.Children.Count; i++)
-        {
-            var section = (FrameworkElement)_reading.Children[i];
-            Grid.SetColumn(section, _wide ? i : 0); Grid.SetRow(section, _wide ? 0 : i);
-            section.Margin = _wide ? new(i == 0 ? 0 : 18, 0, 0, 0) : new(0, i == 0 ? 0 : 14, 0, 0);
-        }
+        _descriptionScroll.MaxHeight = Math.Clamp(ActualHeight * .14, 60, 120);
+        _nowScroll.MaxHeight = Math.Clamp(ActualHeight * .24, 100, 170);
+    }
+    public void SetBottomLayout(bool bottom)
+    {
+        if (_bottom == bottom || _disposed) return;
+        _bottom = bottom; _preview.Hide();
+        _reading.Visibility = bottom ? Visibility.Collapsed : Visibility.Visible;
+        _compact.Visibility = bottom ? Visibility.Visible : Visibility.Collapsed;
+        if (bottom) { _query?.Cancel(); _generation++; }
+        else _nextRead = DateTimeOffset.MinValue;
+        Show(_selected);
     }
     public void Show(ChannelItem? channel)
     {
@@ -70,6 +87,7 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
         _selected = channel;
         if (channelChanged)
         {
+            _preview.Hide();
             _query?.Cancel(); _generation++;
             BindingOperations.ClearBinding(_logo, ChannelLogo.PathProperty);
             if (channel is not null) _logo.SetBinding(ChannelLogo.PathProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }); else _logo.Path = null;
@@ -81,13 +99,15 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
         _progress.Value = channel?.Current is { } current && current.End > current.Start
             ? Math.Clamp((DateTimeOffset.Now - current.Start).TotalSeconds / (current.End - current.Start).TotalSeconds * 100, 0, 100) : 0;
         _progress.Visibility = channel?.Current is null ? Visibility.Collapsed : Visibility.Visible;
+        _cards[0].Show(channel?.Current, _progress.Value); _cards[1].Show(channel?.Next); _cards[2].Show(channel?.AfterNext);
+        _preview.RefreshAvailability(); if (_preview.Panel.IsVisible) _preview.Refresh();
         if (programmeChanged || channelChanged)
         {
             _programme = channel?.Current; _description.Show(_programme); _descriptionScroll.ScrollToTop(); _nowScroll.ScrollToTop();
             SetUpcoming(new[] { channel?.Next, channel?.AfterNext }.OfType<Programme>());
             _nextRead = DateTimeOffset.MinValue;
         }
-        if (IsVisible && epgId is not null && DateTimeOffset.UtcNow >= _nextRead)
+        if (IsVisible && !_bottom && epgId is not null && DateTimeOffset.UtcNow >= _nextRead)
         {
             _nextRead = DateTimeOffset.UtcNow.AddSeconds(30);
             _query?.Cancel(); _query?.Dispose(); _query = new();
@@ -124,7 +144,7 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
             var empty = Text(12); empty.Text = "Нет данных о следующих передачах"; empty.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); _upcoming.Children.Add(empty);
         }
     }
-    public void Dispose() { _disposed = true; _generation++; _query?.Cancel(); _query?.Dispose(); }
+    public void Dispose() { _disposed = true; _preview.Hide(); _generation++; _query?.Cancel(); _query?.Dispose(); }
     private static ScrollViewer Scroll(UIElement content) => new() { Content = content, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private static string Time(Programme? programme) => programme is null ? "" : $"{programme.Start.ToLocalTime():HH:mm} — {programme.End.ToLocalTime():HH:mm}";
     private static TextBlock Text(double size, bool bold = false) => new() { FontSize = size, FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal, TextWrapping = TextWrapping.Wrap };

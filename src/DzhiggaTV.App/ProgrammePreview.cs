@@ -12,7 +12,11 @@ namespace DzhiggaTV.App;
 internal sealed class ProgrammePreview
 {
     public Border Panel { get; }
-    private readonly MainWindow _main;
+    private readonly Window _owner;
+    private readonly MainViewModel _model;
+    private readonly Func<int, Programme?> _getProgramme;
+    private readonly Func<bool> _canShow;
+    private readonly Func<double> _availableWidth;
     private readonly Button[] _buttons;
     private readonly TextBlock _badge = new() { FontSize = 10, Margin = new(0, 0, 0, 7) };
     private readonly TextBlock _title = new() { FontSize = 15, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
@@ -29,8 +33,23 @@ internal sealed class ProgrammePreview
     private Programme? _shown;
 
     public ProgrammePreview(MainWindow main, Button current, Button next, Button afterNext)
+        : this(main, main.Model, [current, next, afterNext],
+            index => index switch { 0 => main.Model.Active?.Current, 1 => main.Model.Active?.Next, _ => main.Model.Active?.AfterNext },
+            () => !main.IsFullscreen && !main.IsMini, () => main.ProgrammePanel.ActualWidth)
     {
-        _main = main; _buttons = [current, next, afterNext];
+        main.Model.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainViewModel.Active)) Hide();
+            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription) or nameof(MainViewModel.AfterNextDescription)) RefreshAvailability();
+            if (Panel.IsVisible && e.PropertyName is nameof(MainViewModel.CurrentTitle) or nameof(MainViewModel.NextTitle) or nameof(MainViewModel.AfterNextTitle)) Refresh();
+        };
+    }
+
+    public ProgrammePreview(Window owner, MainViewModel model, Button[] buttons,
+        Func<int, Programme?> getProgramme, Func<bool> canShow, Func<double> availableWidth)
+    {
+        _owner = owner; _model = model; _buttons = buttons;
+        _getProgramme = getProgramme; _canShow = canShow; _availableWidth = availableWidth;
         // Keep each popup over its own card and its trigger exposed. Explicit placement
         // also avoids the system menu-alignment preference moving a popup to another card.
         _popup.CustomPopupPlacementCallback = (size, target, _) =>
@@ -62,20 +81,15 @@ internal sealed class ProgrammePreview
                 !(_keyboardInteraction && (Panel.IsKeyboardFocusWithin || trigger.IsKeyboardFocusWithin))) Hide();
         };
         for (int i = 0; i < _buttons.Length; i++) Attach(_buttons[i], i);
-        main.Model.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(MainViewModel.Active)) Hide();
-            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription) or nameof(MainViewModel.AfterNextDescription)) RefreshAvailability();
-            if (Panel.IsVisible && e.PropertyName is nameof(MainViewModel.CurrentTitle) or nameof(MainViewModel.NextTitle) or nameof(MainViewModel.AfterNextTitle)) Refresh();
-        };
-        main.Deactivated += (_, _) => Hide(); main.Closed += (_, _) => Hide();
-        main.LocationChanged += (_, _) => Hide(); main.SizeChanged += (_, _) => Hide();
+        owner.Deactivated += (_, _) => Hide(); owner.Closed += (_, _) => Hide();
+        owner.LocationChanged += (_, _) => Hide(); owner.SizeChanged += (_, _) => Hide();
         RefreshAvailability();
     }
 
     private void Attach(Button button, int index)
     {
         button.MouseEnter += (_, _) => { _keyboardInteraction = false; Show(index); };
+        button.Click += (_, _) => Show(index);
         button.MouseLeave += (_, _) => ScheduleClose();
         button.PreviewMouseDown += (_, _) => _keyboardInteraction = false;
         // Keyboard users can also hold focus on the same button to read the description.
@@ -107,11 +121,10 @@ internal sealed class ProgrammePreview
         _close.Stop(); _close.Start();
     }
 
-    private void RefreshAvailability()
+    public void RefreshAvailability()
     {
-        SetAvailability(0, _main.Model.CurrentDescription.Length > 0);
-        SetAvailability(1, _main.Model.NextDescription.Length > 0);
-        SetAvailability(2, _main.Model.AfterNextDescription.Length > 0);
+        for (int i = 0; i < _buttons.Length; i++)
+            SetAvailability(i, !string.IsNullOrWhiteSpace(_getProgramme(i)?.Description));
     }
 
     private void SetAvailability(int index, bool available)
@@ -121,28 +134,26 @@ internal sealed class ProgrammePreview
         if (!available && Panel.IsVisible && index == _index) Hide();
     }
 
-    private Programme? GetProgramme(int index) => index switch { 0 => _main.Model.Active?.Current, 1 => _main.Model.Active?.Next, _ => _main.Model.Active?.AfterNext };
-
     private void Show(int index)
     {
         var button = _buttons[index];
-        if (!button.IsVisible || _main.IsFullscreen || _main.IsMini || GetProgramme(index) is null) return;
+        if (!button.IsVisible || !_canShow() || _getProgramme(index) is null) return;
         _close.Stop();
         bool animate = !Panel.IsVisible;
         // WPF can retain the previous position when equally sized previews change target.
         if (_index != index) _popup.IsOpen = false;
         _index = index; _popup.PlacementTarget = button;
-        Panel.Width = Math.Clamp(_main.ProgrammePanel.ActualWidth / 2 - 36, 240, 440);
-        Panel.MaxHeight = Math.Clamp(_main.ActualHeight * .44, 180, 380);
+        Panel.Width = Math.Clamp(_availableWidth() / 2 - 36, 240, 440);
+        Panel.MaxHeight = Math.Clamp(_owner.ActualHeight * .44, 180, 380);
         Refresh(); Panel.Visibility = Visibility.Visible;
         _popup.IsOpen = true;
-        if (animate && !_main.Model.Flag("reducedMotion") && SystemParameters.ClientAreaAnimation)
+        if (animate && !_model.Flag("reducedMotion") && SystemParameters.ClientAreaAnimation)
             Panel.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(100)));
     }
 
-    private void Refresh()
+    public void Refresh()
     {
-        var programme = GetProgramme(_index);
+        var programme = _getProgramme(_index);
         if (programme is null) { Hide(); return; }
         if (_shown == programme) return;
         _shown = programme; _badge.Text = _index switch { 0 => "СЕЙЧАС В ЭФИРЕ", 1 => "ДАЛЕЕ", _ => "ЗАТЕМ" };

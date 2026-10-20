@@ -62,7 +62,7 @@ internal sealed class SportsFullscreenOverlay : Window
         if (_closed || _owner.Content is not FrameworkElement area || area.ActualWidth <= 0 || area.ActualHeight <= 0) return;
         var transform = PresentationSource.FromVisual(_owner)?.CompositionTarget?.TransformFromDevice ?? System.Windows.Media.Matrix.Identity;
         var origin = transform.Transform(area.PointToScreen(new()));
-        Width = MaxWidth = area.ActualWidth * .25; MaxHeight = area.ActualHeight * .60;
+        Width = MaxWidth = area.ActualWidth * .35; MaxHeight = area.ActualHeight * .60;
         _scroll.MaxHeight = Math.Max(30, area.ActualHeight * .30);
         Left = origin.X + 16; Top = origin.Y + area.ActualHeight - Math.Min(ActualHeight > 0 ? ActualHeight : 300, MaxHeight) - 16;
     }

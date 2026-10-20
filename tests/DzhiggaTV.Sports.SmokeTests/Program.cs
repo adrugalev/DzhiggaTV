@@ -76,13 +76,17 @@ internal static class Program
             Check(main.WindowState == WindowState.Maximized && !main.IsFullscreen, "Startup opens maximized while retaining the normal application controls");
             await Task.Delay(700);
             await VerifyLogoResolutionAsync(main, profile);
+            ((Button)main.FindName("CurrentProgrammeDetails")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(100);
+            Check(OpenProgrammePreview() is { } mainPreview && Descendants<TextBlock>(mainPreview).Any(t => t.Text == main.Model.CurrentTitle),
+                "The shared description preview still displays the main player's current programme");
             main.ToggleFullscreen(); await Task.Delay(400);
             var mainOverlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
             var descriptionCard = (Border)mainOverlay.FindName("FullscreenProgrammeInfo");
             descriptionCard.Visibility = Visibility.Visible; mainOverlay.UpdateLayout();
-            Check(descriptionCard.ActualWidth > 0 && descriptionCard.ActualWidth <= mainOverlay.ActualWidth * .25 + 1 &&
+            Check(Math.Abs(descriptionCard.ActualWidth - mainOverlay.ActualWidth * .35) < 1 &&
                 descriptionCard.TranslatePoint(new(), mainOverlay).X < 20,
-                "Main fullscreen description is a compact left card no wider than a quarter of the screen");
+                "Main fullscreen description is a left card occupying 35% of the screen width");
             Check(((ScrollViewer)mainOverlay.FindName("FullscreenMetadataScroll")).ActualHeight > 0 &&
                 Grid.GetRow((ScrollViewer)mainOverlay.FindName("FullscreenMetadataScroll")) == 1,
                 "Main fullscreen film metadata is separated below the synopsis");
@@ -103,8 +107,9 @@ internal static class Program
             await WaitAsync(() => Tiles(sports).Length == 3 && Tiles(sports).All(Playing));
             if (args.Contains("--visual-only"))
             {
-                sports.SetChannels(main.Model.AllChannels.Take(4));
-                await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
+                int visualScreens = args.Contains("--two-screen-visual") ? 2 : 4;
+                sports.SetChannels(main.Model.AllChannels.Take(visualScreens));
+                await WaitAsync(() => Tiles(sports).Length == visualScreens && Tiles(sports).All(Playing));
                 foreach (var (flag, id) in new[] { ("--aspect-media", "sport-2"), ("--anamorphic-media", "sport-3"), ("--portrait-media", "sport-4") })
                 {
                     int index = Array.IndexOf(args, flag);
@@ -327,8 +332,8 @@ internal static class Program
         Check(four.All(t => Host(t).VideoHandle == handles[t.Channel.Id] && Playing(t) && !t.Player.IsPaused && t.Player.GetStatistics().PlaybackPositionSeconds > positions[t.Channel.Id]) && !expanded.IsMuted,
             "Other channels keep playing live during single-channel fullscreen with exclusive audio");
         var card = Application.Current.Windows.Cast<Window>().Single(w => w.Title == "DzhiggaTV · Описание передачи");
-        Check(card.Width <= sports.ActualWidth * .25 + 1 && card.Left < sports.Left + sports.ActualWidth * .25,
-            "Single-channel fullscreen description is a compact card on the left, at most a quarter wide");
+        Check(Math.Abs(card.Width - sports.ActualWidth * .35) < 1 && card.Left < sports.Left + 20,
+            "Single-channel fullscreen description is a left card occupying 35% of the screen width");
         sports.ToggleChannelFullscreen("sport-2"); await Task.Delay(350);
         Check(sports.ExpandedChannelId is null && four.All(t => t.IsVisible && Host(t).VideoHandle == handles[t.Channel.Id]) && sports.WindowState == windowState &&
             Math.Abs(sports.RestoreBounds.Width - bounds.Width) < 1 && sports.ChannelLayout.SequenceEqual(saved),
@@ -354,7 +359,47 @@ internal static class Program
         Check(visible > 2 && viewport.ActualHeight > 150, "The programme list uses the available sidebar height to show more than two future programmes");
         sports.SelectAudio("sport-1"); await WaitAsync(() => programmeList.Children.OfType<Border>().All(b => ((Programme)b.DataContext).ChannelId == "guide-sport-1"));
         Check(programmeList.Children.OfType<Border>().Count() == 17, "Switching audio replaces the entire extended programme list without stale rows");
+        sports.SetChannels(main.Model.AllChannels.Take(2));
+        await WaitAsync(() => Tiles(sports).Length == 2 && Tiles(sports).All(Playing));
+        sports.SelectAudio("sport-2"); await Task.Delay(350); sports.UpdateLayout();
+        var cards = Descendants<Grid>(sports).Single(p => p.Name == "MultiscreenProgrammeCards");
+        var cardNames = new[] { "MultiscreenCurrentCard", "MultiscreenNextCard", "MultiscreenAfterNextCard" };
+        var compactCards = cardNames.Select(name => Descendants<Border>(cards).Single(b => b.Name == name)).ToArray();
+        var selected = main.Model.AllChannels.Single(c => c.Id == "sport-2");
+        Check(cards.IsVisible && !programmeList.IsVisible && compactCards.Select(b => b.DataContext).SequenceEqual(new[] { selected.Current, selected.Next, selected.AfterNext }),
+            "Two-channel bottom strip shows only Now, Next and Then for the audio channel");
+        Check(compactCards.All(c => c.ActualHeight > 60) && compactCards.Zip(compactCards.Skip(1)).All(pair =>
+                pair.First.TranslatePoint(new(), cards).X + pair.First.ActualWidth <= pair.Second.TranslatePoint(new(), cards).X),
+            "The three bottom cards fit beside one another without overlapping");
+        foreach (var compact in compactCards)
+        {
+            var details = Descendants<Button>(compact).Single();
+            Check(details.IsVisible, "A bottom programme card exposes its formatted description: " + compact.Name);
+            details.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); await Task.Delay(100);
+            var preview = OpenProgrammePreview(); var programme = (Programme)compact.DataContext;
+            Check(preview is not null && Descendants<TextBlock>(preview).Any(t => t.Text == programme.Title) &&
+                Descendants<TextBlock>(preview).Any(t => t.Text.Contains("Год: 2026", StringComparison.Ordinal)),
+                "Bottom details show the chosen programme with separate film metadata: " + compact.Name);
+            if (preview is not null)
+            {
+                var transform = PresentationSource.FromVisual(details)!.CompositionTarget!.TransformFromDevice;
+                var trigger = transform.Transform(details.PointToScreen(new())); var popup = transform.Transform(preview.PointToScreen(new()));
+                Check(Math.Abs(popup.X - trigger.X) < preview.ActualWidth + 10,
+                    "The description stays next to its own Details button: " + compact.Name);
+            }
+        }
+        sports.SelectAudio("sport-1"); await Task.Delay(100);
+        Check(OpenProgrammePreview() is null && compactCards.All(c => c.DataContext is Programme p && p.ChannelId == "guide-sport-1"),
+            "Switching audio replaces all three bottom cards and closes the old description");
+        sports.SetChannels(main.Model.AllChannels.Take(4));
+        await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
+        await WaitAsync(() => programmeList.IsVisible && programmeList.Children.OfType<Border>().Count() == 17);
+        Check(!cards.IsVisible, "Returning to four videos restores the extended sidebar schedule");
     }
+
+    private static Border? OpenProgrammePreview() => PresentationSource.CurrentSources.Cast<PresentationSource>()
+        .Select(s => s.RootVisual).OfType<DependencyObject>().SelectMany(Descendants<Border>)
+        .SingleOrDefault(b => b.IsVisible && System.Windows.Automation.AutomationProperties.GetName(b) == "Полное описание передачи");
 
     private static async Task VerifyVideoLayoutAsync(string[] args, MainWindow main, SportsEveningWindow sports)
     {
