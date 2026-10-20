@@ -64,9 +64,9 @@ public sealed class SportsEveningWindow : Window
         };
         Loaded += (_, _) =>
         {
-            var saved = SportsSelection.Restore(_model);
-            if (saved.Count > 0) SetChannels(saved, _model.Setting("sports.audio", ""));
-            else ChooseChannels();
+            var opening = SportsSelection.ForOpening(_model);
+            if (opening.Channels.Count > 0) SetChannels(opening.Channels, opening.AudioId);
+            if (opening.ShowChannelPicker) ChooseChannels();
             if (!_closed) _guideTimer.Start();
         };
         _guideTimer.Tick += async (_, _) => await LoadGuideAsync(_tiles.Values.Select(t => t.Channel).ToArray());

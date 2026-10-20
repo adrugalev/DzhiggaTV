@@ -27,6 +27,7 @@ internal static class Program
         [
             ("Sports audio never overlaps when switching, muting, replacing or removing sources", SportsAudioAsync),
             ("Sports selection persists ordered unique allowed channels and safely restores stale settings", SportsSelectionAsync),
+            ("Multiscreen opens with the main channel first and selected for audio, including full and empty grids", MultiscreenOpeningAsync),
             ("Cold startup displays all three cached cards while background EPG import blocks saving", StartupGuideDuringImportAsync),
             ("Late viewport guide loading notifies all active programme cards", ActiveViewportGuideAsync),
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
@@ -107,6 +108,43 @@ internal static class Program
         Assert(SportsSelection.Restore(model).Count == 0, "Corrupt saved data must leave a usable empty selection.");
         model.SetSetting("sports.channels", "[null,\"\",\"missing\",\"sport-2\"]");
         Assert(SportsSelection.Restore(model).Single().Id == "sport-2", "Null and deleted IDs must not prevent restoring valid channels.");
+    }
+
+    private static async Task MultiscreenOpeningAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        var active = model.AllChannels.Single();
+        var others = Enumerable.Range(0, 10).Select(i => new ChannelItem(new("multi-" + i, "fixture", "Channel " + i, "Тест", "https://example.invalid/unused"))).ToArray();
+        model.AllChannels.AddRange(others); model.Active = active;
+        SportsSelection.Save(model, others.Take(9), others[3].Id);
+        var full = SportsSelection.ForOpening(model);
+        Assert(full.Channels.Select(c => c.Id).SequenceEqual(new[] { active.Id }.Concat(others.Take(8).Select(c => c.Id))) && full.AudioId == active.Id && !full.ShowChannelPicker,
+            "The playing main channel must take the first slot and audio focus even when nine other channels were saved.");
+        Assert(SportsSelection.Restore(model).Count == 9 && model.Setting("sports.audio") == others[3].Id,
+            "Planning startup must not alter saved state before the window applies its selection.");
+        SportsSelection.Save(model, [others[0], active, others[1]], others[1].Id);
+        var included = SportsSelection.ForOpening(model);
+        Assert(included.Channels.Select(c => c.Id).SequenceEqual([active.Id, others[0].Id, others[1].Id]) && included.AudioId == active.Id,
+            "An already included main channel must move to the first slot without duplication and override the saved audio source.");
+        model.Active = others[5];
+        var changed = SportsSelection.ForOpening(model);
+        Assert(changed.Channels[0] == others[5] && changed.AudioId == others[5].Id,
+            "A different main channel must win on the next opening.");
+        model.State.Hidden.Add(others[5].Id);
+        var restricted = SportsSelection.ForOpening(model);
+        Assert(restricted.Channels.All(model.IsAllowed) && restricted.AudioId == others[1].Id,
+            "An unavailable main channel must not bypass restrictions or displace a valid saved audio source.");
+        model.Active = null;
+        Assert(SportsSelection.ForOpening(model).AudioId == others[1].Id, "Without a main channel, saved audio focus must remain usable.");
+        model.SetSetting("sports.audio", "deleted");
+        Assert(SportsSelection.ForOpening(model).AudioId == others[0].Id, "An invalid saved audio source must fall back to a visible channel.");
+        model.Active = active; model.SetSetting("sports.channels", "[]");
+        var firstUse = SportsSelection.ForOpening(model);
+        Assert(firstUse.Channels.SequenceEqual([active]) && firstUse.AudioId == active.Id && firstUse.ShowChannelPicker,
+            "First use must seed the main channel and offer the channel picker.");
+        model.Active = null;
+        var empty = SportsSelection.ForOpening(model);
+        Assert(empty.Channels.Count == 0 && empty.AudioId is null && empty.ShowChannelPicker, "An empty library selection must still offer channel selection.");
     }
 
     private static async Task FavoriteToggleAsync()

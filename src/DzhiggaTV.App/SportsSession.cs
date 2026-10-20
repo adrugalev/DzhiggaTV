@@ -18,6 +18,17 @@ public static class SportsSelection
         catch (JsonException) { return []; }
     }
 
+    public static (IReadOnlyList<ChannelItem> Channels, string? AudioId, bool ShowChannelPicker) ForOpening(MainViewModel model)
+    {
+        var saved = Restore(model);
+        var active = model.Active is { } current
+            ? model.AllChannels.FirstOrDefault(c => c.Id == current.Id && model.IsAllowed(c)) : null;
+        var channels = active is null ? saved : Resolve(model, new[] { active.Id }.Concat(saved.Select(c => c.Id)));
+        var savedAudioId = model.Setting("sports.audio", "");
+        var audioId = active?.Id ?? (channels.Any(c => c.Id == savedAudioId) ? savedAudioId : channels.FirstOrDefault()?.Id);
+        return (channels, audioId, saved.Count == 0);
+    }
+
     public static void Save(MainViewModel model, IEnumerable<ChannelItem> channels, string? audioId)
     {
         var selected = Resolve(model, channels.Select(c => c.Id));

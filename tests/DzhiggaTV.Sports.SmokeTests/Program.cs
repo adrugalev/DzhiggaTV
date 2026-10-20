@@ -39,7 +39,7 @@ internal static class Program
         using var store = new SqliteStore(Path.Combine(profile, "library.db"));
         await store.InitializeAsync(); await store.SavePlaylistAsync(new("local", "Sports smoke", "local-only.m3u"), channels);
         var state = new UserState();
-        foreach (var (key, value) in new Dictionary<string, string> { ["epg.enabled"] = "False", ["epg.prompted"] = "True", ["resume"] = "True", ["last.channel"] = "sport-1", ["sports.channels"] = JsonSerializer.Serialize(channels.Take(4).Select(c => c.Id)), ["sports.audio"] = "sport-3", ["volume"] = "0" }) state.Settings[key] = value;
+        foreach (var (key, value) in new Dictionary<string, string> { ["epg.enabled"] = "False", ["epg.prompted"] = "True", ["resume"] = "True", ["last.channel"] = "sport-1", ["sports.channels"] = JsonSerializer.Serialize(channels.Skip(1).Take(3).Select(c => c.Id)), ["sports.audio"] = "sport-3", ["volume"] = "0" }) state.Settings[key] = value;
         await store.SaveUserStateAsync(state);
     }
     private static async Task<int> RunAsync(string[] args, string profile)
@@ -58,7 +58,9 @@ internal static class Program
             sports = Application.Current.Windows.OfType<SportsEveningWindow>().Single();
             await WaitAsync(() => Tiles(sports).Length == 4 && Tiles(sports).All(Playing));
             Check(!main.Player.IsPaused && main.Player.IsMuted, "Main player keeps playing silently while sports plays");
-            Check(Tiles(sports).Count(t => !t.IsMuted) == 1 && !Tiles(sports).Single(t => t.Channel.Id == "sport-3").IsMuted, "Four native players decode simultaneously with saved audio source");
+            var initialMain = Tiles(sports).Single(t => t.Channel.Id == "sport-1");
+            Check(Tiles(sports).Count(t => !t.IsMuted) == 1 && !initialMain.IsMuted && Grid.GetRow(initialMain) == 0 && Grid.GetColumn(initialMain) == 0,
+                "Opening adds the main channel in the first slot and selects its audio over saved focus");
             sports.SetChannels(main.Model.AllChannels.Take(9));
             await WaitAsync(() => Tiles(sports).Length == 9 && Tiles(sports).All(Playing));
             var nine = Tiles(sports); var positions = nine.ToDictionary(t => t.Channel.Id, t => t.Player.GetStatistics().PlaybackPositionSeconds);
@@ -111,6 +113,22 @@ internal static class Program
             var saved = await main.Model.Store.LoadUserStateAsync();
             Check(JsonSerializer.Deserialize<string[]>(saved.Settings["sports.channels"])!.Length is >= 1 and <= 9, "Grid selection persists to encrypted user state");
             if (!args.Contains("--interactive")) Check(JsonSerializer.Deserialize<string[]>(saved.Settings["sports.channels"])!.SequenceEqual(finalChannels.Select(c => c.Id)) && saved.Settings["sports.audio"] == "sport-3", "Visible channel order and chosen audio source survive saving");
+            if (!args.Contains("--interactive"))
+            {
+                await main.PlayAsync(main.Model.AllChannels.Single(c => c.Id == "sport-10"));
+                await WaitAsync(() => main.Player.State == PlaybackState.Playing && main.Model.Active?.Id == "sport-10");
+                Task? reopenedRun = null;
+                _ = main.Dispatcher.BeginInvoke(new Action(() => reopenedRun = main.ShowSportsEveningAsync()));
+                await WaitAsync(() => Application.Current.Windows.OfType<SportsEveningWindow>().Any());
+                sports = Application.Current.Windows.OfType<SportsEveningWindow>().Single();
+                await WaitAsync(() => Tiles(sports).Length == 5 && Tiles(sports).All(Playing));
+                var reopenedTiles = Tiles(sports);
+                var newMain = reopenedTiles.Single(t => t.Channel.Id == "sport-10");
+                Check(reopenedTiles.Count(t => !t.IsMuted) == 1 && !newMain.IsMuted && Grid.GetRow(newMain) == 0 && Grid.GetColumn(newMain) == 0,
+                    "Reopening follows the newly playing main channel instead of the last multiscreen audio choice");
+                sports.Close(); await WaitAsync(() => reopenedRun is { IsCompleted: true });
+                Check(reopenedTiles.All(t => t.Player.State == PlaybackState.Disposed), "Reopened multiscreen also releases every native player");
+            }
             Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, nativePlayers = 9 }));
             return 0;
         }
