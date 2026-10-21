@@ -67,6 +67,12 @@ internal static class Program
         var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
         Check(main.GetArchiveTimeline() is { IsArchive: false }, "An archive-capable live channel exposes its rewind range");
         var overlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
+        if (args.Contains("--mini-window"))
+        {
+            await MiniWindowChecks(main, overlay, args);
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
+            return;
+        }
         if (args.Contains("--player-menu"))
         {
             await PlayerMenuChecks(main, overlay, args);
@@ -239,6 +245,55 @@ internal static class Program
         }
         Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
     }
+    private static async Task MiniWindowChecks(MainWindow main, OverlayWindow overlay, string[] args)
+    {
+        main.Title = "DzhiggaTV · Проверка мини-плеера 1.5.6";
+        var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
+        var originalState = main.WindowState;
+        var root = (FrameworkElement)main.FindName("LayoutRoot");
+        bool SizeIs(double width, double height) => Math.Abs(main.ActualWidth - width) < 1 && Math.Abs(main.ActualHeight - height) < 1;
+        async Task Settled() => await Wait(() => overlay.IsVisible && Math.Abs(overlay.ActualWidth - (main.ActualWidth - 16)) < 2 &&
+            Math.Abs(overlay.ActualHeight - (main.ActualHeight - 16)) < 2);
+        main.ToggleMini(); await Settled();
+        Check(SizeIs(440, 255), "A fresh mini-player opens at the compact default size");
+        Check(main.ResizeMode == ResizeMode.CanResize && System.Windows.Shell.WindowChrome.GetWindowChrome(main) is { CaptionHeight: 0, ResizeBorderThickness.Left: 8 },
+            "The borderless mini-player exposes native resize borders on all sides");
+        var origin = overlay.PointToScreen(new Point()); var inset = main.PointFromScreen(origin);
+        Check(root.Margin == new Thickness(8) && Math.Abs(inset.X - 8) < 1 && Math.Abs(inset.Y - 8) < 1,
+            "Neither the native video nor the overlay covers the resize frame");
+        main.Width = 620; main.Height = 360; await Settled();
+        Check(main.Player.State == PlaybackState.Playing && host.VideoHandle == handle && main.Player.Volume == 0,
+            "Resizing a live mini-player preserves native playback, its handle and volume");
+        main.RestoreWindow(); await Task.Delay(200);
+        Check(main.WindowState == originalState && root.Margin == SystemParameters.WindowResizeBorderThickness,
+            "Returning to the maximized main window restores its original frame");
+        main.ToggleMini(); await Settled();
+        Check(SizeIs(620, 360), "Reopening the mini-player restores its custom size");
+        main.RestoreWindow(); main.Model.SetSetting("mini.width", 560.2); main.Model.SetSetting("mini.height", 349.8);
+        main.ToggleMini(); await Settled();
+        Check(SizeIs(440, 255), "The old automatic default migrates to the compact size");
+        main.Width = 100; main.Height = 100; await Settled();
+        Check(SizeIs(320, 196), "Resizing stops at the compact usable minimum");
+        main.RestoreWindow(); main.Model.SetSetting("mini.width", 50000); main.Model.SetSetting("mini.height", 50000);
+        main.ToggleMini(); await Settled();
+        Check(main.ActualWidth <= SystemParameters.WorkArea.Width && main.ActualHeight <= SystemParameters.WorkArea.Height,
+            "Invalid oversized saved bounds are clamped to the available desktop");
+        main.RestoreWindow(); main.Model.SetSetting("mini.width", 440); main.Model.SetSetting("mini.height", 255);
+        main.ToggleMini(); main.Left = 100; main.Top = 100; await Settled();
+        if (args.Contains("--visual-only"))
+        {
+            Console.WriteLine("VISUAL_READY"); while (main.IsVisible) await Task.Delay(300);
+        }
+        else { main.Width = 510; main.Height = 290; await Settled(); main.Close(); await Wait(() => !main.IsVisible); }
+        int profileIndex = Array.IndexOf(args, "--data-dir");
+        using var store = new SqliteStore(Path.Combine(Path.GetFullPath(args[profileIndex + 1]), "library.db"));
+        await store.InitializeAsync(); var saved = await store.LoadUserStateAsync();
+        Check(saved.Settings.ContainsKey("mini.width") && saved.Settings.ContainsKey("mini.height") &&
+            double.Parse(saved.Settings["mini.width"], System.Globalization.CultureInfo.InvariantCulture) == main.ActualWidth &&
+            double.Parse(saved.Settings["mini.height"], System.Globalization.CultureInfo.InvariantCulture) == main.ActualHeight,
+            "Closing the mini-player directly persists its final resized bounds");
+    }
+
     private static async Task PlayerMenuChecks(MainWindow main, OverlayWindow overlay, string[] args)
     {
         main.Title = "DzhiggaTV · Проверка меню 1.5.5";

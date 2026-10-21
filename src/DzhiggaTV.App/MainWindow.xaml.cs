@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     public const double TitleBarHeight = 48;
     public static GridLength TitleBarRowHeight { get; } = new(TitleBarHeight);
     public const double StatusBarHeight = 16;
+    private const double MiniResizeBorder = 8;
+    private const double MiniDefaultWidth = 440, MiniDefaultHeight = 255;
     public static GridLength StatusBarRowHeight { get; } = new(StatusBarHeight);
     public MainViewModel Model { get; }
     public ProgrammeBrowser Programmes { get; }
@@ -104,8 +106,7 @@ public partial class MainWindow : Window
         DpiChanged += (_, _) => QueueOverlayLayout();
         StateChanged += (_, _) =>
         {
-            LayoutRoot.Margin = WindowState == WindowState.Maximized && !IsFullscreen && !IsMini
-                ? SystemParameters.WindowResizeBorderThickness : new(0);
+            UpdateWindowFrame();
             QueueOverlayLayout();
         };
         SizeChanged += (_, _) => QueueOverlayLayout();
@@ -375,13 +376,18 @@ public partial class MainWindow : Window
         if (IsMini) { RestoreWindow(); return; }
         if (IsFullscreen) RestoreWindow();
         RememberWindow(); IsMini = true;
-        WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResizeWithGrip; Topmost = true;
+        WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize; Topmost = true;
         WindowChrome.SetWindowChrome(this, new WindowChrome
         {
-            CaptionHeight = 0, ResizeBorderThickness = new(5), GlassFrameThickness = new(0),
+            CaptionHeight = 0, ResizeBorderThickness = new(MiniResizeBorder), GlassFrameThickness = new(0),
             CornerRadius = new(0), UseAeroCaptionButtons = false
         });
-        MinWidth = 420; MinHeight = 260; Width = Parse("mini.width", 560); Height = Parse("mini.height", 350);
+        MinWidth = 320; MinHeight = 196;
+        var width = Parse("mini.width", MiniDefaultWidth); var height = Parse("mini.height", MiniDefaultHeight);
+        // Earlier versions saved their old default even when the user had never resized it.
+        if (Math.Abs(width - 560) < 1 && Math.Abs(height - 350) < 1) { width = MiniDefaultWidth; height = MiniDefaultHeight; }
+        Width = Math.Clamp(width, MinWidth, Math.Max(MinWidth, SystemParameters.WorkArea.Width));
+        Height = Math.Clamp(height, MinHeight, Math.Max(MinHeight, SystemParameters.WorkArea.Height));
         Left = Parse("mini.left", Math.Max(0, SystemParameters.WorkArea.Right - Width - 24)); Top = Parse("mini.top", Math.Max(0, SystemParameters.WorkArea.Bottom - Height - 24));
         ClampToScreen(); CollapseChrome(); WindowAppearance.Apply(this); _overlay?.Reveal(); QueueOverlayLayout();
     }
@@ -393,6 +399,12 @@ public partial class MainWindow : Window
     }
     private double Parse(string key, double fallback) => double.TryParse(Model.Setting(key), CultureInfo.InvariantCulture, out var value) && double.IsFinite(value) ? value : fallback;
     private void RememberWindow() => _snapshot = new(Left, Top, ActualWidth, ActualHeight, WindowState);
+    private void UpdateWindowFrame() => LayoutRoot.Margin = IsMini ? new(MiniResizeBorder) :
+        WindowState == WindowState.Maximized && !IsFullscreen ? SystemParameters.WindowResizeBorderThickness : new(0);
+    private void RememberMiniWindow()
+    {
+        foreach (var (key, value) in new[] { ("mini.left", Left), ("mini.top", Top), ("mini.width", ActualWidth), ("mini.height", ActualHeight) }) Model.SetSetting(key, value);
+    }
     private void CollapseChrome()
     {
         _programmePreview.Hide();
@@ -401,10 +413,12 @@ public partial class MainWindow : Window
         NavigationColumn.MinWidth = ChannelColumn.MinWidth = 0;
         NavigationColumn.Width = ChannelColumn.Width = SplitterColumn.Width = new(0);
         ViewingPanel.Margin = new(0); VideoBorder.CornerRadius = new(0); VideoBorder.BorderThickness = new(0);
+        // Keep both native video and the owned overlay inside the resize frame.
+        UpdateWindowFrame();
     }
     public void RestoreWindow()
     {
-        if (IsMini) { foreach (var (key, value) in new[] { ("mini.left", Left), ("mini.top", Top), ("mini.width", ActualWidth), ("mini.height", ActualHeight) }) Model.SetSetting(key, value); _ = Model.SaveAsync(); }
+        if (IsMini) { RememberMiniWindow(); _ = Model.SaveAsync(); }
         IsMini = IsFullscreen = false; Topmost = false; WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize;
         ApplyMainWindowChrome();
         MinWidth = 940; MinHeight = 600;
@@ -413,6 +427,7 @@ public partial class MainWindow : Window
         NavigationColumn.MinWidth = 64; SetNavigationCollapsed(_navigationCollapsed); ChannelColumn.Width = new(350); ChannelColumn.MinWidth = 270; SplitterColumn.Width = new(5);
         ViewingPanel.Margin = new(20,20,24,14); VideoBorder.CornerRadius = new(12); VideoBorder.BorderThickness = new(1);
         if (_snapshot is { } s) { Width = s.Width; Height = s.Height; Left = s.Left; Top = s.Top; WindowState = s.State; }
+        UpdateWindowFrame();
         UpdateProgrammePanelLayout();
         WindowAppearance.Apply(this);
         _overlay?.Reveal(); QueueOverlayLayout();
@@ -499,6 +514,7 @@ public partial class MainWindow : Window
         e.Cancel = true;
         if (_closing) return;
         _closing = true; _timer.Stop(); _updateTimer.Stop(); _updateLifetime.Cancel(); _playCancellation?.Cancel(); _sports?.Close(); _overlay?.Close();
+        if (IsMini) RememberMiniWindow();
         Programmes.Dispose();
         Model.SetSetting("volume", Player.Volume); Model.SetSetting("muted", Player.IsMuted);
         await GuardAsync(Model.SaveAsync);
