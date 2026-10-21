@@ -83,9 +83,10 @@ public partial class MainWindow : Window
         Player.StateChanged += (_, e) => Dispatcher.BeginInvoke(() =>
         {
             if (_closing) return;
+            e = Player.Status; // A delayed dispatcher callback must not restore an obsolete status.
             Model.PlaybackStatus = e.Message;
             if (e.State == PlaybackState.Error) Model.Status = e.Message;
-            HasPlayback = e.State is PlaybackState.Playing or PlaybackState.Paused or PlaybackState.Buffering or PlaybackState.Reconnecting or PlaybackState.Loading || IsArchivePlayback && e.State is PlaybackState.Idle or PlaybackState.Error;
+            HasPlayback = e.State is PlaybackState.Playing or PlaybackState.Paused or PlaybackState.Buffering or PlaybackState.Stalled or PlaybackState.Reconnecting or PlaybackState.Loading || IsArchivePlayback && e.State is PlaybackState.Idle or PlaybackState.Error;
             _overlay?.RefreshState();
         });
         Loaded += async (_, _) => await LoadedAsync();

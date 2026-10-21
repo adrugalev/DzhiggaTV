@@ -404,6 +404,7 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
     }
     private void OnStateChanged(object? sender, PlaybackStateChangedEventArgs e) => Dispatcher.BeginInvoke(() =>
     {
+        e = Player.Status;
         if (!_disposed) { _status.Text = e.State == PlaybackState.Playing ? "Прямой эфир" : e.Message; if (e.State == PlaybackState.Playing) RefreshVideoAspect(); }
     });
     public void RefreshVideoAspect()

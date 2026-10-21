@@ -25,6 +25,11 @@ public partial class OverlayWindow : Window
         _main = main;
         var volume = main.Player.Volume;
         InitializeComponent();
+        PlaybackStatus.RetryRequested += async (_, _) => await _main.GuardAsync(async () =>
+        {
+            if (_main.IsArchivePlayback) await _main.TogglePlaybackPauseAsync();
+            else if (_main.Model.Active is { } channel) await _main.PlayAsync(channel);
+        });
         // Slider's move-to-point class handler marks track presses handled before XAML handlers run.
         ArchiveSeekSlider.AddHandler(PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler(ArchiveSeek_Down), true);
         ArchiveSeekSlider.AddHandler(PreviewMouseLeftButtonUpEvent, new MouseButtonEventHandler(ArchiveSeek_Up), true);
@@ -56,7 +61,10 @@ public partial class OverlayWindow : Window
             _descriptionProgramme = _main.Model.PlayingProgramme;
             FullscreenSynopsisScroll.ScrollToHome(); FullscreenMetadataScroll.ScrollToHome();
         }
-        Welcome.Visibility = _main.HasPlayback ? Visibility.Collapsed : Visibility.Visible;
+        Welcome.Visibility = _main.HasPlayback || _main.Player.State == PlaybackState.Error ? Visibility.Collapsed : Visibility.Visible;
+        var status = _main.Player.Status;
+        PlaybackStatus.ShowState(status.State, status.Message, _main.Model.Active is not null,
+            _main.Model.Flag("reducedMotion"), _main.Player.RequiresRestart);
         PauseButton.Content = _main.Player.IsPaused || _main.Player.State is PlaybackState.Idle or PlaybackState.Error ? "▶" : "Ⅱ";
         MuteButton.Content = _main.Player.IsMuted ? "⊘" : "♪";
         if (!VolumeSlider.IsMouseCaptureWithin)
@@ -194,7 +202,8 @@ public partial class OverlayWindow : Window
         ArchiveBadge.Text = timeline.IsArchive ? _main.Player.State == PlaybackState.Idle ? "АРХИВ · ЗАВЕРШЁН" : _main.Player.State == PlaybackState.Error ? "АРХИВ · НЕ УДАЛОСЬ ЗАГРУЗИТЬ" : "АРХИВ" : "ПРЯМОЙ ЭФИР";
         ReturnLiveButton.Visibility = timeline.IsArchive ? Visibility.Visible : Visibility.Collapsed;
         if (timeline.IsArchive) ShowSeekTime(timeline.Position);
-        else ArchivePositionText.Text = $"С начала передачи · {timeline.Start.ToLocalTime():HH:mm} — {timeline.End.ToLocalTime():HH:mm}";
+        else ArchivePositionText.Text = $"{timeline.Start.ToLocalTime():HH:mm} — {timeline.End.ToLocalTime():HH:mm}";
+        StartProgrammeAction.Visibility = !timeline.IsArchive && _main.CanRestartCurrentProgramme ? Visibility.Visible : Visibility.Collapsed;
         if (ArchiveSeekSlider.IsMouseOver) UpdateSeekPreview(Mouse.GetPosition(ArchiveSeekSlider));
     }
     private void ShowSeekTime(DateTimeOffset time)
@@ -276,8 +285,9 @@ public partial class OverlayWindow : Window
         if (timeline is not null && _seekChannelId == _main.Model.Active?.Id) await _main.GuardAsync(() => _main.SeekArchiveToAsync(timeline.TimeAt(offset)));
         _lastMove = DateTime.UtcNow; RefreshState();
     }
-    private async void ArchiveTime_Click(object sender, RoutedEventArgs e) => await _main.ChooseArchiveTimeAsync();
+    private async void PlayerGuide_Click(object sender, RoutedEventArgs e) => await _main.ShowGuideAsync();
     private async void ReturnLive_Click(object sender, RoutedEventArgs e) => await _main.GuardAsync(_main.ReturnToLiveAsync);
+    private async void StartProgramme_Click(object sender, RoutedEventArgs e) => await _main.GuardAsync(_main.RestartCurrentProgrammeAsync);
     private void Mute_Click(object sender, RoutedEventArgs e) { _main.Player.IsMuted = !_main.Player.IsMuted; RefreshState(); }
     private void Volume_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) { if (_volumeReady && !_syncingVolume) _main.Player.Volume = e.NewValue; }
     private async void Favorite_Click(object sender, RoutedEventArgs e) { if (_main.Model.Active is { } c) await _main.Model.ToggleFavoriteAsync(c); }

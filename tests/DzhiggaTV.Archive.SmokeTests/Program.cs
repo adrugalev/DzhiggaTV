@@ -65,6 +65,48 @@ internal static class Program
         var channel = main.Model.AllChannels.Single(c => c.Id == "archive");
         var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
         Check(main.GetArchiveTimeline() is { IsArchive: false }, "An archive-capable live channel exposes its rewind range");
+        var overlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
+        await main.Programmes.GoBackAsync();
+        await Wait(() => main.Programmes.IsBrowsing);
+        var startLink = (System.Windows.Documents.Hyperlink)overlay.FindName("StartProgrammeLink");
+        startLink.RaiseEvent(new RoutedEventArgs(System.Windows.Documents.Hyperlink.ClickEvent));
+        await Wait(() => main.IsArchivePlayback && main.Player.State == PlaybackState.Playing);
+        Check(main.Model.CurrentTitle == "Текущая передача" && server.LastArchiveStart == channel.Current!.Start.ToUnixTimeSeconds(),
+            "The start-of-programme link plays the live programme from its exact beginning even while cards browse older history");
+        Check(((Button)main.FindName("CurrentProgrammeGuideButton")).Visibility == Visibility.Collapsed &&
+            Equals(((Button)overlay.FindName("PlayerGuideButton")).Content, "Телепрограмма") &&
+            !Descendants<Button>(overlay).Any(b => Equals(b.Content, "Дата и время")),
+            "Archive channels use a single guide action in the player without duplicate card or date/time actions");
+        await main.ReturnToLiveAsync(); await Wait(() => main.Player.State == PlaybackState.Playing);
+        server.HoldRequests = true;
+        await main.PlayAsync(channel);
+        await Wait(() => main.Player.State == PlaybackState.Stalled, 11000);
+        var status = (PlaybackStatusView)overlay.FindName("PlaybackStatus");
+        Check(status.IsVisible && Descendants<TextBlock>(status).Any(t => t.Text == "Трансляция приостановилась"),
+            "A real unresponsive HTTP stream displays the persistent stall indicator over native video");
+        var root = (FrameworkElement)overlay.FindName("OverlayRoot");
+        var centre = status.TransformToAncestor(root).Transform(new System.Windows.Point(status.ActualWidth / 2, status.ActualHeight / 2));
+        Check(Math.Abs(centre.X - root.ActualWidth / 2) < 2 && Math.Abs(centre.Y - root.ActualHeight / 2) < 2,
+            "The stall card is centred in the video surface independently of hidden playback controls");
+        server.HoldRequests = false;
+        await Wait(() => main.Player.State == PlaybackState.Playing, 20000);
+        Check(status.Visibility == Visibility.Collapsed && host.VideoHandle == handle,
+            "A transient network stall clears automatically when playback resumes and keeps the native surface");
+        server.HoldRequests = true;
+        int retries = 0;
+        void CountRetry(object? sender, PlaybackStateChangedEventArgs e) { if (e.State == PlaybackState.Reconnecting) Interlocked.Increment(ref retries); }
+        main.Player.StateChanged += CountRetry;
+        await main.PlayAsync(channel);
+        await Wait(() => main.Player.State == PlaybackState.Error, 100000);
+        main.Player.StateChanged -= CountRetry;
+        await Task.Delay(200);
+        Check(retries == 3 && status.IsVisible && Descendants<Button>(status).Any(b => Equals(b.Content, "Повторить") && b.IsVisible),
+            "A permanently silent server exhausts exactly three retries and shows a usable retry action instead of waiting forever");
+        server.HoldRequests = false;
+        Descendants<Button>(status).Single(b => Equals(b.Content, "Повторить")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Wait(() => main.Player.State == PlaybackState.Playing, 20000);
+        Check(status.Visibility == Visibility.Collapsed && host.VideoHandle == handle,
+            "Retry after terminal network failure restarts the channel and clears the error indicator");
         var guide = new GuideWindow(main); guide.Show();
         await Wait(() => guide.SelectProgramme(channel.Id, Past.Start));
         var watch = Descendants<Button>(guide).Single(b => Equals(b.Content, "Смотреть в архиве"));
@@ -113,7 +155,6 @@ internal static class Program
             "Choosing a date and time also plays an archive when EPG data is absent");
         await main.PlayArchiveAsync(channel, Past); await Wait(() => main.Player.State == PlaybackState.Playing);
         main.ToggleFullscreen(); await Task.Delay(350);
-        var overlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
         Check(((FrameworkElement)overlay.FindName("ArchiveTimelinePanel")).Visibility == Visibility.Visible &&
             ((Slider)overlay.FindName("ArchiveSeekSlider")).IsMoveToPointEnabled && ((Button)overlay.FindName("ReturnLiveButton")).Visibility == Visibility.Visible,
             "Fullscreen exposes the archive seek bar and a direct return to live");
@@ -156,6 +197,11 @@ internal static class Program
         Check(guide.SelectProgramme("archive", SeedNow.AddDays(-4)) && Descendants<Button>(guide).Any(b => Equals(b.Content, "Смотреть в архиве") && b.IsEnabled),
             "The same day stays available for a seven-day channel");
         guide.Close();
+        await main.PlayAsync(main.Model.AllChannels.Single(c => c.Id == "live"));
+        await Wait(() => main.Player.State == PlaybackState.Playing);
+        Check(((Button)main.FindName("CurrentProgrammeGuideButton")).Visibility == Visibility.Visible,
+            "Channels without archive retain the programme link in the current-programme card");
+        await main.PlayAsync(channel); await Wait(() => main.Player.State == PlaybackState.Playing);
         int providerIndex = Array.IndexOf(args, "--provider-playlist");
         if (providerIndex >= 0 && providerIndex + 1 < args.Length)
         {
@@ -179,7 +225,8 @@ internal static class Program
         }
         if (args.Contains("--visual-only"))
         {
-            if (!main.IsArchivePlayback) await main.PlayArchiveAsync(channel, Past);
+            if (args.Contains("--visual-stall")) { server.HoldRequests = true; await main.PlayAsync(channel); }
+            else if (!main.IsArchivePlayback) await main.PlayArchiveAsync(channel, Past);
             main.Player.IsPaused = false;
             Console.WriteLine("VISUAL_READY"); while (main.IsVisible) await Task.Delay(300);
         }
@@ -198,6 +245,7 @@ internal static class Program
         private readonly HttpListener _listener = new(); private readonly CancellationTokenSource _stop = new(); private readonly string _directory;
         private int _archives;
         private long _lastArchiveStart;
+        public volatile bool HoldRequests;
         public int ArchiveRequests => Volatile.Read(ref _archives);
         public long LastArchiveStart => Interlocked.Read(ref _lastArchiveStart);
         public string Url { get; }
@@ -217,6 +265,7 @@ internal static class Program
             {
                 if (long.TryParse(context.Request.QueryString["utc"], out var utc)) { Interlocked.Increment(ref _archives); Interlocked.Exchange(ref _lastArchiveStart, utc); }
                 string name = Path.GetFileName(context.Request.Url!.AbsolutePath); string file = Path.Combine(_directory, name);
+                while (HoldRequests && name.EndsWith(".m3u8")) await Task.Delay(80, _stop.Token);
                 if (!File.Exists(file)) { context.Response.StatusCode = 404; return; }
                 context.Response.ContentType = name.EndsWith(".m3u8") ? "application/vnd.apple.mpegurl" : "video/mp2t";
                 var bytes = await File.ReadAllBytesAsync(file, _stop.Token); context.Response.ContentLength64 = bytes.Length;

@@ -24,8 +24,15 @@ public sealed class MpvPlayer : IDisposable
     private long _activeGeneration;
     private long _loadedEntryId = -1;
     private PlaybackRequest? _request;
-    private long _playingSince;
+    private volatile bool _pauseRequested, _commandUnresponsive;
+    private long _lastHealthPoll;
+    private PlaybackRequest? _healthRequest;
+    private long _healthSerial;
+    private StreamHealthMonitor? _health;
+    private HealthProbe? _healthProbe;
+    private readonly Dictionary<ulong, (HealthProbe Probe, int Field)> _healthReplies = [];
     private PlaybackState _state = PlaybackState.Idle;
+    private PlaybackStateChangedEventArgs _status = new(PlaybackState.Idle, "Готов к воспроизведению");
     private BufferPreset _bufferPreset = BufferPreset.Balanced;
     private HdrMode _hdrMode = HdrMode.Auto;
     private AspectMode _aspect = AspectMode.Original;
@@ -38,6 +45,8 @@ public sealed class MpvPlayer : IDisposable
     public event EventHandler? TracksChanged;
     public bool IsInitialized { get { lock (_nativeGate) return !_disposed && _handle != IntPtr.Zero; } }
     public PlaybackState State { get { lock (_requestGate) return _state; } }
+    public PlaybackStateChangedEventArgs Status { get { lock (_requestGate) return _status; } }
+    public bool RequiresRestart => _commandUnresponsive;
 
     public void Initialize(IntPtr hwnd)
     {
@@ -98,12 +107,12 @@ public sealed class MpvPlayer : IDisposable
 
     /// <summary>Accepts an unmodified source URL. Completion means libmpv accepted loadfile; Playing arrives as an event.</summary>
     public Task PlayAsync(string url, CancellationToken cancellationToken = default) => StartPlaybackAsync(url, null, cancellationToken);
-    public Task PlayArchiveAsync(string url, double duration, CancellationToken cancellationToken = default)
+    public Task PlayArchiveAsync(string url, double duration, CancellationToken cancellationToken = default, Func<double, ArchivePlaybackSource>? reconnectSource = null)
     {
         if (!double.IsFinite(duration) || duration <= 0) throw new ArgumentOutOfRangeException(nameof(duration));
-        return StartPlaybackAsync(url, duration, cancellationToken);
+        return StartPlaybackAsync(url, duration, cancellationToken, reconnectSource);
     }
-    private async Task StartPlaybackAsync(string url, double? duration, CancellationToken cancellationToken)
+    private async Task StartPlaybackAsync(string url, double? duration, CancellationToken cancellationToken, Func<double, ArchivePlaybackSource>? reconnectSource = null)
     {
         if (string.IsNullOrWhiteSpace(url) || url.IndexOf('\0') >= 0) throw new ArgumentException("Некорректный адрес потока.", nameof(url));
         cancellationToken.ThrowIfCancellationRequested();
@@ -112,15 +121,16 @@ public sealed class MpvPlayer : IDisposable
         PlaybackRequest? previous;
         lock (_requestGate)
         {
-            request = new PlaybackRequest(++_generation, url, cancellationToken, duration);
+            request = new PlaybackRequest(++_generation, url, cancellationToken, duration, reconnectSource);
             previous = _request;
             _request = request;
+            _pauseRequested = false;
         }
         previous?.Cancel();
         SetState(PlaybackState.Loading, "Подключение к трансляции…", request);
         try { await LoadRequestAsync(request).ConfigureAwait(false); }
         catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { throw; }
-        catch (MpvException)
+        catch (Exception ex) when (ex is MpvException or TimeoutException)
         {
             if (IsCurrent(request)) ScheduleReconnect(request);
             throw;
@@ -150,13 +160,13 @@ public sealed class MpvPlayer : IDisposable
             }
             finally { _loadGate.Release(); }
         }
-        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or MpvException) { }
+        catch (Exception ex) when (ex is OperationCanceledException or ObjectDisposedException or MpvException or TimeoutException) { }
     }
 
     public bool IsPaused
     {
-        get => ReadString("pause") == "yes";
-        set => WriteProperty("pause", value ? "yes" : "no");
+        get => ReadString("pause") is { } value ? value == "yes" : _pauseRequested;
+        set { lock (_nativeGate) { _pauseRequested = value; WriteProperty("pause", value ? "yes" : "no"); } }
     }
     public void TogglePause() => IsPaused = !IsPaused;
     public PlaybackTimeline GetTimeline()
@@ -164,8 +174,10 @@ public sealed class MpvPlayer : IDisposable
         double? position = ReadDouble("time-pos");
         lock (_requestGate)
         {
-            if (_request is not { } request || _activeGeneration != request.Generation || _loadedEntryId != _activeEntryId) position = null;
-            else if (request.Duration is not null && position >= 0) request.ResumePosition = position.Value;
+            if (_request is not { } request || _activeGeneration != request.Generation) position = null;
+            else if (request.Duration is not null && _state is PlaybackState.Error or PlaybackState.Idle) position = request.ResumePosition;
+            else if (_activeEntryId < 0 || _loadedEntryId != _activeEntryId) position = null;
+            else if (request.Duration is not null && position >= 0) { position += request.NativeOffset; request.ResumePosition = position.Value; }
         }
         return new(position, ReadDouble("duration"), ReadString("seekable") == "yes");
     }
@@ -174,20 +186,24 @@ public sealed class MpvPlayer : IDisposable
     public async Task<bool> SeekWithinCacheAsync(double seconds)
     {
         if (!double.IsFinite(seconds) || seconds < 0) return false;
+        double offset; lock (_requestGate) offset = _request?.NativeOffset ?? 0;
+        double nativeTarget = seconds - offset;
         if (ReadNode("demuxer-cache-state") is not Dictionary<string, object?> cache ||
             cache.GetValueOrDefault("seekable-ranges") is not List<object?> ranges ||
             !ranges.OfType<Dictionary<string, object?>>().Any(range =>
                 range.GetValueOrDefault("start") is double start && range.GetValueOrDefault("end") is double end &&
-                seconds >= start && seconds < end)) return false;
+                nativeTarget >= start && nativeTarget < end)) return false;
         try { return await SeekAsync(seconds).ConfigureAwait(false); }
         catch (MpvException) { return false; }
     }
     public async Task<bool> SeekAsync(double seconds)
     {
         if (!double.IsFinite(seconds) || seconds < 0) return false;
-        PlaybackRequest? request; lock (_requestGate) request = _activeGeneration == _generation && _loadedEntryId == _activeEntryId ? _request : null;
+        PlaybackRequest? request; lock (_requestGate) request = _activeGeneration == _generation && _activeEntryId >= 0 && _loadedEntryId == _activeEntryId ? _request : null;
         if (request is null || ReadString("seekable") != "yes") return false;
-        await CommandAsync(request, "seek", seconds.ToString("0.###", CultureInfo.InvariantCulture), "absolute+exact").ConfigureAwait(false);
+        double nativeTarget = seconds - request.NativeOffset;
+        if (nativeTarget < 0) return false;
+        await CommandAsync(request, "seek", nativeTarget.ToString("0.###", CultureInfo.InvariantCulture), "absolute+exact").ConfigureAwait(false);
         lock (_requestGate) if (IsCurrentLocked(request)) request.ResumePosition = seconds;
         return IsCurrent(request);
     }
@@ -275,8 +291,18 @@ public sealed class MpvPlayer : IDisposable
         try
         {
             if (!IsCurrent(request)) throw new OperationCanceledException(request.Token);
+            double resumePosition = request.Duration is { } total ? Math.Min(request.ResumePosition, Math.Max(0, total - 1)) : 0;
+            var source = request.ReconnectSource is not null && resumePosition > 0 ? request.ReconnectSource(resumePosition) : null;
+            if (source is not null && (string.IsNullOrWhiteSpace(source.Url) || source.Url.IndexOf('\0') >= 0 || !double.IsFinite(source.Duration) || source.Duration <= 0))
+                throw new InvalidOperationException("Не удалось восстановить адрес архива.");
+            lock (_requestGate)
+            {
+                ++request.LoadSerial; request.HealthStalled = false;
+                request.NativeOffset = source is null ? 0 : resumePosition;
+                _activeEntryId = _loadedEntryId = -1; _activeGeneration = request.Generation;
+            }
             if (request.Duration is { } duration)
-                await CommandAsync(request, "loadfile", request.Url, "replace", "-1", $"start={Math.Min(request.ResumePosition, Math.Max(0, duration - 1)).ToString("0.###", CultureInfo.InvariantCulture)},end={duration.ToString("0.###", CultureInfo.InvariantCulture)}").ConfigureAwait(false);
+                await CommandAsync(request, "loadfile", source?.Url ?? request.Url, "replace", "-1", $"start={(source is null ? Math.Min(request.ResumePosition, Math.Max(0, duration - 1)) : 0).ToString("0.###", CultureInfo.InvariantCulture)},end={(source?.Duration ?? duration).ToString("0.###", CultureInfo.InvariantCulture)}").ConfigureAwait(false);
             else await CommandAsync(request, "loadfile", request.Url, "replace").ConfigureAwait(false);
             if (!IsCurrent(request)) throw new OperationCanceledException(request.Token);
             var entry = ReadLong("playlist/0/id");
@@ -286,8 +312,8 @@ public sealed class MpvPlayer : IDisposable
                 _activeEntryId = entry ?? -1;
                 _activeGeneration = request.Generation;
             }
-            // Preserve user pause/volume state only through the explicit player properties; a channel starts playing.
-            WriteProperty("pause", "no");
+            // A reconnect preserves an explicit pause; only a new user playback request clears it.
+            lock (_nativeGate) WriteProperty("pause", _pauseRequested ? "yes" : "no");
             if (entry.HasValue && _earlyEndEvents.TryRemove(entry.Value, out var ended)) HandleEnded(ended);
             if (entry.HasValue && Interlocked.Read(ref _loadedEntryId) == entry.Value) MarkPlaying(request);
         }
@@ -312,7 +338,20 @@ public sealed class MpvPlayer : IDisposable
             using var registration = request?.Token.Register(() => AbortCommand(id));
             // Do not release the load gate when a request becomes stale. Wait for its native acknowledgement,
             // otherwise libmpv is permitted to reorder old and new asynchronous loadfile commands.
-            result = await completion.Task.WaitAsync(_lifetime.Token).ConfigureAwait(false);
+            try { result = await completion.Task.WaitAsync(TimeSpan.FromSeconds(20), _lifetime.Token).ConfigureAwait(false); }
+            catch (TimeoutException)
+            {
+                AbortCommand(id);
+                try { await completion.Task.WaitAsync(TimeSpan.FromSeconds(3), _lifetime.Token).ConfigureAwait(false); }
+                catch (TimeoutException)
+                {
+                    // Releasing the load gate and submitting more commands without an acknowledgement
+                    // could let an obsolete channel win later. Stop accepting commands instead.
+                    _commandUnresponsive = true;
+                    SetState(PlaybackState.Error, "Видеодвижок не отвечает. Перезапустите приложение.");
+                }
+                throw;
+            }
             if (request?.Token.IsCancellationRequested == true) throw new OperationCanceledException(request.Token);
             Check(result, "команда воспроизведения");
         }
@@ -331,14 +370,18 @@ public sealed class MpvPlayer : IDisposable
         {
             while (!_lifetime.IsCancellationRequested)
             {
-                // Native events wake this wait immediately; Dispose explicitly calls mpv_wakeup.
-                // A timeout only woke every idle/playing instance ten times a second.
-                var ptr = NativeMethods.mpv_wait_event(_handle, -1);
+                bool monitor = PollStreamHealth();
+                // Idle/local players sleep until an event. Network players check health once a second.
+                var ptr = NativeMethods.mpv_wait_event(_handle, monitor ? 1 : -1);
                 if (ptr == IntPtr.Zero) continue;
                 var evt = Marshal.PtrToStructure<MpvEvent>(ptr);
                 switch (evt.EventId)
                 {
-                    case 1: return; // shutdown
+                    case 1:
+                        if (!_lifetime.IsCancellationRequested)
+                        { _commandUnresponsive = true; SetState(PlaybackState.Error, "Видеодвижок остановился. Перезапустите приложение."); }
+                        return;
+                    case 3: HandleHealthReply(evt); break;
                     case 5: if (_commands.TryGetValue(evt.ReplyUserdata, out var command)) command.TrySetResult(evt.Error); break;
                     case 7: if (evt.Data != IntPtr.Zero) HandleEnded(Marshal.PtrToStructure<MpvEndFile>(evt.Data)); break;
                     case 8:
@@ -362,7 +405,8 @@ public sealed class MpvPlayer : IDisposable
         }
         catch (Exception ex) when (ex is not AccessViolationException)
         {
-            if (!_lifetime.IsCancellationRequested) SetState(PlaybackState.Error, "Видеодвижок остановился. Перезапустите приложение.");
+            if (!_lifetime.IsCancellationRequested)
+            { _commandUnresponsive = true; SetState(PlaybackState.Error, "Видеодвижок остановился. Перезапустите приложение."); }
         }
         finally { foreach (var command in _commands.Values) command.TrySetCanceled(); }
     }
@@ -372,23 +416,112 @@ public sealed class MpvPlayer : IDisposable
         var name = Marshal.PtrToStringUTF8(property.Name);
         if (name == "track-list") { RaiseTracksChanged(); return; }
         PlaybackRequest? request;
-        lock (_requestGate) request = _activeGeneration == _generation && _loadedEntryId == _activeEntryId ? _request : null;
+        lock (_requestGate) request = _state is not (PlaybackState.Error or PlaybackState.Idle) && _activeGeneration == _generation && _activeEntryId >= 0 && _loadedEntryId == _activeEntryId ? _request : null;
         if (request == null || !IsCurrent(request)) return;
         RefreshLoadedState(request);
     }
 
     private void RefreshLoadedState(PlaybackRequest request)
     {
-        if (ReadString("paused-for-cache") == "yes") SetState(PlaybackState.Buffering, "Буферизация…", request);
-        else if (ReadString("pause") == "yes") SetState(PlaybackState.Paused, "Пауза", request);
+        if (_pauseRequested || ReadString("pause") == "yes") SetState(PlaybackState.Paused, "Пауза", request);
+        else if (request.HealthStalled) SetState(PlaybackState.Stalled, "Поток не отвечает. Проверяем подключение…", request);
+        else if (ReadString("paused-for-cache") == "yes") SetState(PlaybackState.Buffering, "Буферизация…", request);
         else if (_loadedEntryId >= 0) SetState(PlaybackState.Playing, "В эфире", request);
     }
 
     private void MarkPlaying(PlaybackRequest request)
     {
-        if (!IsCurrent(request)) return;
-        Interlocked.Exchange(ref _playingSince, Stopwatch.GetTimestamp());
+        if (!IsCurrent(request) || request.Attempts > 3 || _commandUnresponsive) return;
         RefreshLoadedState(request);
+    }
+
+    private static TimeSpan MonotonicNow => Stopwatch.GetElapsedTime(0);
+    private bool PollStreamHealth()
+    {
+        PlaybackRequest? request; long serial;
+        lock (_requestGate)
+        {
+            request = _request; serial = request?.LoadSerial ?? 0;
+            if (request is null || !IsCurrentLocked(request) || !request.IsNetwork || _commandUnresponsive ||
+                _state is PlaybackState.Idle or PlaybackState.Error or PlaybackState.Disposed) return false;
+            // The retry task can clear this flag after the last native event. Keep a heartbeat
+            // so a silent server cannot leave the event loop asleep indefinitely at that point.
+            if (Volatile.Read(ref request.ReconnectPending) != 0) return true;
+        }
+        if (_lastHealthPoll != 0 && Stopwatch.GetElapsedTime(_lastHealthPoll) < TimeSpan.FromSeconds(1)) return true;
+        _lastHealthPoll = Stopwatch.GetTimestamp();
+        var now = MonotonicNow;
+        if (!ReferenceEquals(_healthRequest, request) || _healthSerial != serial)
+        {
+            _healthRequest = request; _healthSerial = serial; _health = new(now); _healthProbe = null; _healthReplies.Clear();
+        }
+        if (_healthProbe is { } previous)
+        {
+            if (now - previous.Started < TimeSpan.FromSeconds(3)) return true;
+            _healthReplies.Clear(); _healthProbe = null;
+            ApplyHealth(previous, now); // No property replies are also a failure to make progress.
+            if (Volatile.Read(ref request.ReconnectPending) != 0) return true;
+        }
+        var probe = new HealthProbe(request, serial, now); _healthProbe = probe;
+        string[] names = ["time-pos", "pause", "paused-for-cache", "seeking"];
+        lock (_nativeGate)
+        {
+            if (_disposed || _handle == IntPtr.Zero) return false;
+            for (int field = 0; field < names.Length; field++)
+            {
+                ulong id = unchecked((ulong)Interlocked.Increment(ref _commandId));
+                if (NativeMethods.mpv_get_property_async(_handle, id, names[field], field == 0 ? 5 : 3) >= 0) _healthReplies[id] = (probe, field);
+                else --probe.Remaining;
+            }
+        }
+        if (probe.Remaining == 0) { _healthProbe = null; ApplyHealth(probe, now); }
+        return true;
+    }
+    private void HandleHealthReply(MpvEvent evt)
+    {
+        if (!_healthReplies.Remove(evt.ReplyUserdata, out var reply) || !ReferenceEquals(_healthProbe, reply.Probe)) return;
+        if (evt.Error >= 0 && evt.Data != IntPtr.Zero)
+        {
+            var property = Marshal.PtrToStructure<MpvPropertyEvent>(evt.Data);
+            if (property.Data != IntPtr.Zero)
+            {
+                if (reply.Field == 0 && property.Format == 5) reply.Probe.Position = Marshal.PtrToStructure<double>(property.Data);
+                else if (reply.Field > 0 && property.Format == 3) reply.Probe.Flags[reply.Field - 1] = Marshal.ReadInt32(property.Data) != 0;
+            }
+        }
+        if (--reply.Probe.Remaining != 0) return;
+        _healthProbe = null; ApplyHealth(reply.Probe, MonotonicNow);
+    }
+    private void ApplyHealth(HealthProbe probe, TimeSpan now)
+    {
+        var request = probe.Request;
+        bool loaded;
+        lock (_requestGate)
+        {
+            if (!IsCurrentLocked(request) || request.LoadSerial != probe.Serial || Volatile.Read(ref request.ReconnectPending) != 0 ||
+                _state is PlaybackState.Idle or PlaybackState.Error or PlaybackState.Disposed || _health is null) return;
+            loaded = _activeGeneration == request.Generation && _activeEntryId >= 0 && _loadedEntryId == _activeEntryId;
+        }
+        double? position = loaded ? probe.Position + request.NativeOffset : null;
+        bool paused = _pauseRequested || loaded && probe.Flags[0];
+        var health = _health.Observe(now, position, paused, loaded && probe.Flags[2]);
+        if (position is { } at && double.IsFinite(at) && at >= 0 && request.Duration is not null) request.ResumePosition = at;
+        if (_health.IsStable(now)) request.Attempts = 0;
+        request.HealthStalled = health is StreamHealth.Stalled or StreamHealth.Reconnect;
+        if (health == StreamHealth.Reconnect) ScheduleReconnect(request);
+        else if (health == StreamHealth.Stalled) SetState(PlaybackState.Stalled, "Поток не отвечает. Проверяем подключение…", request);
+        else if (paused) SetState(PlaybackState.Paused, "Пауза", request);
+        else if (loaded) SetState(probe.Flags[1] ? PlaybackState.Buffering : PlaybackState.Playing, probe.Flags[1] ? "Буферизация…" : "В эфире", request);
+    }
+
+    private sealed class HealthProbe(PlaybackRequest request, long serial, TimeSpan started)
+    {
+        public PlaybackRequest Request { get; } = request;
+        public long Serial { get; } = serial;
+        public TimeSpan Started { get; } = started;
+        public double? Position;
+        public bool[] Flags { get; } = new bool[3];
+        public int Remaining = 4;
     }
 
     private void HandleEnded(MpvEndFile ended)
@@ -406,21 +539,21 @@ public sealed class MpvPlayer : IDisposable
             }
         }
         if (!IsCurrent(request)) return;
-        if (request.Duration is not null && ended.Error >= 0) { SetState(PlaybackState.Idle, "Просмотр архива завершён", request); return; }
+        if (request.Duration is { } duration && ended.Error >= 0 && (!request.IsNetwork || request.ResumePosition >= duration - 2))
+        { request.ResumePosition = duration; SetState(PlaybackState.Idle, "Просмотр архива завершён", request); return; }
         if (!request.IsNetwork) { SetState(ended.Error < 0 ? PlaybackState.Error : PlaybackState.Idle, ended.Error < 0 ? "Не удалось открыть видео." : "Воспроизведение завершено", request); return; }
         ScheduleReconnect(request);
     }
 
     private void ScheduleReconnect(PlaybackRequest request)
     {
-        if (!IsCurrent(request) || Interlocked.Exchange(ref request.ReconnectPending, 1) != 0) return;
-        if (Stopwatch.GetElapsedTime(Interlocked.Read(ref _playingSince)).TotalSeconds >= 30 && _playingSince != 0) request.Attempts = 0;
-        Interlocked.Exchange(ref _playingSince, 0);
+        if (!IsCurrent(request) || _commandUnresponsive || request.Attempts > 3) return;
+        if (Interlocked.Exchange(ref request.ReconnectPending, 1) != 0) { Interlocked.Exchange(ref request.ReconnectAgain, 1); return; }
         int attempt = ++request.Attempts;
         if (attempt > 3)
         {
             Interlocked.Exchange(ref request.ReconnectPending, 0);
-            SetState(PlaybackState.Error, "Поток недоступен. Выберите канал повторно, чтобы подключиться.", request);
+            SetState(PlaybackState.Error, "Поток недоступен. Попробуйте подключиться ещё раз.", request);
             return;
         }
         SetState(PlaybackState.Reconnecting, $"Переподключение {attempt}/3…", request, attempt);
@@ -430,14 +563,17 @@ public sealed class MpvPlayer : IDisposable
             {
                 await Task.Delay(TimeSpan.FromSeconds(1 << (attempt - 1)), request.Token).ConfigureAwait(false);
                 if (!IsCurrent(request)) return;
-                Interlocked.Exchange(ref request.ReconnectPending, 0);
                 await LoadRequestAsync(request).ConfigureAwait(false);
             }
             catch (OperationCanceledException) { }
-            catch (Exception ex) when (ex is MpvException or InvalidOperationException)
+            catch (Exception ex) when (ex is MpvException or InvalidOperationException or TimeoutException)
+            {
+                Interlocked.Exchange(ref request.ReconnectAgain, 1);
+            }
+            finally
             {
                 Interlocked.Exchange(ref request.ReconnectPending, 0);
-                if (IsCurrent(request)) ScheduleReconnect(request);
+                if (Interlocked.Exchange(ref request.ReconnectAgain, 0) != 0 && IsCurrent(request)) ScheduleReconnect(request);
             }
         });
     }
@@ -477,7 +613,7 @@ public sealed class MpvPlayer : IDisposable
     {
         lock (_nativeGate)
         {
-            if (_disposed || _handle == IntPtr.Zero) return null;
+            if (_disposed || _commandUnresponsive || _handle == IntPtr.Zero) return null;
             IntPtr str = NativeMethods.mpv_get_property_string(_handle, name);
             if (str == IntPtr.Zero) return null;
             try { return Marshal.PtrToStringUTF8(str); }
@@ -487,12 +623,12 @@ public sealed class MpvPlayer : IDisposable
     private long? ReadLong(string name)
     {
         lock (_nativeGate)
-            return !_disposed && _handle != IntPtr.Zero && NativeMethods.GetInt64(_handle, name, 4, out var value) >= 0 ? value : null;
+            return !_disposed && !_commandUnresponsive && _handle != IntPtr.Zero && NativeMethods.GetInt64(_handle, name, 4, out var value) >= 0 ? value : null;
     }
     private double? ReadDouble(string name)
     {
         lock (_nativeGate)
-            return !_disposed && _handle != IntPtr.Zero && NativeMethods.GetDouble(_handle, name, 5, out var value) >= 0 && double.IsFinite(value) ? value : null;
+            return !_disposed && !_commandUnresponsive && _handle != IntPtr.Zero && NativeMethods.GetDouble(_handle, name, 5, out var value) >= 0 && double.IsFinite(value) ? value : null;
     }
     private static int? ToInt(long? value) => value is >= 0 and <= int.MaxValue ? (int)value.Value : null;
 
@@ -500,7 +636,7 @@ public sealed class MpvPlayer : IDisposable
     {
         lock (_nativeGate)
         {
-            if (_disposed || _handle == IntPtr.Zero) return null;
+            if (_disposed || _commandUnresponsive || _handle == IntPtr.Zero) return null;
             if (NativeMethods.mpv_get_property(_handle, name, 6, out var node) < 0) return null;
             try { return CopyNode(node, 0); }
             finally { NativeMethods.mpv_free_node_contents(ref node); }
@@ -555,6 +691,7 @@ public sealed class MpvPlayer : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (_handle == IntPtr.Zero) throw new InvalidOperationException("Сначала инициализируйте видеоповерхность.");
+        if (_commandUnresponsive) throw new MpvException("видеодвижок не отвечает", -20);
     }
     private bool IsCurrent(PlaybackRequest request) { lock (_requestGate) return IsCurrentLocked(request); }
     private bool IsCurrentLocked(PlaybackRequest request) => !_lifetime.IsCancellationRequested && ReferenceEquals(_request, request) && !request.Token.IsCancellationRequested;
@@ -565,6 +702,7 @@ public sealed class MpvPlayer : IDisposable
     }
     private void SetState(PlaybackState state, string message, PlaybackRequest? request = null, int attempt = 0, long? expectedGeneration = null)
     {
+        PlaybackStateChangedEventArgs status;
         lock (_requestGate)
         {
             if (request != null && !IsCurrentLocked(request)) return;
@@ -572,8 +710,9 @@ public sealed class MpvPlayer : IDisposable
             if (_disposed && state != PlaybackState.Disposed) return;
             if (_state == state && state is not PlaybackState.Reconnecting) return;
             _state = state;
+            _status = status = new(state, message, attempt);
         }
-        try { StateChanged?.Invoke(this, new(state, message, attempt)); } catch { /* UI subscribers must not stop the native event loop. */ }
+        try { StateChanged?.Invoke(this, status); } catch { /* UI subscribers must not stop the native event loop. */ }
     }
     private void RaiseTracksChanged() { try { TracksChanged?.Invoke(this, EventArgs.Empty); } catch { } }
 
@@ -614,13 +753,19 @@ public sealed class MpvPlayer : IDisposable
         public bool IsNetwork { get; }
         public double? Duration { get; }
         public double ResumePosition { get; set; }
+        public double NativeOffset { get; set; }
+        public Func<double, ArchivePlaybackSource>? ReconnectSource { get; }
         public int Attempts;
         public int ReconnectPending;
+        public int ReconnectAgain;
+        public long LoadSerial;
+        public bool HealthStalled;
         private int _cancelled;
-        public PlaybackRequest(long generation, string url, CancellationToken token, double? duration = null)
+        public PlaybackRequest(long generation, string url, CancellationToken token, double? duration = null, Func<double, ArchivePlaybackSource>? reconnectSource = null)
         {
             Generation = generation;
             Duration = duration;
+            ReconnectSource = reconnectSource;
             Url = url;
             _cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
             Token = _cancellation.Token;

@@ -34,6 +34,7 @@ internal static class NativeMethods
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mpv_get_property")] internal static extern int GetInt64(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format, out long value);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mpv_get_property")] internal static extern int GetDouble(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format, out double value);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int mpv_observe_property(IntPtr handle, ulong userdata, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int mpv_get_property_async(IntPtr handle, ulong userdata, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, int format);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int mpv_command_async(IntPtr handle, ulong userdata, IntPtr args);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern void mpv_abort_async_command(IntPtr handle, ulong userdata);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr mpv_wait_event(IntPtr handle, double timeout);

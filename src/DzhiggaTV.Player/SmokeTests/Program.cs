@@ -163,6 +163,7 @@ internal static class Program
                 await Task.Delay(2400);
                 Assert(player.State == PlaybackState.Playing, "returning to live clears archive start and end options");
             }
+            await VerifyStallRecovery(player, first, latest);
             using (var errors = new TcpListener(IPAddress.Loopback, 0))
             using (var errorCancellation = new CancellationTokenSource())
             {
@@ -210,6 +211,98 @@ internal static class Program
             Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count, video = new { stats.Width, stats.Height, stats.VideoOutput, stats.HardwareDecoder, stats.MpvVersion }, hdrHardwareVerified = false }));
         }
         finally { DestroyWindow(hwnd); }
+    }
+
+    private static async Task VerifyStallRecovery(MpvPlayer player, string first, string latest)
+    {
+        byte[] bytes = await File.ReadAllBytesAsync(first);
+        int header = Array.IndexOf(bytes, (byte)'\n') + 1;
+        int initial = header + (160 * 90 * 3 / 2 + 6) * 3;
+        using var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
+        using var stop = new CancellationTokenSource();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port, healthy = 0, requests = 0, reconnects = 0;
+        bool pauseOnReconnect = false;
+        var workers = new System.Collections.Concurrent.ConcurrentBag<Task>();
+        async Task Serve(TcpClient client)
+        {
+            using (client)
+            try
+            {
+                using var stream = client.GetStream();
+                using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, leaveOpen: true);
+                int rangeStart = 0; bool ranged = false;
+                while (await reader.ReadLineAsync(stop.Token) is { Length: > 0 } line)
+                {
+                    if (line.StartsWith("Range: bytes=", StringComparison.OrdinalIgnoreCase) && int.TryParse(line[13..].Split('-')[0], out int start))
+                    { rangeStart = Math.Clamp(start, 0, bytes.Length - 1); ranged = true; }
+                }
+                Interlocked.Increment(ref requests);
+                bool ready = Volatile.Read(ref healthy) != 0;
+                if (!ready) { ranged = false; rangeStart = 0; }
+                string range = ranged ? $"Content-Range: bytes {rangeStart}-{bytes.Length - 1}/{bytes.Length}\r\n" : "";
+                await stream.WriteAsync(Encoding.ASCII.GetBytes($"HTTP/1.1 {(ranged ? "206 Partial Content" : "200 OK")}\r\nContent-Type: application/octet-stream\r\nContent-Length: {bytes.Length - rangeStart}\r\n{(ready ? "Accept-Ranges: bytes\r\n" : "")}{range}Connection: close\r\n\r\n"), stop.Token);
+                if (ready) { await stream.WriteAsync(bytes.AsMemory(rangeStart), stop.Token); return; }
+                await stream.WriteAsync(bytes.AsMemory(0, initial), stop.Token);
+                // Keep the TCP connection alive without completing another video frame.
+                // This must be detected from playback progress, not just the HTTP timeout.
+                int offset = initial;
+                while (!stop.IsCancellationRequested)
+                { await Task.Delay(1800, stop.Token); await stream.WriteAsync(bytes.AsMemory(offset++, 1), stop.Token); }
+            }
+            catch (Exception e) when (e is IOException or SocketException or OperationCanceledException or ObjectDisposedException) { }
+        }
+        var serving = Task.Run(async () =>
+        {
+            try { while (!stop.IsCancellationRequested) workers.Add(Serve(await listener.AcceptTcpClientAsync(stop.Token))); }
+            catch (Exception e) when (e is OperationCanceledException or SocketException or ObjectDisposedException) { }
+        });
+        void Changed(object? sender, PlaybackStateChangedEventArgs e)
+        {
+            if (e.State != PlaybackState.Reconnecting) return;
+            Interlocked.Increment(ref reconnects); Volatile.Write(ref healthy, 1);
+            if (pauseOnReconnect) player.IsPaused = true;
+        }
+        player.StateChanged += Changed;
+        string url = $"http://127.0.0.1:{port}/stall.y4m?private_test_token=never_log_this";
+        try
+        {
+            await player.PlayAsync(url);
+            await WaitUntil(() => player.State == PlaybackState.Stalled, 11000);
+            Assert(true, "a live connection with no advancing frames is reported stalled before a network error");
+            await WaitUntil(() => Volatile.Read(ref reconnects) > 0 && player.State == PlaybackState.Playing && player.GetTimeline().Position > .3, 23000);
+            Assert(Volatile.Read(ref requests) >= 2 && player.Volume == 40 && player.IsMuted, "watchdog reopens a trickling frozen stream and restores native playback without changing sound");
+            player.IsPaused = true;
+            int beforePause = Volatile.Read(ref reconnects);
+            await Task.Delay(17000);
+            Assert(player.IsPaused && player.State == PlaybackState.Paused && Volatile.Read(ref reconnects) == beforePause,
+                "an intentionally paused network stream never triggers the stall watchdog");
+            Volatile.Write(ref healthy, 0);
+            await player.PlayAsync(url);
+            await WaitUntil(() => player.State == PlaybackState.Stalled, 11000);
+            await player.PlayAsync(latest); await WaitUntil(() => player.GetStatistics().Width == 352);
+            player.IsPaused = true; int beforeSwitch = Volatile.Read(ref requests);
+            await Task.Delay(16000);
+            Assert(player.GetStatistics().Width == 352 && player.IsPaused && Volatile.Read(ref requests) == beforeSwitch,
+                "changing channel cancels stale watchdog probes and prevents a delayed old-stream reconnect");
+            Volatile.Write(ref healthy, 1); pauseOnReconnect = true;
+            double resumed = 0; int archiveReopens = 0;
+            await player.PlayArchiveAsync(url, 60, reconnectSource: position =>
+            {
+                Volatile.Write(ref resumed, position); Interlocked.Increment(ref archiveReopens);
+                return new(url + "&resume=" + position.ToString(System.Globalization.CultureInfo.InvariantCulture), 60 - position);
+            });
+            await WaitUntil(() => Volatile.Read(ref archiveReopens) > 0 && player.State == PlaybackState.Paused && player.GetTimeline().Position >= Volatile.Read(ref resumed), 22000);
+            Assert(resumed > 5 && player.GetTimeline().Position < resumed + 3 && player.IsMuted,
+                "premature archive EOF rebuilds the provider URL at the saved position and preserves pause");
+            Assert(!await player.SeekWithinCacheAsync(resumed - 2), "a recovered archive never seeks into data before its new native window");
+            Assert(await player.SeekAsync(resumed + 1), "recovered archive seeks translate the original timeline to the new native window");
+            await WaitUntil(() => player.GetTimeline().Position >= resumed + .9);
+            player.Stop();
+        }
+        finally
+        {
+            player.StateChanged -= Changed; stop.Cancel(); listener.Stop(); await serving; await Task.WhenAll(workers);
+        }
     }
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

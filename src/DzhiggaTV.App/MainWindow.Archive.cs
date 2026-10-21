@@ -21,6 +21,10 @@ public partial class MainWindow
     private sealed record ArchivePlayback(ChannelItem Channel, Programme Programme, DateTimeOffset LoadedStart, DateTimeOffset LoadedEnd);
     private ArchivePlayback? _archivePlayback;
     public bool IsArchivePlayback => _archivePlayback is not null;
+    public bool CanRestartCurrentProgramme => Model.Active is { Current: { } programme } channel &&
+        programme.End > DateTimeOffset.Now && Catchup.CanPlay(channel.Channel, programme, DateTimeOffset.Now);
+    public Task RestartCurrentProgrammeAsync() => CanRestartCurrentProgramme && Model.Active is { Current: { } programme } channel
+        ? PlayArchiveAsync(channel, programme) : Task.CompletedTask;
     private void ClearArchivePlayback() { _archivePlayback = null; Model.SetArchiveProgramme(null); }
 
     public ArchiveTimeline? GetArchiveTimeline()
@@ -80,7 +84,11 @@ public partial class MainWindow
         _archivePlayback = new(channel, programme, start, end);
         Model.SetArchiveProgramme(programme, schedule?.Current is null ? null : schedule.Next, schedule?.Current is null ? null : schedule.AfterNext);
         HasPlayback = true; Model.PlaybackStatus = "Открываем архив…"; _overlay?.RefreshState();
-        await Player.PlayArchiveAsync(url, (end - start).TotalSeconds, token);
+        await Player.PlayArchiveAsync(url, (end - start).TotalSeconds, token, position =>
+        {
+            var resume = start.AddSeconds(position);
+            return new(Catchup.BuildUrl(channel.Channel, resume, end, DateTimeOffset.Now), (end - resume).TotalSeconds);
+        });
         if (generation != _playGeneration || token.IsCancellationRequested) return;
         if (paused) Player.IsPaused = true;
         Model.State.RecordWatched(channel.Id); Model.SetSetting("last.channel", channel.Id); _ = GuardAsync(Model.SaveAsync); _overlay?.Reveal();
@@ -111,19 +119,7 @@ public partial class MainWindow
     public Task ReturnToLiveAsync() => Model.Active is { } channel ? PlayAsync(channel) : Task.CompletedTask;
     public async Task TogglePlaybackPauseAsync()
     {
-        if (_archivePlayback is { } archive && Player.State is PlaybackState.Idle or PlaybackState.Error) await StartArchiveAsync(archive.Channel, archive.Programme, Player.State == PlaybackState.Error ? archive.LoadedStart : archive.Programme.Start);
+        if (_archivePlayback is { } archive && Player.State is PlaybackState.Idle or PlaybackState.Error) await StartArchiveAsync(archive.Channel, archive.Programme, Player.State == PlaybackState.Error ? GetArchiveTimeline()?.Position ?? archive.LoadedStart : archive.Programme.Start);
         else Player.TogglePause();
-    }
-    public async Task ChooseArchiveTimeAsync()
-    {
-        if (Model.Active is not { Archive: { } source } channel) return;
-        DateTimeOffset? chosen = null;
-        await WithModalAsync(() =>
-        {
-            var dialog = new ArchiveTimeWindow(this, channel, source, GetArchiveTimeline()?.Position ?? DateTimeOffset.Now.AddMinutes(-5));
-            if (dialog.ShowDialog() == true) chosen = dialog.SelectedTime;
-            return Task.CompletedTask;
-        });
-        if (chosen is { } time) await GuardAsync(() => PlayArchiveAtAsync(channel, time));
     }
 }

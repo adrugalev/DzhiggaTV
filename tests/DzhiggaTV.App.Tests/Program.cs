@@ -25,6 +25,7 @@ internal static class Program
     {
         (string Name, Func<Task> Run)[] cases =
         [
+            ("Stream health detects stalled clocks while respecting pause, seek, recovery and stable playback", StreamHealthAsync),
             ("Sports audio never overlaps when switching, muting, replacing or removing sources", SportsAudioAsync),
             ("Sports selection persists ordered unique allowed channels and safely restores stale settings", SportsSelectionAsync),
             ("Multiscreen opens with the main channel first and selected for audio, including full and empty grids", MultiscreenOpeningAsync),
@@ -129,6 +130,27 @@ internal static class Program
         var pending = browser.GoBackAsync(); model.Active = model.AllChannels.Single(c => c.Id == "other");
         await pending; await browser.RefreshAsync();
         Assert(!browser.IsBrowsing && !browser.HasArchive && !browser.CanGoBack && !browser.CanPlay, "A late history lookup must never replace the cards of a newly selected channel.");
+    }
+
+    private static Task StreamHealthAsync()
+    {
+        var monitor = new DzhiggaTV.Player.StreamHealthMonitor(TimeSpan.Zero);
+        DzhiggaTV.Player.StreamHealth At(int seconds, double? position, bool paused = false, bool seeking = false) => monitor.Observe(TimeSpan.FromSeconds(seconds), position, paused, seeking);
+        Assert(At(0, null) == DzhiggaTV.Player.StreamHealth.Starting && At(3, null) == DzhiggaTV.Player.StreamHealth.Starting, "Brief initial loading must have a grace period.");
+        Assert(At(4, null) == DzhiggaTV.Player.StreamHealth.Stalled && At(15, null) == DzhiggaTV.Player.StreamHealth.Reconnect, "A provider that never starts must trigger bounded recovery.");
+        Assert(At(16, 1) == DzhiggaTV.Player.StreamHealth.Healthy && At(19, 1) == DzhiggaTV.Player.StreamHealth.Healthy, "Data arriving again must clear the stall without a forced reconnect.");
+        Assert(At(20, 1) == DzhiggaTV.Player.StreamHealth.Stalled && At(31, 1) == DzhiggaTV.Player.StreamHealth.Reconnect, "A frozen clock is detected even without a native buffering notification.");
+        Assert(At(32, 1, paused: true) == DzhiggaTV.Player.StreamHealth.Paused && At(300, 1, paused: true) == DzhiggaTV.Player.StreamHealth.Paused, "An intentional pause is never a network fault.");
+        Assert(At(301, 1) == DzhiggaTV.Player.StreamHealth.Healthy && At(305, 1) == DzhiggaTV.Player.StreamHealth.Stalled, "Resuming starts a fresh grace period.");
+        Assert(At(306, 1, seeking: true) == DzhiggaTV.Player.StreamHealth.Starting && At(315, 1, seeking: true) == DzhiggaTV.Player.StreamHealth.Starting,
+            "A normal archive seek has time to load data.");
+        Assert(At(330, 1, seeking: true) == DzhiggaTV.Player.StreamHealth.Reconnect, "A seek stuck indefinitely must eventually recover.");
+        Assert(At(331, .1) == DzhiggaTV.Player.StreamHealth.Healthy, "An intentional backwards jump is valid progress.");
+        for (int i = 332; i <= 362; i++) At(i, i - 330);
+        Assert(monitor.IsStable(TimeSpan.FromSeconds(362)), "Only consecutive advancing playback resets the retry budget.");
+        At(368, 32);
+        Assert(!monitor.IsStable(TimeSpan.FromSeconds(368)), "Elapsed wall time during a stall is not stable playback.");
+        return Task.CompletedTask;
     }
 
     private static Task PointerRevealAsync()

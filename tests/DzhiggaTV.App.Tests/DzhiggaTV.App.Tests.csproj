@@ -19,6 +19,7 @@
     <Compile Include="../../src/DzhiggaTV.App/GuideTimeline.cs" Link="GuideTimeline.cs" />
     <Compile Include="../../src/DzhiggaTV.App/WindowBoundsGeometry.cs" Link="WindowBoundsGeometry.cs" />
     <Compile Include="../../src/DzhiggaTV.App/PointerRevealGate.cs" Link="PointerRevealGate.cs" />
+    <Compile Include="../../src/DzhiggaTV.Player/StreamHealthMonitor.cs" Link="StreamHealthMonitor.cs" />
     <Compile Include="../../src/DzhiggaTV.App/ArchiveTimeline.cs" Link="ArchiveTimeline.cs" />
   </ItemGroup>
 </Project>

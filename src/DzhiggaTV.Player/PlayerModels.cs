@@ -3,8 +3,9 @@ namespace DzhiggaTV.Player;
 public enum BufferPreset { LowLatency, Balanced, Stable }
 public enum AspectMode { Original, Fit16By9, Fit4By3, Stretch }
 public enum HdrMode { Auto, ToneMapToSdr }
-public enum PlaybackState { Idle, Loading, Playing, Paused, Buffering, Reconnecting, Error, Disposed }
+public enum PlaybackState { Idle, Loading, Playing, Paused, Buffering, Reconnecting, Error, Disposed, Stalled }
 public enum NativePointerKind { Move, LeftDown, RightDown, Wheel }
+public sealed record ArchivePlaybackSource(string Url, double Duration);
 
 public sealed class NativePointerEventArgs(NativePointerKind kind, int wheelDelta = 0, int screenX = 0, int screenY = 0) : EventArgs
 {
