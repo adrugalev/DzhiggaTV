@@ -133,14 +133,12 @@
           <Path Data="M 6,0 L 11,5 L 6,10 M 1,5 L 11,5" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
          </Button>
         </StackPanel>
-       </Grid>
-       <TextBlock Grid.Row="1" Text="{Binding CurrentTitle}" Style="{StaticResource ProgrammeTitle}"/>
-       <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <TextBlock Text="{Binding CurrentTime}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,4,0"/>
-        <Button x:Name="CurrentProgrammeGuideButton" Grid.Column="1" Content="Программа  →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="5,0" Margin="0" FontSize="10" Height="16" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Открыть телепрограмму">
+        <Button x:Name="CurrentProgrammeGuideButton" Grid.Column="1" Content="Телепрограмма →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="5,0" Margin="0" FontSize="11" Height="20" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Открыть телепрограмму">
          <Button.Style><Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Style.Triggers><DataTrigger Binding="{Binding HasArchive}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Button.Style>
         </Button>
        </Grid>
+       <TextBlock Grid.Row="1" Text="{Binding CurrentTitle}" Style="{StaticResource ProgrammeTitle}"/>
+       <TextBlock Grid.Row="2" Text="{Binding CurrentTime}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,4,0"/>
        <TextBlock x:Name="CurrentProgrammeDescription" Grid.Row="3" Text="{Binding CurrentDescriptionPreview}" Style="{StaticResource ProgrammeDescription}" Margin="0,4,0,0"/>
        <Grid Grid.Row="4" Height="20" Margin="0,2,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <ProgressBar Value="{Binding CurrentProgress, Mode=OneWay}" Margin="0,0,12,0" VerticalAlignment="Center"><ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}"><Style.Triggers><DataTrigger Binding="{Binding IsBrowsing}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></ProgressBar.Style></ProgressBar>
