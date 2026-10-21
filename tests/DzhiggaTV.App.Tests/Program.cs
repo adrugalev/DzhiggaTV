@@ -37,6 +37,7 @@ internal static class Program
             ("Late viewport guide loading notifies all active programme cards", ActiveViewportGuideAsync),
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
             ("Programme countdown handles missing data, hour boundaries and expired programmes", ProgrammeCountdownAsync),
+            ("Main programme cards browse retained history independently of playback and discard obsolete requests", ProgrammeBrowsingAsync),
             ("First EPG refresh replaces the missing-logo fallback immediately", MissingGuideThenRefreshAsync),
             ("Remapping a loaded channel replaces its programme and logo", RemapAsync),
             ("Removing an automatic mapping clears the previous programme", RemoveMappingAsync),
@@ -62,6 +63,53 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static async Task ProgrammeBrowsingAsync()
+    {
+        using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
+        var now = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        var channel = new Channel("channel", "fixture", "Архив", "Тест", "https://example.invalid/unused",
+            Attributes: new Dictionary<string, string> { ["tvg-rec"] = "3" });
+        var other = new Channel("other", "fixture", "Без архива", "Тест", "https://example.invalid/unused");
+        await model.Store.SavePlaylistAsync(new("fixture", "Local fixture", "local-only"), [channel, other]);
+        Programme[] entries = [
+            new("guide", "За пределами архива", now.AddDays(-3).AddSeconds(-1), now.AddDays(-3)),
+            new("guide", "Граница архива", now.AddDays(-3), now.AddDays(-3).AddMinutes(30), "Описание самой ранней записи."),
+            new("guide", "Вчера", now.AddHours(-25), now.AddHours(-24), "Вчерашняя передача."),
+            new("guide", "Предыдущая", now.AddMinutes(-90), now.AddMinutes(-30), "Описание прошедшей передачи."),
+            new("guide", "Прямой эфир", now.AddMinutes(-30), now.AddMinutes(30), "Текущий эфир."),
+            new("guide", "Будущее", now.AddMinutes(30), now.AddMinutes(90)) ];
+        await model.Store.ImportEpgAsync(async (addChannel, addProgramme, _) =>
+        { await addChannel(new("guide", "Архив")); foreach (var entry in entries.Reverse()) await addProgramme(entry); });
+        await model.Store.SaveMappingsAsync([new("channel", "guide", "Архив", "manual", 1, true)]);
+        await model.ReloadAsync(); model.Active = model.AllChannels.Single(c => c.Id == "channel"); await model.RefreshEpgViewAsync();
+        using var browser = new ProgrammeBrowser(model, () => now);
+        await WaitUntilAsync(() => browser.CanGoBack, "The archive channel must offer its preceding programme.");
+        Assert(!browser.IsBrowsing && browser.CurrentTitle == "Прямой эфир", "Cards initially follow playback.");
+        await browser.GoBackAsync();
+        Assert(browser.IsBrowsing && browser.CurrentTitle == "Предыдущая" && browser.NextTitle == "Прямой эфир" && browser.AfterNextTitle == "Будущее" && browser.CanPlay,
+            "Browsing back must load the selected recording and its own following programmes.");
+        Assert(model.CurrentTitle == "Прямой эфир" && model.Active.Current?.Title == "Прямой эфир" && !model.IsArchive,
+            "Browsing must never start a recording or overwrite the live/fullscreen EPG.");
+        await browser.GoBackAsync();
+        Assert(browser.CurrentTitle == "Вчера" && browser.CurrentTime.StartsWith(entries[2].Start.ToLocalTime().ToString("dd.MM")), "History must cross midnight and show the recording's date.");
+        await browser.GoBackAsync();
+        Assert(browser.CurrentTitle == "Граница архива" && !browser.CanGoBack && browser.CanPlay, "The exact retention boundary is playable, with older EPG entries excluded.");
+        await browser.GoBackAsync(); Assert(browser.CurrentTitle == "Граница архива", "Back at the boundary must keep the valid selection.");
+        await browser.GoForwardAsync(); await browser.GoForwardAsync(); await browser.GoForwardAsync();
+        Assert(!browser.IsBrowsing && browser.CurrentTitle == "Прямой эфир" && !browser.CanGoForward, "Forward must return to the playing programme without browsing unstarted broadcasts.");
+        await browser.GoBackAsync(); await browser.FollowPlaybackAsync();
+        Assert(!browser.IsBrowsing && browser.CurrentTitle == "Прямой эфир", "The reset action must restore cards without changing playback.");
+        model.SetArchiveProgramme(entries[3], entries[4], entries[5]);
+        await WaitUntilAsync(() => browser.CanGoBack, "A playing archive must also allow browsing its preceding programme.");
+        Assert(!browser.IsBrowsing && browser.CurrentTitle == "Предыдущая", "After explicit playback, cards follow that recording.");
+        await browser.GoBackAsync();
+        Assert(browser.CurrentTitle == "Вчера" && model.CurrentTitle == "Предыдущая", "Reading older history must not replace the playing recording.");
+        model.SetArchiveProgramme(null); await browser.RefreshAsync(); await WaitUntilAsync(() => browser.CanGoBack, "Live cards must regain navigation.");
+        var pending = browser.GoBackAsync(); model.Active = model.AllChannels.Single(c => c.Id == "other");
+        await pending; await browser.RefreshAsync();
+        Assert(!browser.IsBrowsing && !browser.HasArchive && !browser.CanGoBack && !browser.CanPlay, "A late history lookup must never replace the cards of a newly selected channel.");
     }
 
     private static Task PointerRevealAsync()

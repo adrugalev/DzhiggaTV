@@ -17,6 +17,7 @@ internal sealed class ProgrammePreview
     private readonly Func<int, Programme?> _getProgramme;
     private readonly Func<bool> _canShow;
     private readonly Func<double> _availableWidth;
+    private readonly Func<string> _currentBadge;
     private readonly Button[] _buttons;
     private readonly TextBlock _badge = new() { FontSize = 10, Margin = new(0, 0, 0, 7) };
     private readonly TextBlock _title = new() { FontSize = 15, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap };
@@ -34,22 +35,24 @@ internal sealed class ProgrammePreview
 
     public ProgrammePreview(MainWindow main, Button current, Button next, Button afterNext)
         : this(main, main.Model, [current, next, afterNext],
-            index => index switch { 0 => main.Model.PlayingProgramme, 1 => main.Model.PlayingNext, _ => main.Model.PlayingAfterNext },
-            () => !main.IsFullscreen && !main.IsMini, () => main.ProgrammePanel.ActualWidth)
+            index => index switch { 0 => main.Programmes.Current, 1 => main.Programmes.Next, _ => main.Programmes.AfterNext },
+            () => !main.IsFullscreen && !main.IsMini, () => main.ProgrammePanel.ActualWidth, () => main.Programmes.PlaybackProgrammeLabel)
     {
-        main.Model.PropertyChanged += (_, e) =>
+        main.Programmes.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(MainViewModel.Active)) Hide();
-            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription) or nameof(MainViewModel.AfterNextDescription)) RefreshAvailability();
-            if (Panel.IsVisible && e.PropertyName is nameof(MainViewModel.CurrentTitle) or nameof(MainViewModel.NextTitle) or nameof(MainViewModel.AfterNextTitle)) Refresh();
+            if (e.PropertyName != nameof(ProgrammeBrowser.Current)) return;
+            if (_shown is not null && _shown != _getProgramme(_index)) Hide();
+            RefreshAvailability();
+            if (Panel.IsVisible) Refresh();
         };
     }
 
     public ProgrammePreview(Window owner, MainViewModel model, Button[] buttons,
-        Func<int, Programme?> getProgramme, Func<bool> canShow, Func<double> availableWidth)
+        Func<int, Programme?> getProgramme, Func<bool> canShow, Func<double> availableWidth, Func<string>? currentBadge = null)
     {
         _owner = owner; _model = model; _buttons = buttons;
         _getProgramme = getProgramme; _canShow = canShow; _availableWidth = availableWidth;
+        _currentBadge = currentBadge ?? (() => "СЕЙЧАС В ЭФИРЕ");
         // Keep each popup over its own card and its trigger exposed. Explicit placement
         // also avoids the system menu-alignment preference moving a popup to another card.
         _popup.CustomPopupPlacementCallback = (size, target, _) =>
@@ -156,7 +159,7 @@ internal sealed class ProgrammePreview
         var programme = _getProgramme(_index);
         if (programme is null) { Hide(); return; }
         if (_shown == programme) return;
-        _shown = programme; _badge.Text = _index switch { 0 => "СЕЙЧАС В ЭФИРЕ", 1 => "ДАЛЕЕ", _ => "ЗАТЕМ" };
+        _shown = programme; _badge.Text = _index switch { 0 => _currentBadge(), 1 => "ДАЛЕЕ", _ => "ЗАТЕМ" };
         _title.Text = programme.Title;
         _time.Text = $"{programme.Start.ToLocalTime():dd.MM · HH:mm} — {programme.End.ToLocalTime():HH:mm}";
         _description.Show(programme);

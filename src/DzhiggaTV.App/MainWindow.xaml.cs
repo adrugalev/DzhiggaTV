@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     public const double StatusBarHeight = 16;
     public static GridLength StatusBarRowHeight { get; } = new(StatusBarHeight);
     public MainViewModel Model { get; }
+    public ProgrammeBrowser Programmes { get; }
     public UpdateCoordinator Updates { get; }
     private readonly CancellationTokenSource _updateLifetime = new();
     private readonly DispatcherTimer _updateTimer = new() { Interval = TimeSpan.FromMinutes(15) };
@@ -48,7 +49,9 @@ public partial class MainWindow : Window
         var custom = Argument("--data-dir");
         Model = new(custom ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV"));
         InitializeComponent(); ApplyMainWindowChrome(); WindowBounds.Attach(this); WindowAppearance.Attach(this); DataContext = Model; SetNavigationCollapsed(true);
+        Programmes = new(Model); ProgrammePanel.DataContext = Programmes;
         _programmePreview = new(this, CurrentProgrammeDetails, NextProgrammeDetails, AfterNextProgrammeDetails);
+        Programmes.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(ProgrammeBrowser.CurrentDescription)) UpdateProgrammePanelLayout(); };
         ViewingPanel.SizeChanged += (_, _) => UpdateProgrammePanelLayout();
         var channelGroup = Model.SelectedGroup;
         Model.PropertyChanged += (_, e) =>
@@ -58,7 +61,6 @@ public partial class MainWindow : Window
                 channelGroup = Model.SelectedGroup;
                 if (IsLoaded) ChannelListScroll.ResetToTop(ChannelList);
             }
-            if (e.PropertyName is nameof(MainViewModel.CurrentDescription) or nameof(MainViewModel.NextDescription) or nameof(MainViewModel.AfterNextDescription)) UpdateProgrammePanelLayout();
             if (e.PropertyName == nameof(MainViewModel.SelectedChannel) && Model.SelectedChannel is { } selected)
                 Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => { if (Model.SelectedChannel == selected && Model.VisibleChannels.Contains(selected)) ChannelList.ScrollIntoView(selected); });
         };
@@ -416,7 +418,7 @@ public partial class MainWindow : Window
     private void UpdateProgrammePanelLayout()
     {
         if (IsMini || IsFullscreen) return;
-        bool hasDescription = Model.CurrentDescription.Length > 0 || Model.NextDescription.Length > 0 || Model.AfterNextDescription.Length > 0;
+        bool hasDescription = Programmes.CurrentDescription.Length > 0 || Programmes.NextDescription.Length > 0 || Programmes.AfterNextDescription.Length > 0;
         double compactHeight = ViewingPanel.ActualWidth < 650 ? 150 : 130;
         ProgrammeRow.Height = new(hasDescription ? 180 : compactHeight);
     }
@@ -448,7 +450,7 @@ public partial class MainWindow : Window
             if (Model.CanSearch) { if (IsFullscreen || IsMini) RestoreWindow(); SearchInput.Focus(); }
             e.Handled = true; return;
         }
-        if (_programmePreview.Panel.IsKeyboardFocusWithin || CurrentProgrammeDetails.IsKeyboardFocusWithin || NextProgrammeDetails.IsKeyboardFocusWithin || AfterNextProgrammeDetails.IsKeyboardFocusWithin) return;
+        if (_programmePreview.Panel.IsKeyboardFocusWithin || ProgrammePanel.IsKeyboardFocusWithin) return;
         if (e.OriginalSource is TextBox || e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase) return;
         if (e.OriginalSource is Slider && key is Key.Left or Key.Right or Key.Home or Key.End) return;
         switch (key)
@@ -495,6 +497,7 @@ public partial class MainWindow : Window
         e.Cancel = true;
         if (_closing) return;
         _closing = true; _timer.Stop(); _updateTimer.Stop(); _updateLifetime.Cancel(); _playCancellation?.Cancel(); _sports?.Close(); _overlay?.Close();
+        Programmes.Dispose();
         Model.SetSetting("volume", Player.Volume); Model.SetSetting("muted", Player.IsMuted);
         await GuardAsync(Model.SaveAsync);
         try { Updates.Dispose(); Model.Dispose(); Player.Dispose(); }

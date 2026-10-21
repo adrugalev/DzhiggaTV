@@ -351,6 +351,11 @@ public sealed class SqliteStore : IDisposable
         CancellationToken cancellationToken = default) =>
         (await GetNowNextBatchAsync([epgChannelId], at, cancellationToken).ConfigureAwait(false))[epgChannelId];
 
+    public async Task<Programme?> GetPreviousProgrammeAsync(string epgChannelId, DateTimeOffset before,
+        DateTimeOffset earliest, CancellationToken cancellationToken = default) =>
+        (await QueryProgrammesAsync("SELECT channel_id,title,start,end,description,category FROM programmes WHERE channel_id=$id AND start<$before AND start>=$earliest AND end>start ORDER BY start DESC LIMIT 1",
+            [("$id", epgChannelId), ("$before", before.ToUnixTimeSeconds()), ("$earliest", earliest.ToUnixTimeSeconds())], cancellationToken).ConfigureAwait(false)).FirstOrDefault();
+
     /// <summary>One read snapshot and two prepared commands for a viewport, rather than opening per row.</summary>
     public async Task<IReadOnlyDictionary<string, NowNext>> GetNowNextBatchAsync(IEnumerable<string> epgChannelIds,
         DateTimeOffset? at = null, CancellationToken cancellationToken = default)
