@@ -17,6 +17,8 @@ public sealed class GuideWindow : Window
     private readonly Func<ChannelItem, Programme, Task> _playArchive;
     private readonly Func<DateTimeOffset> _clock;
     private readonly GuideViewport _viewport = new();
+    private readonly GuidePanGesture _pan = new();
+    private (GuideRow Row, Programme? Programme, int ClickCount, bool Channel)? _pendingClick;
     private readonly ListBox _rows = new() { Padding = new(0), BorderThickness = new(0) };
     private readonly DatePicker _date = new() { Width = 132, Height = 34, FontSize = 12, SelectedDateFormat = DatePickerFormat.Short, Margin = new(4, 0, 4, 0) };
     private readonly TextBox _search = new() { Height = 34, FontSize = 12, Padding = new(30, 7, 29, 6), MaxLength = 128 };
@@ -121,7 +123,7 @@ public sealed class GuideWindow : Window
         _details.SetResourceReference(BackgroundProperty, "PanelBrush"); Grid.SetColumn(_details, 1); _body.Children.Add(_details);
         var footer = new Grid { Margin = new(2, 9, 0, 0) }; footer.ColumnDefinitions.Add(new()); footer.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         footer.Children.Add(_count);
-        var hint = new TextBlock { Text = "Щелчок — описание · двойной щелчок — смотреть", FontSize = 10, VerticalAlignment = VerticalAlignment.Center };
+        var hint = new TextBlock { Text = "Зажмите и тяните — листать · щелчок — описание · двойной — смотреть", FontSize = 10, VerticalAlignment = VerticalAlignment.Center };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(hint, 1); footer.Children.Add(hint); Grid.SetRow(footer, 2); root.Children.Add(footer);
         foreach (var block in new[] { _searchHint, _count, _empty, _time, _badge }) block.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         _channel.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
@@ -138,14 +140,23 @@ public sealed class GuideWindow : Window
         _watch.Click += async (_, _) => { if (_viewport.Selection.Row is { } row) await PlaySelectionAsync(row.Channel, _viewport.Selection.Programme); };
         _live.Click += async (_, _) => { if (_viewport.Selection.Row is { } row) await PlayChannelAsync(row.Channel); };
         _timer.Tick += async (_, _) => await TickAsync();
+        _timeline.PreviewMouseMove += Timeline_MouseMove;
+        _timeline.PreviewMouseLeftButtonUp += Timeline_MouseUp;
+        _timeline.LostMouseCapture += (_, _) => { if (!ReferenceEquals(Mouse.Captured, _timeline)) CancelPan(); };
+        _axis.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.GetPosition(_axis).X < GuideLayout.ChannelWidth) return;
+            BeginPan(e.GetPosition(_timeline)); e.Handled = true;
+        };
+        Deactivated += (_, _) => CancelPan();
         PreviewKeyDown += async (_, e) =>
         {
-            if (e.Key == Key.Escape) { Close(); e.Handled = true; }
+            if (e.Key == Key.Escape) { if (_pan.IsTracking) CancelPan(); else Close(); e.Handled = true; }
             else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.F) { _search.Focus(); _search.SelectAll(); e.Handled = true; }
             else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Home) { await GoNowAsync(); e.Handled = true; }
         };
         Loaded += async (_, _) => { UpdateDetailsLayout(); UpdateSearchHint(); ShowSelection(); await LoadDayAsync(); if (!_closed) _timer.Start(); };
-        Closed += (_, _) => { _closed = true; ++_generation; _timer.Stop(); _searchTimer.Stop(); _loading?.Cancel(); _loading?.Dispose(); };
+        Closed += (_, _) => { _closed = true; CancelPan(); ++_generation; _timer.Stop(); _searchTimer.Stop(); _loading?.Cancel(); _loading?.Dispose(); };
     }
 
     private static Button CompactButton(string label, string tip, double width) => new()
@@ -211,18 +222,18 @@ public sealed class GuideWindow : Window
         VirtualizingPanel.SetScrollUnit(_rows, ScrollUnit.Pixel);
         var factory = new FrameworkElementFactory(typeof(TimelineItem)); factory.SetValue(TimelineItem.ViewportProperty, _viewport);
         _rows.ItemTemplate = new DataTemplate { VisualTree = factory };
-        _rows.PreviewMouseLeftButtonDown += async (_, e) =>
+        _rows.PreviewMouseLeftButtonDown += (_, e) =>
         {
             if (_activating) return;
             var source = e.OriginalSource as DependencyObject;
             while (source is not null && source is not TimelineItem) source = VisualTreeHelper.GetParent(source);
             if (source is not TimelineItem item || item.DataContext is not GuideRow row) return;
             var point = e.GetPosition(item); var programme = item.ProgrammeAt(point);
-            if (programme is null && point.X >= GuideLayout.ChannelWidth) return;
             programme ??= row.At(_viewport.Now);
-            e.Handled = true; _changingSelection = true; _rows.SelectedItem = row; _changingSelection = false;
-            (_rows.ItemContainerGenerator.ContainerFromItem(row) as ListBoxItem)?.Focus();
-            await _viewport.Selection.ClickAsync(row, programme, e.ClickCount, (channel, selected) => PlaySelectionAsync(channel, point.X < GuideLayout.ChannelWidth ? null : selected));
+            bool channel = point.X < GuideLayout.ChannelWidth;
+            BeginPan(e.GetPosition(_timeline), !channel);
+            if (channel || item.ProgrammeAt(point) is not null) _pendingClick = (row, programme, e.ClickCount, channel);
+            e.Handled = true;
         };
         _rows.SelectionChanged += (_, _) =>
         {
@@ -242,6 +253,45 @@ public sealed class GuideWindow : Window
         };
     }
 
+    private void BeginPan(Point point, bool canPan = true)
+    {
+        CancelPan();
+        _pan.Begin(point, _horizontal.Value, canPan);
+        if (!Mouse.Capture(_timeline, CaptureMode.SubTree)) CancelPan();
+    }
+    private void Timeline_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_pan.IsTracking) return;
+        if (e.LeftButton != MouseButtonState.Pressed) { CancelPan(); return; }
+        PanTo(e.GetPosition(_timeline));
+        if (_pan.IsDragging) e.Handled = true;
+    }
+    private void PanTo(Point point)
+    {
+        if (_pan.Move(point, _horizontal.Maximum) is not { } offset) return;
+        _followNow = false;
+        _horizontal.Value = offset;
+        _timeline.Cursor = Cursors.SizeWE;
+    }
+    private async void Timeline_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_pan.IsTracking) return;
+        PanTo(e.GetPosition(_timeline));
+        var click = _pan.IsClick ? _pendingClick : null;
+        CancelPan(); e.Handled = true;
+        if (click is not { } selection || _activating) return;
+        _changingSelection = true; _rows.SelectedItem = selection.Row; _changingSelection = false;
+        (_rows.ItemContainerGenerator.ContainerFromItem(selection.Row) as ListBoxItem)?.Focus();
+        await _viewport.Selection.ClickAsync(selection.Row, selection.Programme, selection.ClickCount,
+            (channel, programme) => PlaySelectionAsync(channel, selection.Channel ? null : programme));
+    }
+    private void CancelPan()
+    {
+        _pan.Reset(); _pendingClick = null;
+        _timeline.ClearValue(CursorProperty);
+        if (ReferenceEquals(Mouse.Captured, _timeline)) Mouse.Capture(null);
+    }
+
     private DateTimeOffset ReferenceTime()
     {
         var now = _clock();
@@ -251,6 +301,7 @@ public sealed class GuideWindow : Window
     }
     private async Task LoadDayAsync()
     {
+        CancelPan();
         if (_closed) return;
         _loading?.Cancel(); _loading?.Dispose(); _loading = new(); var token = _loading.Token;
         int generation = ++_generation;
@@ -282,6 +333,7 @@ public sealed class GuideWindow : Window
 
     private void ApplyFilter(bool focusMatch, bool startAtTop = false)
     {
+        CancelPan();
         string query = _search.Text.Trim();
         var visible = GuideFiltering.Filter(_allRows, SelectedPlaylist, SelectedCategory, query);
         _resetFilters.Visibility = SelectedPlaylist is not null || SelectedCategory is not null ? Visibility.Visible : Visibility.Collapsed;
@@ -395,6 +447,7 @@ public sealed class GuideWindow : Window
     private async Task TickAsync()
     {
         _viewport.Now = _clock();
+        if (_pan.IsTracking) return;
         if (_followNow && !_viewport.Range.Contains(_viewport.Now)) { await GoNowAsync(); return; }
         double x = _viewport.Range.Position(_viewport.Now) - _viewport.Offset;
         if (_followNow && (x < 0 || x > _viewport.Width * .85)) FocusTime(_viewport.Now);

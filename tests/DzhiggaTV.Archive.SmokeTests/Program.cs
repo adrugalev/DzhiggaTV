@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using DzhiggaTV.App;
 using DzhiggaTV.Core;
@@ -66,6 +67,12 @@ internal static class Program
         var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
         Check(main.GetArchiveTimeline() is { IsArchive: false }, "An archive-capable live channel exposes its rewind range");
         var overlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
+        if (args.Contains("--player-menu"))
+        {
+            await PlayerMenuChecks(main, overlay, args);
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
+            return;
+        }
         await main.Programmes.GoBackAsync();
         await Wait(() => main.Programmes.IsBrowsing);
         var startLink = (System.Windows.Documents.Hyperlink)overlay.FindName("StartProgrammeLink");
@@ -232,6 +239,61 @@ internal static class Program
         }
         Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
     }
+    private static async Task PlayerMenuChecks(MainWindow main, OverlayWindow overlay, string[] args)
+    {
+        main.Title = "DzhiggaTV · Проверка меню 1.5.5";
+        await main.PlayLocalAsync(Path.GetFullPath("work/test-media.mkv"));
+        await Wait(() => main.Player.State == PlaybackState.Playing && main.Player.GetTracks().Count(t => t.Type == "audio") == 2);
+        var more = (Button)overlay.FindName("MoreButton");
+        async Task<ContextMenu> Menu()
+        {
+            more.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Wait(() => Mouse.Captured is ContextMenu { IsOpen: true });
+            return (ContextMenu)Mouse.Captured;
+        }
+        void CheckItems(ContextMenu menu, string mode) => Check(menu.Items.OfType<MenuItem>().Select(i => (string)i.Header)
+            .SequenceEqual(["Звуковая дорожка", "Соотношение сторон", "Информация о потоке"]) && menu.Items.Count == 3,
+            "The " + mode + " menu contains exactly the three requested actions");
+        var menu = await Menu(); CheckItems(menu, "main player");
+        var audio = (MenuItem)menu.Items[0]; var tracks = main.Player.GetTracks().Where(t => t.Type == "audio").ToArray();
+        Check(audio.Items.Count == 2 && audio.Items.OfType<MenuItem>().Count(i => i.IsChecked) == 1,
+            "Audio choices show both real native tracks and mark the selected one");
+        int other = Array.FindIndex(tracks, t => !t.Selected);
+        ((MenuItem)audio.Items[other]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); menu.IsOpen = false;
+        await Wait(() => main.Player.GetTracks().Any(t => t.Type == "audio" && t.Id == tracks[other].Id && t.Selected));
+        menu = await Menu();
+        Check(((MenuItem)((MenuItem)menu.Items[0]).Items[other]).IsChecked, "Reopening the menu reflects an actual audio track change");
+        ((MenuItem)((MenuItem)menu.Items[1]).Items[2]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); menu.IsOpen = false;
+        menu = await Menu();
+        Check(main.Model.Setting("aspect") == "Fit4By3" && ((MenuItem)((MenuItem)menu.Items[1]).Items[2]).IsChecked,
+            "Aspect selection changes the player preference and marks it on reopening");
+        ((MenuItem)((MenuItem)menu.Items[1]).Items[0]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); menu.IsOpen = false;
+        menu = await Menu(); ((MenuItem)menu.Items[2]).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); menu.IsOpen = false;
+        Check(((FrameworkElement)overlay.FindName("StatisticsPanel")).Visibility == Visibility.Visible &&
+            Descendants<TextBlock>((FrameworkElement)overlay.FindName("StatisticsPanel")).Any(t => t.Text == "Информация о потоке") &&
+            ((TextBlock)overlay.FindName("StatisticsText")).Text.Contains("1280 × 720"),
+            "Stream information opens under its new title and shows real decoded video properties");
+        overlay.ToggleStreamInformation();
+        main.ToggleFullscreen(); await Task.Delay(250); menu = await Menu(); CheckItems(menu, "fullscreen"); menu.IsOpen = false;
+        main.RestoreWindow(); main.ToggleMini(); await Task.Delay(250); menu = await Menu(); CheckItems(menu, "mini player"); menu.IsOpen = false;
+        main.RestoreWindow(); await Task.Delay(250);
+        var root = (FrameworkElement)overlay.FindName("OverlayRoot");
+        overlay.ShowVideoMenu(root.PointToScreen(new Point(90, 75)));
+        await Wait(() => Mouse.Captured is ContextMenu { IsOpen: true }); menu = (ContextMenu)Mouse.Captured;
+        CheckItems(menu, "video context");
+        Check(menu.PlacementTarget == root && Math.Abs(menu.HorizontalOffset - 90) < 1 && Math.Abs(menu.VerticalOffset - 75) < 1,
+            "The video context menu anchors to the clicked video point with DPI conversion");
+        overlay.Hide(); await Task.Delay(100);
+        Check(!menu.IsOpen, "Hiding the overlay also dismisses the context menu"); overlay.Show();
+        await main.PlayAsync(main.Model.AllChannels.Single(c => c.Id == "archive"));
+        await Wait(() => main.Player.State == PlaybackState.Playing);
+        if (args.Contains("--visual-only"))
+        {
+            Console.WriteLine("VISUAL_READY");
+            while (main.IsVisible) await Task.Delay(300);
+        }
+    }
+
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
     {
         for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++) { var child = VisualTreeHelper.GetChild(parent, i); if (child is T match) yield return match; foreach (var nested in Descendants<T>(child)) yield return nested; }

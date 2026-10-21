@@ -14,6 +14,7 @@ public partial class OverlayWindow : Window
     private DateTime _lastMove = DateTime.UtcNow;
     private readonly PointerRevealGate _pointerReveal = new();
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
+    private ContextMenu? _playerMenu;
     private Programme? _descriptionProgramme;
     private bool _volumeReady, _syncingVolume;
     private bool _syncingSeek, _seeking, _mouseSeeking;
@@ -36,7 +37,8 @@ public partial class OverlayWindow : Window
         VolumeSlider.Value = volume; _volumeReady = true;
         Loaded += (_, _) => { RefreshHoverState(); UpdateVisibility(); };
         SizeChanged += (_, _) => { UpdateCompactLayout(); RefreshHoverState(); UpdateVisibility(); };
-        IsVisibleChanged += (_, _) => { if (!IsVisible) CancelSeek(); RefreshHoverState(); UpdateVisibility(); };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) { CancelSeek(); ClosePlayerMenu(); } RefreshHoverState(); UpdateVisibility(); };
+        Closed += (_, _) => ClosePlayerMenu();
         ControlsPanel.SizeChanged += (_, _) => FullscreenProgrammeInfo.Margin = new(16, 0, 0, Math.Max(48, ControlsPanel.ActualHeight + 12));
     }
     public void Reveal()
@@ -165,6 +167,12 @@ public partial class OverlayWindow : Window
         if (e.OriginalSource is not Grid) return;
         if (e.ClickCount == 2) _main.ToggleFullscreen();
         else if (_main.IsMini && e.LeftButton == MouseButtonState.Pressed) _main.DragMove();
+    }
+    private void Overlay_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, OverlayRoot)) return;
+        ShowVideoMenu(OverlayRoot.PointToScreen(e.GetPosition(OverlayRoot)));
+        e.Handled = true;
     }
     private async void Overlay_KeyDown(object sender, KeyEventArgs e)
     {
@@ -297,33 +305,39 @@ public partial class OverlayWindow : Window
     private void Fullscreen_Click(object sender, RoutedEventArgs e) => _main.ToggleFullscreen();
     public void ToggleDrawer() { Drawer.Visibility = Drawer.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; Reveal(); }
     private async void Drawer_Selected(object sender, SelectionChangedEventArgs e) { if (sender is ListBox { SelectedItem: ChannelItem c }) { await _main.PlayAsync(c); Drawer.Visibility = Visibility.Collapsed; Reveal(); } }
-    public void ToggleStatistics() { StatisticsPanel.Visibility = StatisticsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; UpdateStatistics(); Reveal(); }
-    private void More_Click(object sender, RoutedEventArgs e)
+    public void ToggleStreamInformation() { StatisticsPanel.Visibility = StatisticsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; UpdateStatistics(); Reveal(); }
+    private void More_Click(object sender, RoutedEventArgs e) => OpenPlayerMenu(MoreButton, PlacementMode.Top, default);
+    public void ShowVideoMenu(Point screenPoint)
     {
-        var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.Top };
+        if (!IsVisible) return;
+        OpenPlayerMenu(OverlayRoot, PlacementMode.RelativePoint, OverlayRoot.PointFromScreen(screenPoint));
+    }
+    private void ClosePlayerMenu() { if (_playerMenu is { } menu) menu.IsOpen = false; }
+    private void OpenPlayerMenu(FrameworkElement anchor, PlacementMode placement, Point offset)
+    {
+        ClosePlayerMenu();
+        var menu = new ContextMenu { PlacementTarget = anchor, Placement = placement, HorizontalOffset = offset.X, VerticalOffset = offset.Y };
         void Item(ItemsControl parent, string label, Action action, bool? check = null)
         { var entry = new MenuItem { Header = label, IsCheckable = check.HasValue, IsChecked = check ?? false }; entry.Click += (_, _) => action(); parent.Items.Add(entry); }
         var audio = _main.Player.GetTracks().Where(t => t.Type == "audio").ToArray();
-        var subtitles = _main.Player.GetTracks().Where(t => t.Type == "sub").ToArray();
-        if (audio.Length > 0)
-        { var section = new MenuItem { Header = "Звуковая дорожка" }; foreach (var track in audio) Item(section, track.DisplayName, () => _main.Player.SelectAudio(track.Id), track.Selected); menu.Items.Add(section); }
-        if (subtitles.Length > 0)
-        { var section = new MenuItem { Header = "Субтитры" }; Item(section, "Выключены", () => _main.Player.SelectSubtitle(null), !subtitles.Any(t => t.Selected)); foreach (var track in subtitles) Item(section, track.DisplayName, () => _main.Player.SelectSubtitle(track.Id), track.Selected); menu.Items.Add(section); }
+        var audioSection = new MenuItem { Header = "Звуковая дорожка", IsEnabled = audio.Length > 0 };
+        foreach (var track in audio) Item(audioSection, track.DisplayName, () => _main.Player.SelectAudio(track.Id), track.Selected);
+        menu.Items.Add(audioSection);
         var aspect = new MenuItem { Header = "Соотношение сторон" };
         foreach (var (label, mode) in new[] { ("По источнику", AspectMode.Original), ("16:9", AspectMode.Fit16By9), ("4:3", AspectMode.Fit4By3), ("Растянуть", AspectMode.Stretch) })
-            Item(aspect, label, () => { _main.Player.SetAspect(mode); _main.Model.SetSetting("aspect", mode); });
+            Item(aspect, label, () => { _main.Player.SetAspect(mode); _main.Model.SetSetting("aspect", mode); }, _main.Model.Setting("aspect", "Original") == mode.ToString());
         menu.Items.Add(aspect);
-        menu.Items.Add(new Separator());
-        Item(menu, _main.Model.Active?.IsFavorite == true ? "Убрать из избранного (F)" : "Добавить в избранное (F)", async () => { if (_main.Model.Active is { } c) await _main.Model.ToggleFavoriteAsync(c); });
-        Item(menu, "Мини-плеер (Ctrl+M)", _main.ToggleMini);
-        menu.Items.Add(new Separator());
-        Item(menu, "Техническая статистика (I)", ToggleStatistics);
-        Item(menu, "Телепрограмма (G)", async () => await _main.ShowGuideAsync());
-        Item(menu, "Настройки", async () => await _main.ShowSettingsAsync());
-        if (_main.IsMini || _main.IsFullscreen) Item(menu, "Вернуться в обычное окно", _main.RestoreWindow);
+        var information = new MenuItem { Header = "Информация о потоке", InputGestureText = "I", IsCheckable = true, IsChecked = StatisticsPanel.Visibility == Visibility.Visible };
+        information.Click += (_, _) => ToggleStreamInformation();
+        menu.Items.Add(information);
         menu.Opened += (_, _) => { _menuOpen = true; UpdateVisibility(); };
-        menu.Closed += (_, _) => { _menuOpen = false; RefreshHoverState(); UpdateVisibility(); };
-        menu.PlacementTarget = sender as Button; menu.IsOpen = true; Reveal();
+        menu.Closed += (_, _) =>
+        {
+            if (!ReferenceEquals(_playerMenu, menu)) return;
+            _playerMenu = null; _menuOpen = false; RefreshHoverState(); UpdateVisibility();
+        };
+        _playerMenu = menu;
+        menu.IsOpen = true; Reveal();
     }
     private void UpdateStatistics()
     {

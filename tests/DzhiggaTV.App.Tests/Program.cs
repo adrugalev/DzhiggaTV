@@ -48,6 +48,7 @@ internal static class Program
             ("An EPG setup failure restores the retry button and progress state", EpgSetupFailureAsync),
             ("Guide focuses the exact current instant and clamps midnight boundaries", GuideClockAsync),
             ("Guide hit testing agrees with scrolled, clipped cells and frozen channel names", GuideHitTestingAsync),
+            ("Guide panning follows the mouse, clamps day boundaries and never mistakes dragging for a click", GuidePanningAsync),
             ("Guide selection shows complete details without playback until double click", GuideSelectionAsync),
             ("Guide day ranges follow daylight-saving offsets", GuideDaylightSavingAsync),
             ("Guide reads only allowed EPG IDs across multiple parameter batches", GuideBatchAsync),
@@ -65,6 +66,26 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static Task GuidePanningAsync()
+    {
+        var pan = new GuidePanGesture();
+        pan.Begin(new(400, 100), 500);
+        Assert(pan.Move(new(403, 102), 1000) is null && pan.IsClick, "Pointer jitter must retain ordinary click and double-click actions.");
+        Assert(pan.Move(new(500, 101), 1000) == 400 && pan.IsDragging && !pan.IsClick, "Dragging right must reveal earlier broadcasts without selecting or activating a cell.");
+        Assert(pan.Move(new(250, 101), 1000) == 650, "Reversing direction must use the original pointer anchor without jumps.");
+        Assert(pan.Move(new(1200, 100), 1000) == 0 && !pan.IsClick, "Reaching the beginning of the day must clamp and never turn a pan into a click.");
+        Assert(pan.Move(new(-900, 100), 1000) == 1000, "The end of the day must also clamp.");
+        pan.Reset(); Assert(!pan.IsTracking && pan.Move(new(300, 100), 1000) is null, "Lost capture, close and cancellation must leave no pending gesture.");
+        pan.Begin(new(400, 100), 500);
+        Assert(pan.Move(new(401, 120), 1000) is null && !pan.IsClick && !pan.IsDragging, "Vertical movement must neither scroll time nor accidentally select a programme.");
+        Assert(pan.Move(new(500, 120), 1000) is null, "A rejected vertical gesture must not later turn into a horizontal drag.");
+        pan.Begin(new(400, 100), 500, canPan: false);
+        Assert(pan.Move(new(500, 100), 1000) is null && !pan.IsClick, "Dragging a frozen channel name must not move the timeline or launch playback.");
+        pan.Begin(new(400, 100), 0);
+        Assert(pan.Move(new(300, 100), 0) == 0 && !pan.IsClick, "A timeline narrower than the viewport must safely retain click suppression.");
+        return Task.CompletedTask;
     }
 
     private static Task ArchiveSeekTimeAsync()

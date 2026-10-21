@@ -78,6 +78,7 @@ public partial class MainWindow : Window
         VideoHost.PointerActivity += (_, e) =>
         {
             if (e.Kind == NativePointerKind.Move) _overlay?.PointerMoved(); else _overlay?.Reveal();
+            if (e.Kind == NativePointerKind.RightDown) _overlay?.ShowVideoMenu(new Point(e.ScreenX, e.ScreenY));
             if (e.Kind == NativePointerKind.Wheel) Player.Volume = Math.Clamp(Player.Volume + Math.Sign(e.WheelDelta) * 5, 0, 100);
         };
         Player.StateChanged += (_, e) => Dispatcher.BeginInvoke(() =>
@@ -463,7 +464,7 @@ public partial class MainWindow : Window
             case Key.Right: await SeekPlaybackByAsync(Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ? 60 : 10); break;
             case Key.M when Keyboard.Modifiers.HasFlag(ModifierKeys.Control): ToggleMini(); break;
             case Key.M: Player.IsMuted = !Player.IsMuted; break;
-            case Key.I: _overlay?.ToggleStatistics(); break;
+            case Key.I: _overlay?.ToggleStreamInformation(); break;
             case Key.C: _overlay?.ToggleDrawer(); break;
             case Key.F: if (Model.Active is { } c) await Model.ToggleFavoriteAsync(c); break;
             case Key.PageDown: await NextChannelAsync(1); break;

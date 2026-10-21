@@ -35,11 +35,11 @@ public sealed class NativeVideoHost : HwndHost
         {
             case 0x0200: PointerActivity?.Invoke(this, new(NativePointerKind.Move)); break;
             case 0x0201:
+            case 0x0204:
                 var point = new NativePoint { X = (short)(lParam.ToInt64() & 0xffff), Y = (short)((lParam.ToInt64() >> 16) & 0xffff) };
                 ClientToScreen(hwnd, ref point);
-                PointerActivity?.Invoke(this, new(NativePointerKind.LeftDown, screenX: point.X, screenY: point.Y));
+                PointerActivity?.Invoke(this, new(msg == 0x0201 ? NativePointerKind.LeftDown : NativePointerKind.RightDown, screenX: point.X, screenY: point.Y));
                 break;
-            case 0x0204: PointerActivity?.Invoke(this, new(NativePointerKind.RightDown)); break;
             case 0x020A: PointerActivity?.Invoke(this, new(NativePointerKind.Wheel, (short)((wParam.ToInt64() >> 16) & 0xffff))); handled = true; break;
             case 0x0203: DoubleClicked?.Invoke(this, EventArgs.Empty); handled = true; break;
             case 0x0014: handled = true; return new IntPtr(1); // mpv owns painting.

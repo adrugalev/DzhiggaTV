@@ -23,6 +23,33 @@ public sealed record GuideRow(ChannelItem Channel, IReadOnlyList<Programme> Prog
     public Programme? At(DateTimeOffset time) => Programmes.FirstOrDefault(p => p.Start <= time && p.End > time);
 }
 
+/// <summary>Distinguishes a click from horizontal panning without changing programme selection.</summary>
+public sealed class GuidePanGesture
+{
+    public const double DragDistance = 6;
+    private Point _origin;
+    private double _offset;
+    private bool _canPan, _cancelled;
+    public bool IsTracking { get; private set; }
+    public bool IsDragging { get; private set; }
+    public bool IsClick => IsTracking && !IsDragging && !_cancelled;
+    public void Begin(Point point, double offset, bool canPan = true)
+    { Reset(); _origin = point; _offset = offset; _canPan = canPan; IsTracking = true; }
+    public double? Move(Point point, double maximum)
+    {
+        if (!IsTracking || _cancelled) return null;
+        var delta = point - _origin;
+        if (!IsDragging)
+        {
+            if (Math.Abs(delta.X) < DragDistance && Math.Abs(delta.Y) < DragDistance) return null;
+            if (!_canPan || Math.Abs(delta.Y) >= Math.Abs(delta.X)) { _cancelled = true; return null; }
+            IsDragging = true;
+        }
+        return Math.Clamp(_offset - delta.X, 0, Math.Max(0, maximum));
+    }
+    public void Reset() { IsTracking = IsDragging = _cancelled = false; }
+}
+
 public static class GuideLayout
 {
     public const double ChannelWidth = 212;
