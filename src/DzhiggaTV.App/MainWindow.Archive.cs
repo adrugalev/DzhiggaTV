@@ -7,7 +7,11 @@ public partial class MainWindow
 {
     private async void PreviousProgramme_Click(object sender, System.Windows.RoutedEventArgs e) => await GuardAsync(Programmes.GoBackAsync);
     private async void FollowingProgramme_Click(object sender, System.Windows.RoutedEventArgs e) => await GuardAsync(Programmes.GoForwardAsync);
-    private async void FollowPlayback_Click(object sender, System.Windows.RoutedEventArgs e) => await GuardAsync(Programmes.FollowPlaybackAsync);
+    private async void ProgrammeLive_Click(object sender, System.Windows.RoutedEventArgs e) => await GuardAsync(async () =>
+    {
+        if (IsArchivePlayback) await ReturnToLiveAsync();
+        await Programmes.FollowPlaybackAsync();
+    });
     private async void PlayBrowsedProgramme_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         if (Programmes.CanPlay && Programmes.Current is { } programme && Model.Active is { } channel)

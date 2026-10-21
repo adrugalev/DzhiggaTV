@@ -113,9 +113,9 @@
        <Setter Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="BorderThickness" Value="1"/>
        <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+       <Setter Property="FocusVisualStyle"><Setter.Value><Style TargetType="Control"><Setter Property="Template"><Setter.Value><ControlTemplate><Border BorderBrush="{DynamicResource TextBrush}" BorderThickness="1" CornerRadius="5" Margin="3"/></ControlTemplate></Setter.Value></Setter></Style></Setter.Value></Setter>
        <Style.Triggers>
         <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource BackgroundBrush}"/></Trigger>
-        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource BackgroundBrush}"/></Trigger>
        </Style.Triggers>
       </Style>
      </Grid.Resources>
@@ -144,7 +144,7 @@
         <ProgressBar Value="{Binding CurrentProgress, Mode=OneWay}" Margin="0,0,12,0" VerticalAlignment="Center"><ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}"><Style.Triggers><DataTrigger Binding="{Binding IsBrowsing}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></ProgressBar.Style></ProgressBar>
         <StackPanel Orientation="Horizontal"><StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding IsBrowsing}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
          <Button x:Name="PlayBrowsedProgrammeButton" Content="{Binding PlayLabel}" ToolTip="{Binding PlayHint}" Click="PlayBrowsedProgramme_Click" IsEnabled="{Binding CanPlay}" FontSize="10" Height="20" Padding="6,0" Margin="0,0,3,0" BorderBrush="{DynamicResource AccentBrush}" AutomationProperties.Name="Смотреть выбранную передачу в архиве"/>
-         <Button Content="К просмотру" ToolTip="Вернуть карточки к просматриваемой передаче" Click="FollowPlayback_Click" FontSize="10" Height="20" Padding="4,0" Margin="0" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Вернуть карточки к текущему просмотру"/>
+         <Button Content="В прямой эфир" ToolTip="Вернуться к прямому эфиру и актуальным передачам" Click="ProgrammeLive_Click" FontSize="10" Height="20" Padding="4,0" Margin="0" Background="Transparent" BorderThickness="0" AutomationProperties.Name="В прямой эфир"/>
         </StackPanel>
         <Button x:Name="CurrentProgrammeDetails" Grid.Column="1" Style="{StaticResource ProgrammeDetails}" AutomationProperties.Name="Подробнее о текущей передаче"/>
        </Grid>
