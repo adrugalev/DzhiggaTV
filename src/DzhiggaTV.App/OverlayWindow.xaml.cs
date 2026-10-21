@@ -164,6 +164,7 @@ public partial class OverlayWindow : Window
     private void Overlay_MouseDown(object sender, MouseButtonEventArgs e)
     {
         Reveal();
+        if (ReferenceEquals(e.OriginalSource, OverlayRoot)) HideStreamInformation();
         if (e.OriginalSource is not Grid) return;
         if (e.ClickCount == 2) _main.ToggleFullscreen();
         else if (_main.IsMini && e.LeftButton == MouseButtonState.Pressed) _main.DragMove();
@@ -306,6 +307,7 @@ public partial class OverlayWindow : Window
     public void ToggleDrawer() { Drawer.Visibility = Drawer.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; Reveal(); }
     private async void Drawer_Selected(object sender, SelectionChangedEventArgs e) { if (sender is ListBox { SelectedItem: ChannelItem c }) { await _main.PlayAsync(c); Drawer.Visibility = Visibility.Collapsed; Reveal(); } }
     public void ToggleStreamInformation() { StatisticsPanel.Visibility = StatisticsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible; UpdateStatistics(); Reveal(); }
+    public void HideStreamInformation() => StatisticsPanel.Visibility = Visibility.Collapsed;
     private void More_Click(object sender, RoutedEventArgs e) => OpenPlayerMenu(MoreButton, PlacementMode.Top, default);
     public void ShowVideoMenu(Point screenPoint)
     {

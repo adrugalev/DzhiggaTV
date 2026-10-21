@@ -80,6 +80,7 @@ public partial class MainWindow : Window
         VideoHost.PointerActivity += (_, e) =>
         {
             if (e.Kind == NativePointerKind.Move) _overlay?.PointerMoved(); else _overlay?.Reveal();
+            if (e.Kind == NativePointerKind.LeftDown) _overlay?.HideStreamInformation();
             if (e.Kind == NativePointerKind.RightDown) _overlay?.ShowVideoMenu(new Point(e.ScreenX, e.ScreenY));
             if (e.Kind == NativePointerKind.Wheel) Player.Volume = Math.Clamp(Player.Volume + Math.Sign(e.WheelDelta) * 5, 0, 100);
         };
