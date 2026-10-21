@@ -26,5 +26,9 @@ DzhiggaTV — тест субтитров
 if ($LASTEXITCODE -ne 0) { throw 'Не удалось создать MKV fixture.' }
 & $FfmpegPath -hide_banner -loglevel error -i $videoPath -map 0:v:0 -map 0:a:0 -c copy -f hls -hls_time 2 -hls_playlist_type vod -hls_segment_filename (Join-Path $hlsRoot 'segment-%03d.ts') -y (Join-Path $hlsRoot 'index.m3u8')
 if ($LASTEXITCODE -ne 0) { throw 'Не удалось создать HLS fixture.' }
+$anamorphicPath = Join-Path $fixtureRoot 'mini-aspect-4by3.mkv'
+& $FfmpegPath -hide_banner -loglevel error -f lavfi -i 'testsrc2=size=720x576:rate=25' -t 90 -vf 'setsar=16/15' -c:v libx264 -preset ultrafast -crf 28 -pix_fmt yuv420p -an -y $anamorphicPath
+if ($LASTEXITCODE -ne 0) { throw 'Не удалось создать анаморфный 4:3 fixture.' }
 Write-Output $videoPath
 Write-Output (Join-Path $hlsRoot 'index.m3u8')
+Write-Output $anamorphicPath

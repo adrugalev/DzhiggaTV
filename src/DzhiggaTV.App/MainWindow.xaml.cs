@@ -28,6 +28,9 @@ public partial class MainWindow : Window
     public MpvPlayer Player { get; } = new();
     public bool IsFullscreen { get; private set; }
     public bool IsMini { get; private set; }
+    internal bool IsMiniSizing { get; set; }
+    internal double MiniVideoAspectRatio { get; private set; } = 16d / 9;
+    internal Thickness MiniResizeFrame => new(MiniResizeBorder);
     public bool HasPlayback { get; private set; }
     private OverlayWindow? _overlay;
     private SportsEveningWindow? _sports;
@@ -91,6 +94,7 @@ public partial class MainWindow : Window
             Model.PlaybackStatus = e.Message;
             if (e.State == PlaybackState.Error) Model.Status = e.Message;
             HasPlayback = e.State is PlaybackState.Playing or PlaybackState.Paused or PlaybackState.Buffering or PlaybackState.Stalled or PlaybackState.Reconnecting or PlaybackState.Loading || IsArchivePlayback && e.State is PlaybackState.Idle or PlaybackState.Error;
+            if (e.State == PlaybackState.Playing) RefreshMiniVideoAspect();
             _overlay?.RefreshState();
         });
         Loaded += async (_, _) => await LoadedAsync();
@@ -114,6 +118,7 @@ public partial class MainWindow : Window
         _timer.Tick += async (_, _) =>
         {
             ClockText.Text = DateTime.Now.ToString("HH:mm"); _overlay?.Tick();
+            RefreshMiniVideoAspect();
             if (IsArchivePlayback && _overlay?.IsVisible != true) GetArchiveTimeline();
             if (_initialized && DateTime.Now.Second % 30 == 0) await GuardAsync(Model.UpdateNowNextAsync);
         };
@@ -389,6 +394,7 @@ public partial class MainWindow : Window
         if (Math.Abs(width - 560) < 1 && Math.Abs(height - 350) < 1) { width = MiniDefaultWidth; height = MiniDefaultHeight; }
         Width = Math.Clamp(width, MinWidth, Math.Max(MinWidth, SystemParameters.WorkArea.Width));
         Height = Math.Clamp(height, MinHeight, Math.Max(MinHeight, SystemParameters.WorkArea.Height));
+        RefreshMiniVideoAspect(fit: true);
         Left = Parse("mini.left", Math.Max(0, SystemParameters.WorkArea.Right - Width - 24)); Top = Parse("mini.top", Math.Max(0, SystemParameters.WorkArea.Bottom - Height - 24));
         ClampToScreen(); CollapseChrome(); WindowAppearance.Apply(this); _overlay?.Reveal(); QueueOverlayLayout();
     }
@@ -397,6 +403,21 @@ public partial class MainWindow : Window
         if (!IsMini) return;
         Topmost = !Topmost;
         if (_overlay is not null) _overlay.Topmost = Topmost;
+    }
+    internal void RefreshMiniVideoAspect(bool fit = false)
+    {
+        if (!IsMini || IsMiniSizing || _closing) return;
+        var aspect = Model.Setting("aspect", "Original") switch
+        {
+            "Fit16By9" => 16d / 9, "Fit4By3" => 4d / 3,
+            _ => Player.GetVideoAspectRatio() ?? MiniVideoAspectRatio
+        };
+        if (!double.IsFinite(aspect) || aspect <= 0 || !fit && Math.Abs(aspect - MiniVideoAspectRatio) < .0001) return;
+        MiniVideoAspectRatio = aspect;
+        var bounds = WindowBoundsGeometry.ResizeMini(new(Left, Top, Width, Height), 2, aspect, MiniResizeFrame,
+            new(MinWidth, MinHeight), new(SystemParameters.WorkArea.Width, SystemParameters.WorkArea.Height));
+        Width = bounds.Width; Height = bounds.Height;
+        ClampToScreen();
     }
     private double Parse(string key, double fallback) => double.TryParse(Model.Setting(key), CultureInfo.InvariantCulture, out var value) && double.IsFinite(value) ? value : fallback;
     private void RememberWindow() => _snapshot = new(Left, Top, ActualWidth, ActualHeight, WindowState);
@@ -420,7 +441,7 @@ public partial class MainWindow : Window
     public void RestoreWindow()
     {
         if (IsMini) { RememberMiniWindow(); _ = Model.SaveAsync(); }
-        IsMini = IsFullscreen = false; Topmost = false; WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize;
+        IsMini = IsFullscreen = IsMiniSizing = false; Topmost = false; WindowState = WindowState.Normal; WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResize;
         ApplyMainWindowChrome();
         MinWidth = 940; MinHeight = 600;
         Header.Visibility = Navigation.Visibility = ChannelPanel.Visibility = Splitter.Visibility = ViewingHeading.Visibility = ProgrammePanel.Visibility = StatusBar.Visibility = Visibility.Visible;

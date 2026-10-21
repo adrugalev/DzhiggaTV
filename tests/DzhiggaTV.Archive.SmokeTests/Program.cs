@@ -247,11 +247,12 @@ internal static class Program
     }
     private static async Task MiniWindowChecks(MainWindow main, OverlayWindow overlay, string[] args)
     {
-        main.Title = "DzhiggaTV · Проверка мини-плеера 1.5.6";
+        main.Title = "DzhiggaTV · Проверка мини-плеера 1.5.8";
         var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
         var originalState = main.WindowState;
         var root = (FrameworkElement)main.FindName("LayoutRoot");
         bool SizeIs(double width, double height) => Math.Abs(main.ActualWidth - width) < 1 && Math.Abs(main.ActualHeight - height) < 1;
+        bool VideoAspectIs(double aspect) => Math.Abs((main.ActualWidth - 16) / (main.ActualHeight - 16) - aspect) < .01;
         async Task Settled() => await Wait(() => overlay.IsVisible && Math.Abs(overlay.ActualWidth - (main.ActualWidth - 16)) < 2 &&
             Math.Abs(overlay.ActualHeight - (main.ActualHeight - 16)) < 2);
         main.ToggleMini(); await Settled();
@@ -268,7 +269,7 @@ internal static class Program
         Check(main.WindowState == originalState && root.Margin == SystemParameters.WindowResizeBorderThickness,
             "Returning to the maximized main window restores its original frame");
         main.ToggleMini(); await Settled();
-        Check(SizeIs(620, 360), "Reopening the mini-player restores its custom size");
+        Check(Math.Abs(main.ActualWidth - 620) < 1 && VideoAspectIs(16d / 9), "Reopening the mini-player restores its custom width and fits the video aspect");
         main.RestoreWindow(); main.Model.SetSetting("mini.width", 560.2); main.Model.SetSetting("mini.height", 349.8);
         main.ToggleMini(); await Settled();
         Check(SizeIs(440, 255), "The old automatic default migrates to the compact size");
@@ -276,9 +277,24 @@ internal static class Program
         Check(SizeIs(320, 196), "Resizing stops at the compact usable minimum");
         main.RestoreWindow(); main.Model.SetSetting("mini.width", 50000); main.Model.SetSetting("mini.height", 50000);
         main.ToggleMini(); await Settled();
-        Check(main.ActualWidth <= SystemParameters.WorkArea.Width && main.ActualHeight <= SystemParameters.WorkArea.Height,
+        Check(main.ActualWidth <= SystemParameters.WorkArea.Width + 1 && main.ActualHeight <= SystemParameters.WorkArea.Height + 1 && VideoAspectIs(16d / 9),
             "Invalid oversized saved bounds are clamped to the available desktop");
         main.RestoreWindow(); main.Model.SetSetting("mini.width", 440); main.Model.SetSetting("mini.height", 255);
+        await main.PlayLocalAsync(Path.GetFullPath("work/mini-aspect-4by3.mkv"));
+        await Wait(() => main.Player.State == PlaybackState.Playing && main.Player.GetVideoAspectRatio() is { } ratio && Math.Abs(ratio - 4d / 3) < .001);
+        main.ToggleMini(); await Settled();
+        Check(VideoAspectIs(4d / 3) && host.VideoHandle == handle,
+            "An anamorphic 720x576 stream opens at its real 4:3 display aspect instead of its encoded pixel ratio");
+        await main.PlayAsync(main.Model.AllChannels.Single(c => c.Id == "archive"));
+        await Wait(() => main.Player.State == PlaybackState.Playing && VideoAspectIs(16d / 9));
+        Check(host.VideoHandle == handle && Math.Abs(main.ActualWidth - 440) < 1,
+            "Changing from 4:3 to 16:9 while mini automatically refits the height and preserves width and native playback");
+        if (args.Contains("--visual-fourthree"))
+        {
+            await main.PlayLocalAsync(Path.GetFullPath("work/mini-aspect-4by3.mkv"));
+            await Wait(() => main.Player.State == PlaybackState.Playing && VideoAspectIs(4d / 3));
+        }
+        main.RestoreWindow();
         main.ToggleMini(); main.Left = 100; main.Top = 100; await Settled();
         if (args.Contains("--visual-only"))
         {

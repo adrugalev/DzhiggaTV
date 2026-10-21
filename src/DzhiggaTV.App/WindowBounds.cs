@@ -21,6 +21,28 @@ internal static class WindowBounds
         window.Closed += (_, _) => source?.RemoveHook(Hook);
         IntPtr Hook(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if (window is MainWindow { IsMini: true } main)
+            {
+                if (message == 0x0231) main.IsMiniSizing = true; // WM_ENTERSIZEMOVE
+                else if (message == 0x0232) { main.IsMiniSizing = false; main.RefreshMiniVideoAspect(); } // WM_EXITSIZEMOVE
+                else if (message == 0x0214) // WM_SIZING: constrain the native drag rectangle before Windows applies it.
+                {
+                    var miniScale = source?.CompositionTarget?.TransformToDevice ?? Matrix.Identity;
+                    var frame = main.MiniResizeFrame;
+                    frame = new(frame.Left * miniScale.M11, frame.Top * miniScale.M22, frame.Right * miniScale.M11, frame.Bottom * miniScale.M22);
+                    var miniMonitor = MonitorFromWindow(hwnd, 2);
+                    var miniInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+                    var maximum = miniMonitor != IntPtr.Zero && GetMonitorInfo(miniMonitor, ref miniInfo) ? miniInfo.Work.ToRect().Size :
+                        new Size(SystemParameters.WorkArea.Width * miniScale.M11, SystemParameters.WorkArea.Height * miniScale.M22);
+                    var rectangle = Marshal.PtrToStructure<NativeRect>(lParam);
+                    var fitted = WindowBoundsGeometry.ResizeMini(rectangle.ToRect(), wParam.ToInt32(), main.MiniVideoAspectRatio, frame,
+                        new(main.MinWidth * miniScale.M11, main.MinHeight * miniScale.M22), maximum);
+                    rectangle.Left = (int)Math.Round(fitted.Left); rectangle.Top = (int)Math.Round(fitted.Top);
+                    rectangle.Right = (int)Math.Round(fitted.Right); rectangle.Bottom = (int)Math.Round(fitted.Bottom);
+                    Marshal.StructureToPtr(rectangle, lParam, false);
+                    handled = true; return new IntPtr(1);
+                }
+            }
             if (message != 0x0024 || mini?.Invoke() == true) return IntPtr.Zero; // WM_GETMINMAXINFO
             var monitor = MonitorFromWindow(hwnd, 2);
             var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };

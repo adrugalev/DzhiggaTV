@@ -56,6 +56,7 @@ internal static class Program
             ("Playing a guide channel selects it and reveals it through conflicting library filters", PlaybackSelectionAsync),
             ("Library search finds current and future titles across all channels without stale or restricted results", ProgrammeSearchAsync),
             ("Maximized bounds respect taskbars and secondary monitors while F11 fills the monitor", WindowBoundsAsync),
+            ("Mini-player resizing preserves display aspect, native anchors, DPI borders and size limits at all edges", MiniAspectResizeAsync),
             ("Fullscreen controls ignore pointer jitter while deliberate movement reveals them", PointerRevealAsync)
         ];
         var failed = 0;
@@ -549,6 +550,33 @@ internal static class Program
         try { await model.Store.SearchUpcomingProgrammesAsync("Финал", ["search-guide-0"], now, cancelled.Token); throw new InvalidOperationException("Search ignored cancellation."); }
         catch (OperationCanceledException) { }
         Assert((await model.Store.SearchUpcomingProgrammesAsync("*** \"", ["search-guide-0"], now)).Count == 0, "Punctuation must not be interpreted as FTS operators.");
+    }
+
+    private static Task MiniAspectResizeAsync()
+    {
+        foreach (double aspect in new[] { 16d / 9, 4d / 3, 9d / 16, 21d / 9 })
+        foreach (double dpi in new[] { 1d, 1.25, 1.75, 2d })
+        foreach (int edge in Enumerable.Range(1, 8))
+        foreach (var size in new[] { new System.Windows.Size(640, 380), new(90, 80), new(8000, 8000) })
+        {
+            var proposed = new System.Windows.Rect(-1200 * dpi, -400 * dpi, size.Width * dpi, size.Height * dpi);
+            var result = WindowBoundsGeometry.ResizeMini(proposed, edge, aspect, new(8 * dpi), new(320 * dpi, 196 * dpi), new(1920 * dpi, 1080 * dpi));
+            Assert(Math.Abs((result.Width - 16 * dpi) / (result.Height - 16 * dpi) - aspect) < 1e-8,
+                "The video area, excluding the resize frame, must retain the source aspect for every drag direction and DPI.");
+            Assert(result.Width >= 320 * dpi - .001 && result.Height >= 196 * dpi - .001 && result.Width <= 1920 * dpi + .001 && result.Height <= 1080 * dpi + .001,
+                "Both minimum and maximum bounds must hold without distorting the aspect.");
+            if (edge is 1 or 4 or 7) Assert(Math.Abs(result.Right - proposed.Right) < .001, "A left drag must anchor the opposite right edge.");
+            if (edge is 2 or 5 or 8) Assert(Math.Abs(result.Left - proposed.Left) < .001, "A right drag must anchor the opposite left edge.");
+            if (edge is 3 or 4 or 5) Assert(Math.Abs(result.Bottom - proposed.Bottom) < .001, "A top drag must anchor the opposite bottom edge.");
+            if (edge is 6 or 7 or 8) Assert(Math.Abs(result.Top - proposed.Top) < .001, "A bottom drag must anchor the opposite top edge.");
+            if (edge is 1 or 2) Assert(Math.Abs(result.Top + result.Height / 2 - proposed.Top - proposed.Height / 2) < .001, "Side resizing must retain the vertical centre.");
+            if (edge is 3 or 6) Assert(Math.Abs(result.Left + result.Width / 2 - proposed.Left - proposed.Width / 2) < .001, "Vertical resizing must retain the horizontal centre.");
+        }
+        var original = new System.Windows.Rect(100, 50, 440, 255);
+        foreach (double invalid in new[] { double.NaN, double.PositiveInfinity, 0, -1 })
+            Assert(WindowBoundsGeometry.ResizeMini(original, 8, invalid, new(8), new(320, 196), new(1920, 1080)) == original,
+                "Missing or invalid video metadata must not corrupt native coordinates.");
+        return Task.CompletedTask;
     }
 
     private static Task WindowBoundsAsync()
