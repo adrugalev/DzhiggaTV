@@ -38,6 +38,7 @@ internal static class Program
             ("Repeated favorite toggles remove the row immediately and persist the off state", FavoriteToggleAsync),
             ("Programme countdown handles missing data, hour boundaries and expired programmes", ProgrammeCountdownAsync),
             ("Main programme cards browse retained history independently of playback and discard obsolete requests", ProgrammeBrowsingAsync),
+            ("Archive preview and seek agree across midnight and clamp to playable boundaries", ArchiveSeekTimeAsync),
             ("First EPG refresh replaces the missing-logo fallback immediately", MissingGuideThenRefreshAsync),
             ("Remapping a loaded channel replaces its programme and logo", RemapAsync),
             ("Removing an automatic mapping clears the previous programme", RemoveMappingAsync),
@@ -63,6 +64,24 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static Task ArchiveSeekTimeAsync()
+    {
+        var start = new DateTimeOffset(2026, 10, 20, 23, 50, 0, TimeSpan.FromHours(3));
+        var timeline = new ArchiveTimeline(start, start.AddMinutes(40), start.AddMinutes(10), true);
+        if (timeline.OffsetAt(11, 1000, 22) != 0 || timeline.OffsetAt(500, 1000, 22) != 1200 ||
+            timeline.OffsetAt(989, 1000, 22) != 2400 || timeline.OffsetAt(-50, 1000, 22) != 0 ||
+            timeline.OffsetAt(1200, 1000, 22) != 2400 || timeline.OffsetAt(1, 10, 22) != 0 ||
+            (timeline with { Position = start.AddMinutes(30) }).OffsetAt(500, 1000, 22) != 1200)
+            throw new InvalidOperationException("Click and hover positions depend on the old thumb position.");
+        if (timeline.TimeAt(1200) != start.AddMinutes(20) || timeline.TimeAt(1200).Day != 21 ||
+            timeline.TimeAt(-10) != start || timeline.TimeAt(double.NaN) != start ||
+            timeline.TimeAt(2400) != timeline.End.AddSeconds(-1) || timeline.TimeAt(9000) != timeline.End.AddSeconds(-1))
+            throw new InvalidOperationException("Seek preview and playback boundaries disagree.");
+        if ((timeline with { End = start.AddMilliseconds(500) }).TimeAt(10) != start)
+            throw new InvalidOperationException("A short range must never seek before its start.");
+        return Task.CompletedTask;
     }
 
     private static async Task ProgrammeBrowsingAsync()

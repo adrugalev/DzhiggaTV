@@ -85,7 +85,7 @@
        <Setter Property="FontSize" Value="16"/><Setter Property="FontWeight" Value="SemiBold"/>
        <Setter Property="LineHeight" Value="20"/><Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
        <Setter Property="TextWrapping" Value="Wrap"/><Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-       <Setter Property="MaxHeight" Value="40"/><Setter Property="Margin" Value="0,3,0,3"/>
+       <Setter Property="MaxHeight" Value="40"/><Setter Property="Margin" Value="0,2,0,2"/>
       </Style>
       <Style x:Key="ProgrammeDescription" TargetType="TextBlock">
        <Setter Property="FontSize" Value="12"/><Setter Property="LineHeight" Value="18"/><Setter Property="LineStackingStrategy" Value="BlockLineHeight"/>
@@ -107,26 +107,39 @@
        <Setter Property="TextTrimming" Value="CharacterEllipsis"/><Setter Property="VerticalAlignment" Value="Center"/>
        <Setter Property="Margin" Value="0,1,0,1"/>
       </Style>
-      <Style x:Key="ProgrammeArrow" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-       <Setter Property="Width" Value="22"/><Setter Property="Height" Value="20"/><Setter Property="FontSize" Value="17"/>
-       <Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,3,0"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/>
+      <Style x:Key="ProgrammeHistoryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+       <Setter Property="MinWidth" Value="80"/><Setter Property="Height" Value="28"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="SemiBold"/>
+       <Setter Property="Padding" Value="10,0"/><Setter Property="Margin" Value="0"/>
+       <Setter Property="Background" Value="{DynamicResource PanelBrush}"/><Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+       <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/><Setter Property="BorderThickness" Value="1"/>
        <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+       <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource BackgroundBrush}"/></Trigger>
+        <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="Background" Value="{DynamicResource AccentBrush}"/><Setter Property="Foreground" Value="{DynamicResource BackgroundBrush}"/></Trigger>
+       </Style.Triggers>
       </Style>
      </Grid.Resources>
-     <Border x:Name="CurrentProgrammeCard" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="10" Padding="13,9">
-      <Grid><Grid.RowDefinitions><RowDefinition Height="20"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-       <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <StackPanel Orientation="Horizontal">
+     <Border x:Name="CurrentProgrammeCard" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="10" Padding="13,7">
+      <Grid><Grid.RowDefinitions><RowDefinition Height="Auto" MinHeight="20"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding PlaybackProgrammeLabel}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
          <StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding HasArchive}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>
-         <Button x:Name="PreviousProgrammeButton" Content="‹" Style="{StaticResource ProgrammeArrow}" Click="PreviousProgramme_Click" IsEnabled="{Binding CanGoBack}" ToolTip="{Binding BackHint}" AutomationProperties.Name="Предыдущая передача"/>
-         <Button x:Name="FollowingProgrammeButton" Content="›" Click="FollowingProgramme_Click" IsEnabled="{Binding CanGoForward}" ToolTip="Следующая передача" AutomationProperties.Name="Следующая передача"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource ProgrammeArrow}"><Style.Triggers><DataTrigger Binding="{Binding IsBrowsing}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Button.Style></Button>
+         <Button x:Name="PreviousProgrammeButton" Style="{StaticResource ProgrammeHistoryButton}" Click="PreviousProgramme_Click" IsEnabled="{Binding CanGoBack}" ToolTip="{Binding BackHint}" AutomationProperties.Name="Предыдущая передача">
+          <StackPanel Orientation="Horizontal"><Path Data="M 6,0 L 1,5 L 6,10 M 1,5 L 11,5" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="12" Height="12" VerticalAlignment="Center" Margin="0,0,7,0"/><TextBlock Text="Ранее" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" VerticalAlignment="Center"/></StackPanel>
+         </Button>
+         <Button x:Name="FollowingProgrammeButton" Click="FollowingProgramme_Click" IsEnabled="{Binding CanGoForward}" ToolTip="Следующая передача" AutomationProperties.Name="Следующая передача">
+          <Button.Style><Style TargetType="Button" BasedOn="{StaticResource ProgrammeHistoryButton}"><Setter Property="MinWidth" Value="28"/><Setter Property="Width" Value="28"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="5,0,0,0"/><Style.Triggers><DataTrigger Binding="{Binding IsBrowsing}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Button.Style>
+          <Path Data="M 6,0 L 11,5 L 6,10 M 1,5 L 11,5" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+         </Button>
         </StackPanel>
-        <TextBlock Grid.Column="1" Text="{Binding PlaybackProgrammeLabel}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="2,0,4,0"/>
-        <Button Grid.Column="2" Content="Программа  →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="5,0" Margin="0" FontSize="10" Height="18" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Открыть телепрограмму"/>
        </Grid>
        <TextBlock Grid.Row="1" Text="{Binding CurrentTitle}" Style="{StaticResource ProgrammeTitle}"/>
-       <TextBlock Grid.Row="2" Text="{Binding CurrentTime}" Foreground="{DynamicResource MutedBrush}" FontSize="11"/>
-       <TextBlock x:Name="CurrentProgrammeDescription" Grid.Row="3" Text="{Binding CurrentDescriptionPreview}" Style="{StaticResource ProgrammeDescription}"/>
+       <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding CurrentTime}" Foreground="{DynamicResource MutedBrush}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="0,0,4,0"/>
+        <Button Grid.Column="1" Content="Программа  →" Click="Guide_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="5,0" Margin="0" FontSize="10" Height="16" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Открыть телепрограмму"/>
+       </Grid>
+       <TextBlock x:Name="CurrentProgrammeDescription" Grid.Row="3" Text="{Binding CurrentDescriptionPreview}" Style="{StaticResource ProgrammeDescription}" Margin="0,4,0,0"/>
        <Grid Grid.Row="4" Height="20" Margin="0,2,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <ProgressBar Value="{Binding CurrentProgress, Mode=OneWay}" Margin="0,0,12,0" VerticalAlignment="Center"><ProgressBar.Style><Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}"><Style.Triggers><DataTrigger Binding="{Binding IsBrowsing}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></ProgressBar.Style></ProgressBar>
         <StackPanel Orientation="Horizontal"><StackPanel.Style><Style TargetType="StackPanel"><Style.Triggers><DataTrigger Binding="{Binding IsBrowsing}" Value="False"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>

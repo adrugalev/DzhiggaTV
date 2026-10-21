@@ -162,8 +162,25 @@ public sealed class MpvPlayer : IDisposable
     public PlaybackTimeline GetTimeline()
     {
         double? position = ReadDouble("time-pos");
-        lock (_requestGate) if (_request is { Duration: not null } request && _activeGeneration == request.Generation && _loadedEntryId == _activeEntryId && position >= 0) request.ResumePosition = position.Value;
+        lock (_requestGate)
+        {
+            if (_request is not { } request || _activeGeneration != request.Generation || _loadedEntryId != _activeEntryId) position = null;
+            else if (request.Duration is not null && position >= 0) request.ResumePosition = position.Value;
+        }
         return new(position, ReadDouble("duration"), ReadString("seekable") == "yes");
+    }
+    /// <summary>An IPTV archive may expose only a short, rolling HLS window even when seekable is yes.
+    /// Outside confirmed cached ranges the caller must reopen the provider URL at the desired UTC time.</summary>
+    public async Task<bool> SeekWithinCacheAsync(double seconds)
+    {
+        if (!double.IsFinite(seconds) || seconds < 0) return false;
+        if (ReadNode("demuxer-cache-state") is not Dictionary<string, object?> cache ||
+            cache.GetValueOrDefault("seekable-ranges") is not List<object?> ranges ||
+            !ranges.OfType<Dictionary<string, object?>>().Any(range =>
+                range.GetValueOrDefault("start") is double start && range.GetValueOrDefault("end") is double end &&
+                seconds >= start && seconds < end)) return false;
+        try { return await SeekAsync(seconds).ConfigureAwait(false); }
+        catch (MpvException) { return false; }
     }
     public async Task<bool> SeekAsync(double seconds)
     {
@@ -357,6 +374,11 @@ public sealed class MpvPlayer : IDisposable
         PlaybackRequest? request;
         lock (_requestGate) request = _activeGeneration == _generation && _loadedEntryId == _activeEntryId ? _request : null;
         if (request == null || !IsCurrent(request)) return;
+        RefreshLoadedState(request);
+    }
+
+    private void RefreshLoadedState(PlaybackRequest request)
+    {
         if (ReadString("paused-for-cache") == "yes") SetState(PlaybackState.Buffering, "Буферизация…", request);
         else if (ReadString("pause") == "yes") SetState(PlaybackState.Paused, "Пауза", request);
         else if (_loadedEntryId >= 0) SetState(PlaybackState.Playing, "В эфире", request);
@@ -366,7 +388,7 @@ public sealed class MpvPlayer : IDisposable
     {
         if (!IsCurrent(request)) return;
         Interlocked.Exchange(ref _playingSince, Stopwatch.GetTimestamp());
-        SetState(PlaybackState.Playing, "В эфире", request);
+        RefreshLoadedState(request);
     }
 
     private void HandleEnded(MpvEndFile ended)

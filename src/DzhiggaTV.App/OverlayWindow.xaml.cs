@@ -1,6 +1,7 @@
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using DzhiggaTV.Player;
 using DzhiggaTV.Core;
@@ -15,7 +16,7 @@ public partial class OverlayWindow : Window
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
     private Programme? _descriptionProgramme;
     private bool _volumeReady, _syncingVolume;
-    private bool _syncingSeek, _seeking;
+    private bool _syncingSeek, _seeking, _mouseSeeking;
     private ArchiveTimeline? _archiveTimeline;
     private string? _seekChannelId;
     private (double Width, double Height, Visibility Metadata)? _compactLayout;
@@ -24,10 +25,13 @@ public partial class OverlayWindow : Window
         _main = main;
         var volume = main.Player.Volume;
         InitializeComponent();
+        // Slider's move-to-point class handler marks track presses handled before XAML handlers run.
+        ArchiveSeekSlider.AddHandler(PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler(ArchiveSeek_Down), true);
+        ArchiveSeekSlider.AddHandler(PreviewMouseLeftButtonUpEvent, new MouseButtonEventHandler(ArchiveSeek_Up), true);
         VolumeSlider.Value = volume; _volumeReady = true;
         Loaded += (_, _) => { RefreshHoverState(); UpdateVisibility(); };
         SizeChanged += (_, _) => { UpdateCompactLayout(); RefreshHoverState(); UpdateVisibility(); };
-        IsVisibleChanged += (_, _) => { if (!IsVisible) _seeking = false; RefreshHoverState(); UpdateVisibility(); };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) CancelSeek(); RefreshHoverState(); UpdateVisibility(); };
         ControlsPanel.SizeChanged += (_, _) => FullscreenProgrammeInfo.Margin = new(16, 0, 0, Math.Max(48, ControlsPanel.ActualHeight + 12));
     }
     public void Reveal()
@@ -91,6 +95,7 @@ public partial class OverlayWindow : Window
             Drawer.Visibility != Visibility.Visible && !_menuOpen && !keyboardControls && !readingDescription &&
             DateTime.UtcNow - _lastMove > TimeSpan.FromSeconds(3.5);
         ControlsPanel.Visibility = _menuOpen || keyboardControls || (_pointerInside && !idle) ? Visibility.Visible : Visibility.Collapsed;
+        if (ControlsPanel.Visibility != Visibility.Visible) HideSeekPreview();
         MiniWindowActions.Visibility = _main.IsMini ? ControlsPanel.Visibility : Visibility.Collapsed;
         MiniPinButton.Foreground = (System.Windows.Media.Brush)FindResource(_main.Topmost ? "AccentBrush" : "TextBrush");
         MiniPinButton.ToolTip = _main.Topmost ? "Поверх всех окон · выключить" : "Закрепить поверх всех окон";
@@ -155,6 +160,7 @@ public partial class OverlayWindow : Window
     }
     private async void Overlay_KeyDown(object sender, KeyEventArgs e)
     {
+        if (ArchiveSeekSlider.IsKeyboardFocusWithin && IsSeekKey(e.Key)) return;
         if ((FullscreenSynopsisScroll.IsKeyboardFocusWithin || FullscreenMetadataScroll.IsKeyboardFocusWithin) &&
             e.Key is Key.Up or Key.Down or Key.PageUp or Key.PageDown or Key.Home or Key.End) return;
         if (e.Key == Key.Tab)
@@ -177,10 +183,11 @@ public partial class OverlayWindow : Window
     private async void Pause_Click(object sender, RoutedEventArgs e) { await _main.GuardAsync(_main.TogglePlaybackPauseAsync); RefreshState(); }
     private void RefreshArchiveTimeline()
     {
+        if (_seeking && _seekChannelId != _main.Model.Active?.Id) CancelSeek();
         if (_seeking) return;
         _archiveTimeline = _main.GetArchiveTimeline();
         ArchiveTimelinePanel.Visibility = _archiveTimeline is null ? Visibility.Collapsed : Visibility.Visible;
-        if (_archiveTimeline is not { } timeline) return;
+        if (_archiveTimeline is not { } timeline) { HideSeekPreview(); return; }
         _syncingSeek = true;
         try { ArchiveSeekSlider.Maximum = Math.Max(1, (timeline.End - timeline.Start).TotalSeconds); ArchiveSeekSlider.Value = Math.Clamp((timeline.Position - timeline.Start).TotalSeconds, 0, ArchiveSeekSlider.Maximum); }
         finally { _syncingSeek = false; }
@@ -188,28 +195,85 @@ public partial class OverlayWindow : Window
         ReturnLiveButton.Visibility = timeline.IsArchive ? Visibility.Visible : Visibility.Collapsed;
         if (timeline.IsArchive) ShowSeekTime(timeline.Position);
         else ArchivePositionText.Text = $"С начала передачи · {timeline.Start.ToLocalTime():HH:mm} — {timeline.End.ToLocalTime():HH:mm}";
+        if (ArchiveSeekSlider.IsMouseOver) UpdateSeekPreview(Mouse.GetPosition(ArchiveSeekSlider));
     }
     private void ShowSeekTime(DateTimeOffset time)
     {
         if (_archiveTimeline is not { } timeline) return;
         ArchivePositionText.Text = $"{time.ToLocalTime():dd.MM · HH:mm:ss}   /   {timeline.End.ToLocalTime():HH:mm:ss}";
     }
-    private void ArchiveSeek_Down(object sender, MouseButtonEventArgs e) { _seeking = true; _seekChannelId = _main.Model.Active?.Id; _lastMove = DateTime.UtcNow; }
-    private async void ArchiveSeek_Up(object sender, MouseButtonEventArgs e) => await CommitSeekAsync();
+    private void ArchiveSeek_Down(object sender, MouseButtonEventArgs e)
+    {
+        if (_archiveTimeline is null) return;
+        e.Handled = true;
+        ArchiveSeekSlider.Focus();
+        _seeking = _mouseSeeking = true; _seekChannelId = _main.Model.Active?.Id; _lastMove = DateTime.UtcNow;
+        if (!ArchiveSeekSlider.CaptureMouse()) { CancelSeek(); return; }
+        UpdateSeekPreview(e.GetPosition(ArchiveSeekSlider), changeValue: true);
+    }
+    private async void ArchiveSeek_Up(object sender, MouseButtonEventArgs e)
+    {
+        if (!_mouseSeeking) return;
+        e.Handled = true;
+        UpdateSeekPreview(e.GetPosition(ArchiveSeekSlider), changeValue: true);
+        _mouseSeeking = false;
+        ArchiveSeekSlider.ReleaseMouseCapture();
+        if (!ArchiveSeekSlider.IsMouseOver) HideSeekPreview();
+        await CommitSeekAsync();
+    }
+    private void ArchiveSeek_Move(object sender, MouseEventArgs e) => UpdateSeekPreview(e.GetPosition(ArchiveSeekSlider), _mouseSeeking);
+    private void ArchiveSeek_Leave(object sender, MouseEventArgs e) { if (!_mouseSeeking) HideSeekPreview(); }
+    private void ArchiveSeek_LostCapture(object sender, MouseEventArgs e) { if (_mouseSeeking) { CancelSeek(); RefreshState(); } }
+    private void ArchiveSeek_LostFocus(object sender, KeyboardFocusChangedEventArgs e) { if (!_mouseSeeking) { CancelSeek(); RefreshState(); } }
+    private void HideSeekPreview() { if (ArchiveSeekPreview is null) return; ArchiveSeekPreview.IsOpen = false; ArchiveSeekMarker.Visibility = Visibility.Collapsed; }
+    private void CancelSeek()
+    {
+        _mouseSeeking = _seeking = false; _seekChannelId = null;
+        if (ArchiveSeekSlider?.IsMouseCaptured == true) ArchiveSeekSlider.ReleaseMouseCapture();
+        HideSeekPreview();
+    }
+    private void UpdateSeekPreview(Point point, bool changeValue = false)
+    {
+        if (_archiveTimeline is not { } timeline || ArchiveSeekSlider.Template.FindName("PART_Track", ArchiveSeekSlider) is not Track track) return;
+        // Map absolute coordinates, independently of a thumb whose layout can lag behind rapid input.
+        var value = timeline.OffsetAt(ArchiveSeekSlider.TranslatePoint(point, track).X, track.ActualWidth, track.Thumb.ActualWidth);
+        value = Math.Clamp(value, ArchiveSeekSlider.Minimum, ArchiveSeekSlider.Maximum);
+        if (changeValue) ArchiveSeekSlider.Value = value;
+        var time = timeline.TimeAt(value).ToLocalTime();
+        ArchiveSeekPreviewTime.Text = time.ToString("HH:mm:ss");
+        ArchiveSeekPreviewDate.Text = time.ToString("dd.MM.yyyy");
+        ArchiveSeekPreview.PlacementTarget = ArchiveSeekSlider;
+        ArchiveSeekPreview.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        ArchiveSeekPreview.HorizontalOffset = Math.Clamp(point.X - ArchiveSeekPreview.DesiredSize.Width / 2, 0, Math.Max(0, ArchiveSeekSlider.ActualWidth - ArchiveSeekPreview.DesiredSize.Width));
+        ArchiveSeekPreview.VerticalOffset = -ArchiveSeekPreview.DesiredSize.Height - 3;
+        ArchiveSeekPreview.IsOpen = IsVisible && ControlsPanel.IsVisible;
+        ArchiveSeekMarker.Margin = new(Math.Clamp(point.X, 11, Math.Max(11, ArchiveSeekSlider.ActualWidth - 11)), 0, 0, 0);
+        ArchiveSeekMarker.Visibility = Visibility.Visible;
+        _lastMove = DateTime.UtcNow;
+    }
+    private static bool IsSeekKey(Key key) => key is Key.Left or Key.Right or Key.Home or Key.End or Key.PageUp or Key.PageDown;
     private void ArchiveSeek_KeyDown(object sender, KeyEventArgs e)
     {
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && e.Key is Key.Left or Key.Right)
-        { ArchiveSeekSlider.Value = Math.Clamp(ArchiveSeekSlider.Value + (e.Key == Key.Left ? -60 : 60), 0, ArchiveSeekSlider.Maximum); e.Handled = true; }
+        if (!IsSeekKey(e.Key) || _archiveTimeline is null) return;
+        e.Handled = true; _seeking = true; _seekChannelId = _main.Model.Active?.Id; _lastMove = DateTime.UtcNow;
+        double step = Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || e.Key is Key.PageUp or Key.PageDown ? 60 : 10;
+        ArchiveSeekSlider.Value = e.Key switch
+        {
+            Key.Home => ArchiveSeekSlider.Minimum, Key.End => ArchiveSeekSlider.Maximum,
+            Key.Left or Key.PageDown => Math.Max(ArchiveSeekSlider.Minimum, ArchiveSeekSlider.Value - step),
+            _ => Math.Min(ArchiveSeekSlider.Maximum, ArchiveSeekSlider.Value + step)
+        };
     }
     private async void ArchiveSeek_KeyUp(object sender, KeyEventArgs e)
-    { if (e.Key is Key.Left or Key.Right or Key.Home or Key.End) await CommitSeekAsync(); }
+    { if (IsSeekKey(e.Key)) { e.Handled = true; await CommitSeekAsync(); } }
     private void ArchiveSeek_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
-    { if (!_syncingSeek && _archiveTimeline is { } timeline) { if (!_seeking) _seekChannelId = _main.Model.Active?.Id; _seeking = true; ShowSeekTime(timeline.Start.AddSeconds(e.NewValue)); } }
+    { if (!_syncingSeek && _archiveTimeline is { } timeline) { if (!_seeking) _seekChannelId = _main.Model.Active?.Id; _seeking = true; ShowSeekTime(timeline.TimeAt(e.NewValue)); } }
     private async Task CommitSeekAsync()
     {
+        if (!_seeking) return;
         var timeline = _archiveTimeline; var offset = ArchiveSeekSlider.Value;
         _seeking = false;
-        if (timeline is not null && _seekChannelId == _main.Model.Active?.Id) await _main.GuardAsync(() => _main.SeekArchiveToAsync(timeline.Start.AddSeconds(offset)));
+        if (timeline is not null && _seekChannelId == _main.Model.Active?.Id) await _main.GuardAsync(() => _main.SeekArchiveToAsync(timeline.TimeAt(offset)));
         _lastMove = DateTime.UtcNow; RefreshState();
     }
     private async void ArchiveTime_Click(object sender, RoutedEventArgs e) => await _main.ChooseArchiveTimeAsync();

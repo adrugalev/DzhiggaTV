@@ -28,7 +28,7 @@ internal static class Program
         {
             int result = 0; MainWindow? main = null;
             try { await Wait(() => app.MainWindow is MainWindow); main = (MainWindow)app.MainWindow; await Run(main, args, server); }
-            catch (Exception error) { Console.WriteLine(JsonSerializer.Serialize(new { failure = error.GetType().Name, stack = error.StackTrace, passed = Passed })); result = 1; }
+            catch (Exception error) { Console.WriteLine(JsonSerializer.Serialize(new { failure = error.GetType().Name, stack = error.StackTrace, state = main?.Player.State.ToString(), paused = main?.Player.IsPaused, native = main?.Player.GetTimeline(), archive = main?.GetArchiveTimeline(), passed = Passed })); result = 1; }
             finally { if (main is not null) { main.Close(); await Task.Delay(600); } app.Shutdown(result); }
         };
         return app.Run();
@@ -89,6 +89,24 @@ internal static class Program
         await Wait(() => main.GetArchiveTimeline()!.Position is var at && at >= Past.Start.AddSeconds(9) && at < Past.Start.AddSeconds(15));
         Check(server.ArchiveRequests > beforeReload && main.Player.IsPaused,
             "Seeking before the loaded archive rebuilds its provider URL while preserving pause");
+        await main.SeekArchiveToAsync(Past.Start.AddMinutes(5));
+        await Wait(() => main.Player.State == PlaybackState.Paused && main.Player.GetTimeline().Position is >= 0 and < 5);
+        Check(server.LastArchiveStart == Past.Start.AddMinutes(5).ToUnixTimeSeconds() &&
+            main.GetArchiveTimeline()!.Position >= Past.Start.AddMinutes(5),
+            "Forward seeking beyond cached media reopens the provider at the exact requested UTC, after a backward seek");
+        await main.SeekArchiveToAsync(Past.Start.AddSeconds(15));
+        await Wait(() => main.Player.State == PlaybackState.Paused && main.Player.GetTimeline().Position is >= 0 and < 5);
+        await main.SeekArchiveToAsync(Past.Start.AddMinutes(4));
+        await Wait(() => main.Player.State == PlaybackState.Paused && main.Player.GetTimeline().Position is >= 0 and < 5);
+        Check(server.LastArchiveStart == Past.Start.AddMinutes(4).ToUnixTimeSeconds() && host.VideoHandle == handle,
+            "Repeated backward and forward archive jumps preserve pause, their final target and the video surface");
+        var earlierSeek = main.SeekArchiveToAsync(Past.Start.AddMinutes(7));
+        var latestSeek = main.SeekArchiveToAsync(Past.Start.AddSeconds(12));
+        try { await Task.WhenAll(earlierSeek, latestSeek); } catch (OperationCanceledException) { }
+        await Wait(() => main.Player.State == PlaybackState.Paused && main.Player.GetTimeline().Position is >= 0 and < 5);
+        Check(server.LastArchiveStart == Past.Start.AddSeconds(12).ToUnixTimeSeconds() &&
+            main.GetArchiveTimeline()!.Position is var finalAt && finalAt >= Past.Start.AddSeconds(12) && finalAt < Past.Start.AddSeconds(17),
+            "The latest of overlapping archive seek requests wins without an obsolete URL reload");
         await main.PlayArchiveAtAsync(channel, SeedNow.AddHours(-3));
         await Wait(() => main.Player.State == PlaybackState.Playing);
         Check(main.IsArchivePlayback && main.Model.CurrentTitle.StartsWith("Архив · ", StringComparison.Ordinal) && main.Model.PlayingNext is null,
@@ -141,17 +159,23 @@ internal static class Program
         int providerIndex = Array.IndexOf(args, "--provider-playlist");
         if (providerIndex >= 0 && providerIndex + 1 < args.Length)
         {
-            var provider = (await M3uParser.ParseFileAsync(args[providerIndex + 1], "provider-test")).First(c => Catchup.From(c)?.Days == 7 &&
-                (c.Name.Contains("Москва 24", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("РБК", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("BBC", StringComparison.OrdinalIgnoreCase)));
+            var provider = (await M3uParser.ParseFileAsync(args[providerIndex + 1], "provider-test")).Where(c => Catchup.From(c)?.Days == 7 &&
+                (c.Name.Contains("Москва 24", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("РБК", StringComparison.OrdinalIgnoreCase) || c.Name.Contains("BBC", StringComparison.OrdinalIgnoreCase)))
+                .OrderByDescending(c => c.Name.Contains("Москва 24", StringComparison.OrdinalIgnoreCase)).First();
             await main.Model.Store.SavePlaylistAsync(new("provider-test", "Private archive smoke", "local-only"), [provider]); await main.Model.ReloadAsync();
             var actual = main.Model.AllChannels.Single(c => c.Id == provider.Id); var start = DateTimeOffset.Now.AddHours(-2);
             var programme = new Programme("provider", "Проверка архива провайдера", start, start.AddMinutes(3));
             await main.PlayArchiveAsync(actual, programme);
             await Wait(() => main.Player.State == PlaybackState.Playing && main.Player.GetStatistics().Width > 0, 30000);
             await main.SeekArchiveToAsync(start.AddSeconds(30));
-            await Wait(() => main.GetArchiveTimeline()!.Position >= start.AddSeconds(28), 20000);
+            await Wait(() => main.Player.State == PlaybackState.Playing && main.Player.GetTimeline().Position is >= 0 && main.GetArchiveTimeline()!.Position >= start.AddSeconds(28), 20000);
             Check(main.Player.State == PlaybackState.Playing && main.GetArchiveTimeline()!.Position < start.AddSeconds(40),
                 "The private provider decodes a real two-hour-old archive and seeks to the requested position");
+            await main.SeekArchiveToAsync(start.AddSeconds(5));
+            await Wait(() => main.Player.State == PlaybackState.Playing && main.GetArchiveTimeline()!.Position is var at && at >= start.AddSeconds(4) && at < start.AddSeconds(12), 20000);
+            await main.SeekArchiveToAsync(start.AddSeconds(120));
+            await Wait(() => main.Player.State == PlaybackState.Playing && main.GetArchiveTimeline()!.Position is var at && at >= start.AddSeconds(119) && at < start.AddSeconds(128), 20000);
+            Check(main.Player.GetStatistics().Width > 0, "Real provider archive seeks forward two minutes after rewinding, with decoded video at the chosen time");
         }
         if (args.Contains("--visual-only"))
         {
@@ -173,7 +197,9 @@ internal static class Program
     {
         private readonly HttpListener _listener = new(); private readonly CancellationTokenSource _stop = new(); private readonly string _directory;
         private int _archives;
+        private long _lastArchiveStart;
         public int ArchiveRequests => Volatile.Read(ref _archives);
+        public long LastArchiveStart => Interlocked.Read(ref _lastArchiveStart);
         public string Url { get; }
         public FixtureServer(string directory)
         {
@@ -189,7 +215,7 @@ internal static class Program
         {
             try
             {
-                if (context.Request.QueryString["utc"] is not null) Interlocked.Increment(ref _archives);
+                if (long.TryParse(context.Request.QueryString["utc"], out var utc)) { Interlocked.Increment(ref _archives); Interlocked.Exchange(ref _lastArchiveStart, utc); }
                 string name = Path.GetFileName(context.Request.Url!.AbsolutePath); string file = Path.Combine(_directory, name);
                 if (!File.Exists(file)) { context.Response.StatusCode = 404; return; }
                 context.Response.ContentType = name.EndsWith(".m3u8") ? "application/vnd.apple.mpegurl" : "video/mp2t";

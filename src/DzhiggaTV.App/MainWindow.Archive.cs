@@ -3,8 +3,6 @@ using DzhiggaTV.Player;
 
 namespace DzhiggaTV.App;
 
-public sealed record ArchiveTimeline(DateTimeOffset Start, DateTimeOffset End, DateTimeOffset Position, bool IsArchive);
-
 public partial class MainWindow
 {
     private async void PreviousProgramme_Click(object sender, System.Windows.RoutedEventArgs e) => await GuardAsync(Programmes.GoBackAsync);
@@ -31,7 +29,9 @@ public partial class MainWindow
             var position = native.Position is { } seconds ? archive.LoadedStart.AddSeconds(Math.Max(0, seconds)) : Player.State == PlaybackState.Idle ? archive.LoadedEnd : archive.LoadedStart;
             position = position < archive.Programme.Start ? archive.Programme.Start : position > archive.LoadedEnd ? archive.LoadedEnd : position;
             Model.SetArchivePosition(position);
-            return new(archive.Programme.Start, archive.LoadedEnd, position, true);
+            var first = archive.Programme.Start > source.Earliest(now) ? archive.Programme.Start : source.Earliest(now);
+            var last = archive.Programme.End < now ? archive.Programme.End : now;
+            return first < last ? new(first, last, position, true) : null;
         }
         DateTimeOffset start = channel.Current?.Start ?? now.AddHours(-1);
         if (start < source.Earliest(now)) start = source.Earliest(now);
@@ -92,10 +92,11 @@ public partial class MainWindow
         }
         var earliest = archive.Channel.Archive!.Earliest(DateTimeOffset.Now);
         if (time < earliest || time < archive.Programme.Start) time = earliest > archive.Programme.Start ? earliest : archive.Programme.Start;
-        if (time >= archive.LoadedEnd) time = archive.LoadedEnd.AddSeconds(-1);
-        var generation = _playGeneration; bool paused = Player.IsPaused;
-        bool reload = time < archive.LoadedStart || Player.State is PlaybackState.Idle or PlaybackState.Error;
-        if (!reload) reload = !await Player.SeekAsync((time - archive.LoadedStart).TotalSeconds);
+        var end = archive.Programme.End < DateTimeOffset.Now ? archive.Programme.End : DateTimeOffset.Now;
+        if (time >= end) time = end.AddSeconds(-1);
+        var generation = ++_playGeneration; bool paused = Player.IsPaused;
+        bool reload = time < archive.LoadedStart || time >= archive.LoadedEnd || Player.State is PlaybackState.Idle or PlaybackState.Error;
+        if (!reload) reload = !await Player.SeekWithinCacheAsync((time - archive.LoadedStart).TotalSeconds);
         if (generation != _playGeneration || !ReferenceEquals(_archivePlayback, archive)) return;
         if (reload) await StartArchiveAsync(archive.Channel, archive.Programme, time, paused);
         else if (ReferenceEquals(_archivePlayback, archive)) Model.SetArchivePosition(time);

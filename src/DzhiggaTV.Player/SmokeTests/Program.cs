@@ -83,6 +83,12 @@ internal static class Program
             Assert(player.GetTracks().Count(track => track.Type == "video") == 1 && stats.AudioTrackCount == 0, "real track enumeration without invented audio tracks");
             player.IsPaused = true;
             Assert(player.IsPaused, "pause roundtrip");
+            await WaitUntil(() => player.GetTimeline().Seekable);
+            Assert(await player.SeekWithinCacheAsync(1), "archive fast path seeks inside a confirmed native cache range");
+            await WaitUntil(() => player.GetTimeline().Position is > .9 and < 1.1);
+            Assert(!await player.SeekWithinCacheAsync(60) && !await player.SeekWithinCacheAsync(double.NaN) &&
+                player.GetTimeline().Position is > .9 and < 1.1,
+                "uncached and invalid archive targets are rejected without moving playback");
             player.TogglePause();
             Assert(!player.IsPaused, "resume roundtrip");
             var burst = Enumerable.Range(0, 32).Select(_ => player.PlayAsync(first)).ToList();
