@@ -113,14 +113,15 @@ public sealed record GuidePlaylistChoice(string? Id, string Name)
 
 public static class GuideFiltering
 {
-    public static List<GuideRow> Filter(IEnumerable<GuideRow> rows, string? playlistId, string? category, string query)
+    public static List<GuideRow> Filter(IEnumerable<GuideRow> rows, string? playlistId, string? category, string query, DateTimeOffset? now = null)
     {
         var filtered = rows.Where(row => (playlistId is null || row.Channel.Channel.PlaylistId == playlistId) &&
             (category is null || row.Channel.Group == category));
         query = query.Trim();
+        var at = now ?? DateTimeOffset.Now;
         if (query.Length == 0) return filtered.ToList();
         return filtered.Select(row => row.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ? row :
-            row with { Programmes = row.Programmes.Where(p => p.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToArray() })
+            row with { Programmes = row.Programmes.Where(p => p.Title.Contains(query, StringComparison.CurrentCultureIgnoreCase) && ProgrammeSearch.IsAvailable(row.Channel.Channel, p, at)).ToArray() })
             .Where(row => row.Programmes.Count > 0 || row.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase)).ToList();
     }
     public static string[] Categories(IEnumerable<GuideRow> rows, string? playlistId) => rows

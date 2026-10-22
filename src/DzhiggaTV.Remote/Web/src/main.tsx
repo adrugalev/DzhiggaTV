@@ -62,6 +62,8 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const [category,setCategory] = useState(''), [playlist,setPlaylist] = useState(''), [collection,setCollection] = useState(''), [sort,setSort] = useState('playlist');
   const [catalog,setCatalog] = useState<Catalog>(empty), [loading,setLoading] = useState(false), [catalogError,setCatalogError] = useState(''), [refresh,setRefresh] = useState(0);
   const [watching,setWatching] = useState<Channel>(), [videoUrl,setVideoUrl] = useState(''), [videoMode,setVideoMode] = useState(''), [videoError,setVideoError] = useState(''), [videoLoading,setVideoLoading] = useState(false);
+  const [playbackAction,setPlaybackAction] = useState<'sound'|'play'|null>(null);
+  const initialRequest=useRef<AbortController|null>(null), initialComplete=useRef(false);
   const [detail,setDetail] = useState<{channel:Channel;programme?:Programme}>(), [context,setContext] = useState<Channel>();
   const [guideId,setGuideId] = useState(''), [guideDate,setGuideDate] = useState(''), [guide,setGuide] = useState<Programme[]>([]), [guideLoading,setGuideLoading] = useState(false);
   const [pickSlot,setPickSlot] = useState<number|null>(null), [recent,setRecent] = useState(readRecent);
@@ -109,13 +111,15 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   };
   const act=async (cmd:Command)=>{if(busy)return;setBusy(true);try{await command(cmd);}catch(e){notify(message(e));}finally{setBusy(false);}};
   const stop=useCallback(()=>{
+    initialComplete.current=true;initialRequest.current?.abort();setPlaybackAction(null);
     ++switchGeneration.current;switching.current?.abort();setVideoUrl('');setVideoError('');setVideoLoading(false);setWatching(undefined);setPlayerCollapsed(false);
     if(video.current){video.current.pause();prepareVideo(video.current);}
     if(activeStream.current){stopOnExit();activeStream.current=false;}
   },[]);
   useEffect(()=>{const exit=()=>stopOnExit();window.addEventListener('pagehide',exit);const ping=setInterval(()=>{if(activeStream.current)void api('/api/stream/ping',{}).catch(()=>{});},15000);return()=>{clearInterval(ping);window.removeEventListener('pagehide',exit);switching.current?.abort();if(activeStream.current)stopOnExit();};},[]);
-  const watch=async (channel:Channel,transcode=false,compatible=false,fromGesture=true)=>{
+  const watch=async (channel:Channel,transcode=false,compatible=false,fromGesture=true,initial=false)=>{
     if(!permission.viewing){notify('Просмотр на телефоне отключён на компьютере.');return;}
+    if(fromGesture){initialComplete.current=true;initialRequest.current?.abort();setPlaybackAction(null);}
     const generation=++switchGeneration.current;switching.current?.abort();const abort=new AbortController();switching.current=abort;
     if(!transcode&&!compatible){compatibilityAttempted.current=false;setFiltersOpen(false);}
     setMode('watch');setTab('tv');setWatching(channel);setVideoError('');setVideoLoading(true);setVideoUrl('');setVideoMode('');
@@ -124,7 +128,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
     // owns src or remounts the element while switching channels or retrying codecs.
     const element=video.current;
     let priming:Promise<void>=Promise.resolve();
-    if(fromGesture&&element){prepareVideo(element);priming=element.play().catch(()=>{});}
+    if(fromGesture&&element){element.muted=false;prepareVideo(element);priming=element.play().catch(()=>{});}
     try{
       const result=await api<{url:string;mode:string}>('/api/stream',{channelId:channel.id,transcode,compatible},abort.signal);
       if(generation!==switchGeneration.current||abort.signal.aborted||element!==video.current)return;
@@ -132,8 +136,38 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
       await priming;
       if(generation!==switchGeneration.current||abort.signal.aborted||element!==video.current)return;
       setVideoMode(result.mode);setVideoUrl(result.url);setRecent(remember(channel.id));
-      if(element){element.loop=false;element.src=result.url;element.load();void element.play().catch(e=>{if(generation===switchGeneration.current&&element.getAttribute('src')===result.url&&e?.name==='NotAllowedError'){setVideoLoading(false);notify('Нажмите ▶ на видео, чтобы начать просмотр со звуком.');}});}
+      if(element){element.loop=false;element.src=result.url;element.load();void element.play().catch(async e=>{
+        if(generation!==switchGeneration.current||element.getAttribute('src')!==result.url||e?.name!=='NotAllowedError')return;
+        setVideoLoading(false);
+        if(initial&&!element.muted){
+          element.muted=true;setPlaybackAction('sound');
+          try{await element.play();}catch{if(generation===switchGeneration.current)setPlaybackAction('play');}
+        }else{setPlaybackAction('play');notify('Нажмите ▶ на видео, чтобы начать просмотр со звуком.');}
+      });}
     }catch(e){if(generation===switchGeneration.current&&!abort.signal.aborted){if(element?.getAttribute('src')===playbackPrimer)element.pause();setVideoLoading(false);setVideoError(message(e));}}
+  };
+  useEffect(()=>{
+    if(!permission.viewing||initialComplete.current||switchGeneration.current!==0)return;
+    const abort=new AbortController();initialRequest.current=abort;
+    const untouched=()=>!abort.signal.aborted&&switchGeneration.current===0;
+    void(async()=>{
+      const snapshot=await api<PlayerState>('/api/state',undefined,abort.signal);
+      if(!untouched())return;
+      setState(current=>current??snapshot);
+      if(!snapshot.channelId){initialComplete.current=true;return;}
+      // Resolve by ID independently of paging, filters and the phone's recent history.
+      const result=await api<Catalog>('/api/catalog?ids='+encodeURIComponent(snapshot.channelId),undefined,abort.signal);
+      if(!untouched())return;
+      initialComplete.current=true;
+      const channel=result.channels.find(c=>c.id===snapshot.channelId);
+      if(channel)void watch(channel,false,false,false,true);
+    })().catch(e=>{if(untouched()){initialComplete.current=true;if(e instanceof ApiError&&e.status===401)onLogout();else notify('Не удалось открыть канал с компьютера. Выберите канал в списке.');}});
+    return()=>{abort.abort();if(initialRequest.current===abort)initialRequest.current=null;};
+  },[permission.viewing]);
+  const continuePlayback=()=>{
+    const element=video.current;if(!element||!videoUrl)return;
+    const generation=switchGeneration.current;element.muted=false;
+    void element.play().then(()=>{if(generation===switchGeneration.current)setPlaybackAction(null);}).catch(()=>{if(generation===switchGeneration.current)setPlaybackAction('play');});
   };
   const videoFailed=()=>{
     const element=video.current;
@@ -156,7 +190,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
     void api<Programme[]>(`/api/guide/${encodeURIComponent(guideId)}?from=${encodeURIComponent(start.toISOString())}`,undefined,abort.signal).then(setGuide).catch(e=>{if(!abort.signal.aborted)notify(message(e));}).finally(()=>{if(!abort.signal.aborted)setGuideLoading(false);});
     return()=>abort.abort();
   },[tab,guideId,guideDate,revision]);
-  const navigate=(next:Tab)=>{setPickSlot(null);setTab(next);if(next==='guide'&&!guideId)setGuideId(watching?.id??state?.channelId??catalog.channels[0]?.id??'');};
+  const navigate=(next:Tab)=>{initialComplete.current=true;initialRequest.current?.abort();setPickSlot(null);setTab(next);if(next==='guide'&&!guideId)setGuideId(watching?.id??state?.channelId??catalog.channels[0]?.id??'');};
   const currentGuide=catalog.channels.find(c=>c.id===guideId)??(watching?.id===guideId?watching:undefined)??(state?.channelId===guideId?{id:guideId,name:state.channelName,category:'',favorite:false,number:0}:undefined);
   const fullscreen=()=>{const v=video.current as HTMLVideoElement&{webkitEnterFullscreen?:()=>void};if(!v)return;if(document.fullscreenElement)void document.exitFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else void v.requestFullscreen?.();};
   const setRemoteMode=(pc:boolean)=>{if(pc){stop();setMode('pc');}else setMode('watch');};
@@ -169,8 +203,9 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
     <header><div className="wordmark">Dzhigga<span>TV</span><small>REMOTE</small></div><div className={'connection '+(online?'':'offline')}>{online?<Wifi size={14}/>:<WifiOff size={14}/>}<span>{online?'Дома':'Нет подключения'}</span></div></header>
     {!online&&<div className="offline-banner">Нет подключения к DzhiggaTV · пробуем восстановить связь</div>}
     <section hidden={!showPlayer} className={'viewer '+(tab==='settings'?'viewer-small ':'')+(playerCollapsed||searchFocused?'viewer-collapsed':'')} aria-label="Плеер телефона">
-      <div className="video-frame" id="remote-video"><video ref={video} playsInline controls preload="auto" onWaiting={()=>{if(actualVideo())setVideoLoading(true);}} onPlaying={()=>{if(actualVideo()){setVideoLoading(false);setVideoError('');}}} onCanPlay={()=>{if(actualVideo())setVideoLoading(false);}} onError={videoFailed} onDoubleClick={fullscreen}/>
+      <div className="video-frame" id="remote-video"><video ref={video} playsInline controls preload="auto" onWaiting={()=>{if(actualVideo())setVideoLoading(true);}} onPlaying={()=>{if(actualVideo()){setVideoLoading(false);setVideoError('');setPlaybackAction(action=>action===null?null:video.current?.muted?'sound':null);}}} onVolumeChange={()=>{if(!video.current?.muted)setPlaybackAction(null);}} onCanPlay={()=>{if(actualVideo())setVideoLoading(false);}} onError={videoFailed} onDoubleClick={fullscreen}/>
         {videoLoading&&<div className="video-status"><span className="loading-dot"/> Подключение…</div>}
+        {playbackAction&&!videoError&&<button className="playback-action" onClick={continuePlayback}>{playbackAction==='sound'?<Volume2 size={17}/>:<Play size={17}/>} {playbackAction==='sound'?'Включить звук':'Начать просмотр'}</button>}
         <button className="icon close-video" aria-label="Остановить просмотр" onClick={stop}><X size={18}/></button>
       </div>
       {watching&&<><div className="now-playing"><div><span className="eyebrow">СМОТРЮ ЗДЕСЬ {videoMode==='transcode'?'· H.264 / AAC':videoMode==='compatible'?'· ИСХОДНОЕ ВИДЕО / AAC':''}</span><h2>{watching.name}</h2><button className="programme-link" onClick={()=>setDetail({channel:watching,programme:watching.current})}>{watching.current?.title??'Телепрограмма пока недоступна'} <Info size={13}/></button></div>

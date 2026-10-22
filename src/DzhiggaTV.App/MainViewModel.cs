@@ -150,8 +150,9 @@ public sealed class MainViewModel : Observable, IDisposable
             ApplyFilter(query, _programmeSearchQuery == query ? _programmeMatches : new Dictionary<string, Programme>());
             if (query.Length == 0) return;
             var mappings = Mappings; int generation = _catalogGeneration;
-            var ids = AllChannels.Where(IsAllowed).Select(c => mappings.GetValueOrDefault(c.Id)?.EpgId).OfType<string>().ToArray();
-            var matches = await Task.Run(() => Store.SearchUpcomingProgrammesAsync(query, ids, DateTimeOffset.UtcNow, token), token);
+            var now = DateTimeOffset.UtcNow;
+            var scopes = AllChannels.Where(IsAllowed).Where(c => mappings.ContainsKey(c.Id)).Select(c => ProgrammeSearchScope.From(c.Channel, mappings[c.Id].EpgId, now)).ToArray();
+            var matches = await Task.Run(() => Store.SearchPlayableProgrammesAsync(query, scopes, now, token), token);
             if (token.IsCancellationRequested || !ReferenceEquals(_searchCancellation, cancellation) || generation != _catalogGeneration || !ReferenceEquals(mappings, Mappings)) return;
             _programmeSearchQuery = query; _programmeMatches = matches;
             ApplyFilter(query, matches);
@@ -162,7 +163,7 @@ public sealed class MainViewModel : Observable, IDisposable
     private void ApplyFilter(string query, IReadOnlyDictionary<string, Programme> matches)
     {
         foreach (var channel in AllChannels)
-            channel.SearchProgramme = query.Length > 0 && Mappings.TryGetValue(channel.Id, out var mapping) && matches.TryGetValue(mapping.EpgId, out var programme) ? programme : null;
+            channel.SearchProgramme = query.Length > 0 && matches.TryGetValue(channel.Id, out var programme) ? programme : null;
         IEnumerable<ChannelItem> items = AllChannels.Where(IsAllowed);
         List<string>? order = null;
         if (_section == "favorites") { order = State.Favorites; items = items.Where(c => order.Contains(c.Id)); }

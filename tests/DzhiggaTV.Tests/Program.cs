@@ -24,6 +24,7 @@ var tests = new List<(string Name, Func<Task> Run)>
 };
 tests.AddRange(ServicesTests.Cases);
 tests.AddRange(CatchupTests.Cases);
+tests.AddRange(ProgrammeSearchTests.Cases);
 
 var failed = 0;
 foreach (var (name, test) in tests)

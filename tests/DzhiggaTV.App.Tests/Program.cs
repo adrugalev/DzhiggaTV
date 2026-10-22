@@ -54,7 +54,7 @@ internal static class Program
             ("Guide reads only allowed EPG IDs across multiple parameter batches", GuideBatchAsync),
             ("Guide playlist, category and programme search compose without leaking other rows", GuideFiltersAsync),
             ("Playing a guide channel selects it and reveals it through conflicting library filters", PlaybackSelectionAsync),
-            ("Library search finds current and future titles across all channels without stale or restricted results", ProgrammeSearchAsync),
+            ("Library search finds current and playable archive titles across all channels without stale or restricted results", ProgrammeSearchAsync),
             ("Maximized bounds respect taskbars and secondary monitors while F11 fills the monitor", WindowBoundsAsync),
             ("Mini-player resizing preserves display aspect, native anchors, DPI borders and size limits at all edges", MiniAspectResizeAsync),
             ("Fullscreen controls ignore pointer jitter while deliberate movement reveals them", PointerRevealAsync)
@@ -472,6 +472,13 @@ internal static class Program
         Assert(GuideFiltering.Filter(rows, "b", "Кино", "").Count == 0, "A category from another playlist must not show unrelated channels.");
         Assert(GuideFiltering.Categories(rows, "a").SequenceEqual(new[] { "Кино", "Новости" }), "Category options must only contain the selected playlist's categories.");
         Assert(GuideFiltering.Filter(rows, null, null, "").Count == 4 && rows[0].Programmes.Count == 2, "Reset must restore all rows without mutating cached programmes.");
+        var archiveChannel = new ChannelItem(new("archive", "a", "Архивный канал", "Тест", "https://example.invalid/live", Attributes: new Dictionary<string,string> { ["tvg-rec"] = "3" }));
+        var available = news with { Title = "Передача из архива", Start = now.AddDays(-2), End = now.AddDays(-2).AddHours(1) };
+        var unavailable = available with { Start = now.AddDays(-4), End = now.AddDays(-4).AddHours(1) };
+        var future = available with { Start = now.AddHours(1), End = now.AddHours(2) };
+        GuideRow[] archiveRows = [new(archiveChannel, [unavailable, available, future]), new(rows[0].Channel, [available, future])];
+        var archiveHits = GuideFiltering.Filter(archiveRows, null, null, "Передача", now);
+        Assert(archiveHits.Count == 1 && archiveHits[0].Programmes.SequenceEqual([available]), "Guide search must exclude future, expired and unsupported archives while preserving normal day browsing.");
         return Task.CompletedTask;
     }
     private static async Task PlaybackSelectionAsync()
@@ -494,7 +501,8 @@ internal static class Program
         using var fixture = await Fixture.CreateAsync(); var model = fixture.Model;
         var now = DateTimeOffset.UtcNow;
         var channels = Enumerable.Range(0, 432).Select(i => new Channel("search-" + i, "search", "Канал эфира " + i,
-            i == 431 ? "Взрослые" : i % 2 == 0 ? "Спорт" : "Кино", "https://example.invalid/unused", Order: i)).ToArray();
+            i == 431 ? "Взрослые" : i % 2 == 0 ? "Спорт" : "Кино", "https://example.invalid/unused",
+            Attributes: i is 428 or 429 or 430 or 431 ? new Dictionary<string,string> { ["tvg-rec"] = i == 429 ? "1" : "7" } : null, Order: i)).ToArray();
         await model.Store.SavePlaylistAsync(new("search", "Поиск", "local-only.m3u"), channels);
         await model.Store.ImportEpgAsync(async (addChannel, addProgramme, token) =>
         {
@@ -503,7 +511,7 @@ internal static class Program
                 string id = "search-guide-" + i; await addChannel(new(id, channel.Name));
                 if (i is 0 or 428 or 429 or 430 or 431)
                 {
-                    var start = i == 0 ? now.AddMinutes(-5) : now.AddHours(2);
+                    var start = i == 0 ? now.AddMinutes(-5) : now.AddDays(-2);
                     await addProgramme(new(id, "Финал. ЦСКА — Спартак", start, start.AddHours(2)));
                     await addProgramme(new(id, "Финал. ЦСКА — Спартак. Повтор", start.AddHours(5), start.AddHours(7)));
                 }
@@ -519,11 +527,11 @@ internal static class Program
         model.State.Hidden.Add("search-430");
         await model.ReloadAsync(); await model.RefreshEpgViewAsync();
         var distant = model.AllChannels.Single(c => c.Id == "search-428");
-        Assert(distant.Current is null && distant.Next is null, "The future match must start outside the loaded viewport.");
+        Assert(distant.Current is null && distant.Next is null, "The archive match must start outside the loaded viewport.");
         model.Search = "ФИНАЛ цска"; await model.RefreshFilterAsync();
-        Assert(model.VisibleChannels.Select(c => c.Id).ToHashSet().SetEquals(["search-0", "search-3", "search-428", "search-429"]),
-            "Search must include current/future programmes in later batches, exclude expired/description-only/unmapped/hidden/adult results, and deduplicate repeats.");
-        Assert(distant.SearchProgramme?.Title == "Финал. ЦСКА — Спартак" && distant.ProgrammeSummary.Contains(now.AddHours(2).ToLocalTime().ToString("HH:mm")),
+        Assert(model.VisibleChannels.Select(c => c.Id).ToHashSet().SetEquals(["search-0", "search-428"]),
+            "Search must include current/playable archived programmes in later batches, exclude future/expired/description-only/unmapped/hidden/adult results, and deduplicate repeats.");
+        Assert(distant.SearchProgramme?.Title.StartsWith("Финал. ЦСКА — Спартак") == true && distant.ProgrammeSummary.Contains(now.AddDays(-2).AddHours(5).ToLocalTime().ToString("HH:mm")),
             "A programme result must explain which title and start time matched.");
         model.State.Favorites.Add(distant.Id); model.State.Favorites.Add("search-2");
         model.SetSection("favorites"); await model.RefreshFilterAsync();
@@ -535,7 +543,7 @@ internal static class Program
         Assert(model.IsFavorites && model.VisibleChannels.Count == 2 && !model.ChannelCountText.Contains("категорий"), "A category selected outside favorites must not hide favorite channels or appear in the favorites heading.");
         model.SetSection("all"); await model.RefreshFilterAsync();
         Assert(model.CanSearch, "Returning to the library must restore search.");
-        Assert(model.VisibleChannels.Select(c => c.Id).ToHashSet().SetEquals(["search-3", "search-429"]), "Category restrictions must also apply to programme hits.");
+        Assert(model.VisibleChannels.Count == 0, "Category restrictions must also apply and must not reveal future or expired matches.");
         model.SelectedGroup = "Все категории";
         var renamed = model.AllChannels.Single(c => c.Id == "search-2"); renamed.Name = "Экран Север";
         model.Search = "Финал"; var older = model.RefreshFilterAsync();
@@ -553,9 +561,9 @@ internal static class Program
         model.SetSection("favorites"); model.Search = ""; model.SetSection("all"); await model.RefreshFilterAsync();
         Assert(model.Search == "" && model.VisibleChannels.Contains(renamed), "Navigation must still be able to clear an old query while leaving favorites.");
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
-        try { await model.Store.SearchUpcomingProgrammesAsync("Финал", ["search-guide-0"], now, cancelled.Token); throw new InvalidOperationException("Search ignored cancellation."); }
+        try { await model.Store.SearchPlayableProgrammesAsync("Финал", [new("search-0", "search-guide-0")], now, cancelled.Token); throw new InvalidOperationException("Search ignored cancellation."); }
         catch (OperationCanceledException) { }
-        Assert((await model.Store.SearchUpcomingProgrammesAsync("*** \"", ["search-guide-0"], now)).Count == 0, "Punctuation must not be interpreted as FTS operators.");
+        Assert((await model.Store.SearchPlayableProgrammesAsync("*** \"", [new("search-0", "search-guide-0")], now)).Count == 0, "Punctuation must not be interpreted as FTS operators.");
     }
 
     private static Task MiniAspectResizeAsync()

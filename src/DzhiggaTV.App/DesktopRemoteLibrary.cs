@@ -18,7 +18,7 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
             var channels = M.AllChannels.Where(M.IsAllowed).ToArray();
             var favorites = M.State.Favorites.ToArray();
             var collections = M.State.Collections.ToDictionary(p => p.Key, p => p.Value.ToArray());
-            return (Channels: channels.Select(c => new Row(c.Id, c.Name, c.Group, c.Channel.PlaylistId, c.Number, M.Mappings.GetValueOrDefault(c.Id)?.EpgId)).ToArray(), Favorites: favorites, Collections: collections, Revision: M.RemoteRevision);
+            return (Channels: channels.Select(c => new Row(c.Id, c.Name, c.Group, c.Channel.PlaylistId, c.Number, M.Mappings.GetValueOrDefault(c.Id)?.EpgId, c.Channel)).ToArray(), Favorites: favorites, Collections: collections, Revision: M.RemoteRevision);
         }, token);
         var rows = snapshot.Channels.AsEnumerable();
         if (query.Ids.Length > 0)
@@ -35,9 +35,11 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
             var terms = query.Search.Trim(); var before = rows.ToArray();
-            var matches = await Task.Run(() => M.Store.SearchUpcomingProgrammesAsync(terms, before.Select(c => c.EpgId).OfType<string>(), DateTimeOffset.UtcNow, token), token);
+            var time = DateTimeOffset.UtcNow;
+            var scopes = before.Where(c => c.EpgId is not null).Select(c => ProgrammeSearchScope.From(c.Channel, c.EpgId!, time)).ToArray();
+            var matches = await Task.Run(() => M.Store.SearchPlayableProgrammesAsync(terms, scopes, time, token), token);
             programmeMatches = matches;
-            rows = before.Where(c => c.Name.Contains(terms, StringComparison.CurrentCultureIgnoreCase) || c.EpgId is { } id && matches.ContainsKey(id));
+            rows = before.Where(c => c.Name.Contains(terms, StringComparison.CurrentCultureIgnoreCase) || matches.ContainsKey(c.Id));
         }
         if (query.Sort == "name") rows = rows.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
         var filtered = rows.ToArray(); var page = filtered.Skip(query.Offset).Take(query.Limit).ToArray();
@@ -45,7 +47,7 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
         var sources = await M.Store.GetPlaylistSourcesAsync(token);
         return new(page.Select(c => new RemoteChannel(c.Id, c.Name, c.Group, snapshot.Favorites.Contains(c.Id), c.Number,
             RemoteProgramme.From(c.EpgId is { } id ? now.GetValueOrDefault(id)?.Current : null), RemoteProgramme.From(c.EpgId is { } nextId ? now.GetValueOrDefault(nextId)?.Next : null),
-            RemoteProgramme.From(c.EpgId is { } matchedId ? programmeMatches.GetValueOrDefault(matchedId) : null))).ToArray(),
+            RemoteProgramme.From(programmeMatches.GetValueOrDefault(c.Id)))).ToArray(),
             filtered.Length, snapshot.Channels.Select(c => c.Group).Distinct().Order().ToArray(),
             sources.Where(s => snapshot.Channels.Any(c => c.Playlist == s.Id)).Select(s => new RemoteChoice(s.Id, s.Name)).ToArray(), snapshot.Collections.Keys.ToArray(), snapshot.Revision);
     }
@@ -101,5 +103,5 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
             default: await main.RemoteCommandAsync(command, token); break;
         }
     }, token);
-    private sealed record Row(string Id, string Name, string Group, string Playlist, int Number, string? EpgId);
+    private sealed record Row(string Id, string Name, string Group, string Playlist, int Number, string? EpgId, Channel Channel);
 }

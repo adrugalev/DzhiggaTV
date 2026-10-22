@@ -12,3 +12,5 @@
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 .viewer[hidden]{display:none!important}
+/* Autoplay may require a tap for sound on a newly paired phone. */
+.playback-action{position:absolute;left:50%;bottom:48px;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:8px;min-height:40px;padding:8px 14px;border:1px solid var(--accent);border-radius:24px;background:#0d171be8;color:#e8f7f4;white-space:nowrap;box-shadow:0 4px 18px #0005}

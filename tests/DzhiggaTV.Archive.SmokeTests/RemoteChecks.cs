@@ -40,7 +40,14 @@ internal static partial class Program
         var guide = await client.GetFromJsonAsync<RemoteProgramme[]>("/api/guide/archive");
         Check(guide is { Length: > 0 } && guide.Any(p => p.Title == "Будущая передача"), "Remote guide uses the existing programme database");
         var found = await client.GetFromJsonAsync<RemoteCatalog>("/api/catalog?search=" + Uri.EscapeDataString("Будущая"));
-        Check(found is { Total: 3 } && found.Channels.All(c => c.Match?.Title == "Будущая передача"), "Mobile search returns the matching future programme alongside the current broadcast");
+        Check(found is { Total: 0 }, "Mobile search excludes broadcasts that have not started yet");
+        var past = await client.GetFromJsonAsync<RemoteCatalog>("/api/catalog?search=" + Uri.EscapeDataString("Архивный фильм"));
+        Check(past is { Total: 2 } && past.Channels.All(c => c.Id != "live" && c.Match?.Title == "Архивный фильм"), "Mobile search includes retained archive matches only on channels with a supported archive");
+        var older = await client.GetFromJsonAsync<RemoteCatalog>("/api/catalog?search=" + Uri.EscapeDataString("Четыре дня назад"));
+        Check(older is { Total: 1 } && older.Channels[0].Id == "archive", "Mobile archive search respects each channel's retention depth");
+        var snapshot = await client.GetFromJsonAsync<RemotePlayerState>("/api/state");
+        var initialChannel = await client.GetFromJsonAsync<RemoteCatalog>("/api/catalog?ids=" + Uri.EscapeDataString(snapshot!.ChannelId!));
+        Check(snapshot.ChannelId == main.Model.Active?.Id && initialChannel!.Channels.Single().Id == snapshot.ChannelId, "The phone resolves the actual PC channel by ID independently of catalog paging");
         var pc = main.Model.Active?.Id; var position = main.Player.GetTimeline().Position;
         var response = await client.PostAsJsonAsync("/api/stream", new { channelId = "live" }); var url = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("url").GetString()!;
         var manifest = await client.GetStringAsync(url);

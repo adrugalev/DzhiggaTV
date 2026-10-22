@@ -335,7 +335,7 @@ public sealed class GuideWindow : Window
     {
         CancelPan();
         string query = _search.Text.Trim();
-        var visible = GuideFiltering.Filter(_allRows, SelectedPlaylist, SelectedCategory, query);
+        var visible = GuideFiltering.Filter(_allRows, SelectedPlaylist, SelectedCategory, query, _clock());
         _resetFilters.Visibility = SelectedPlaylist is not null || SelectedCategory is not null ? Visibility.Visible : Visibility.Collapsed;
         _changingSelection = true; _rows.ItemsSource = visible; _changingSelection = false;
         _count.Text = visible.Count == _allRows.Count ? $"{visible.Count:N0} каналов" : $"{visible.Count:N0} из {_allRows.Count:N0} каналов";

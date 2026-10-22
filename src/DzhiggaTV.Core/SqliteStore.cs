@@ -446,33 +446,39 @@ public sealed class SqliteStore : IDisposable
             [("$query", expression), ("$limit", Math.Clamp(limit, 1, 1000))], cancellationToken).ConfigureAwait(false);
     }
 
-    /// <summary>Earliest current or future title match per allowed EPG channel, including channels outside the viewport.</summary>
-    public async Task<IReadOnlyDictionary<string, Programme>> SearchUpcomingProgrammesAsync(string query,
-        IEnumerable<string> epgChannelIds, DateTimeOffset from, CancellationToken cancellationToken = default)
+    /// <summary>Current or newest playable archive match per library channel, including channels outside the viewport.</summary>
+    public async Task<IReadOnlyDictionary<string, Programme>> SearchPlayableProgrammesAsync(string query,
+        IEnumerable<ProgrammeSearchScope> scopes, DateTimeOffset now, CancellationToken cancellationToken = default)
     {
         var result = new Dictionary<string, Programme>(StringComparer.Ordinal);
         var terms = System.Text.RegularExpressions.Regex.Matches(query, @"[\p{L}\p{Nd}]+")
             .Select(match => "\"" + match.Value + "\"*").ToArray();
-        var ids = epgChannelIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal).ToArray();
-        if (terms.Length == 0 || ids.Length == 0) return result;
+        var channels = scopes.Where(s => !string.IsNullOrWhiteSpace(s.EpgChannelId)).DistinctBy(s => s.ChannelId).ToArray();
+        if (terms.Length == 0 || channels.Length == 0) return result;
         var expression = string.Join(" AND ", terms);
         await InitializeAsync(cancellationToken).ConfigureAwait(false);
         await using var connection = await OpenAsync(cancellationToken).ConfigureAwait(false);
         using var transaction = connection.BeginTransaction(deferred: true);
-        foreach (var batch in ids.Chunk(400))
+        foreach (var batch in channels.Chunk(250))
         {
             cancellationToken.ThrowIfCancellationRequested();
             await using var command = connection.CreateCommand(); command.Transaction = transaction;
-            var parameters = batch.Select((_, index) => "$channel" + index).ToArray();
-            command.CommandText = "SELECT p.channel_id,p.title,p.start,p.end,NULL,NULL FROM programme_titles f JOIN programmes p ON p.id=f.rowid " +
-                "WHERE programme_titles MATCH $query AND p.end>$from AND p.channel_id IN (" + string.Join(',', parameters) + ") ORDER BY p.start,p.id";
-            command.Parameters.AddWithValue("$query", expression); command.Parameters.AddWithValue("$from", from.ToUnixTimeSeconds());
-            for (int i = 0; i < batch.Length; i++) command.Parameters.AddWithValue(parameters[i], batch[i]);
+            command.CommandText = "WITH allowed(channel_id,epg_id,archive_from) AS (VALUES " +
+                string.Join(',', batch.Select((_, i) => $"($channel{i},$epg{i},$archive{i})")) + ") " +
+                "SELECT p.channel_id,p.title,p.start,p.end,NULL,NULL,a.channel_id FROM programme_titles f JOIN programmes p ON p.id=f.rowid JOIN allowed a ON a.epg_id=p.channel_id " +
+                "WHERE programme_titles MATCH $query AND p.start<=$now AND p.end>p.start AND (p.end>$now OR (a.archive_from IS NOT NULL AND p.start>=a.archive_from)) " +
+                "ORDER BY CASE WHEN p.end>$now THEN 0 ELSE 1 END,p.start DESC,p.id DESC";
+            command.Parameters.AddWithValue("$query", expression); command.Parameters.AddWithValue("$now", now.ToUnixTimeSeconds());
+            for (int i = 0; i < batch.Length; i++)
+            {
+                command.Parameters.AddWithValue("$channel" + i, batch[i].ChannelId); command.Parameters.AddWithValue("$epg" + i, batch[i].EpgChannelId);
+                command.Parameters.AddWithValue("$archive" + i, batch[i].ArchiveFrom is { } at ? (object)(at.ToUnixTimeSeconds() + (at.Ticks % TimeSpan.TicksPerSecond == 0 ? 0 : 1)) : DBNull.Value);
+            }
             await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
             while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             {
                 var programme = ReadProgramme(reader);
-                result.TryAdd(programme.ChannelId, programme);
+                result.TryAdd(reader.GetString(6), programme);
             }
         }
         transaction.Commit(); return result;
