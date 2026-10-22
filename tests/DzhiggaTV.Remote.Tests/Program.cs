@@ -168,6 +168,34 @@ try
     if (options.AllowTranscoding && mediaArgument >= 0)
     {
         library.Uri = new(root + "/sample/index.m3u8");
+        var compatible = await Post("/api/stream", new { channelId = "one", compatible = true }, csrf3);
+        var compatibleResult = await compatible.Content.ReadFromJsonAsync<JsonElement>();
+        Assert(compatible.IsSuccessStatusCode && compatibleResult.GetProperty("mode").GetString() == "compatible", "Safari compatibility starts a video-copy / AAC session");
+        var compatibleUrl = compatibleResult.GetProperty("url").GetString()!;
+        var compatibleManifest = await client.GetStringAsync(compatibleUrl);
+        Assert(compatibleManifest.Contains("#EXT-X-MAP:URI=\"init.mp4\"") && compatibleManifest.Contains(".m4s"), "Safari compatibility emits fMP4 initialization and media segments");
+        var compatibleBase = compatibleUrl[..(compatibleUrl.LastIndexOf('/') + 1)];
+        var init = await client.GetAsync(compatibleBase + "init.mp4");
+        var compatibleMedia = await client.GetAsync(compatibleBase + compatibleManifest.Split('\n').First(line => line.StartsWith("part", StringComparison.Ordinal)));
+        Assert(init.Content.Headers.ContentType?.MediaType == "video/mp4" && compatibleMedia.Content.Headers.ContentType?.MediaType == "video/iso.segment", "Safari receives exact fMP4 MIME types");
+        var inspectionFile = Path.Combine(directory, "compatible.mp4");
+        await File.WriteAllBytesAsync(inspectionFile, [.. await init.Content.ReadAsByteArrayAsync(), .. await compatibleMedia.Content.ReadAsByteArrayAsync()]);
+        var inspect = new System.Diagnostics.ProcessStartInfo(options.FfmpegPath) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, RedirectStandardOutput = true };
+        foreach (var arg in new[] { "-hide_banner", "-nostdin", "-i", inspectionFile, "-t", "0", "-f", "null", "-" }) inspect.ArgumentList.Add(arg);
+        using (var process = System.Diagnostics.Process.Start(inspect)!)
+        {
+            var stderr = process.StandardError.ReadToEndAsync(); var stdout = process.StandardOutput.ReadToEndAsync();
+            using var inspectionTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            try { await process.WaitForExitAsync(inspectionTimeout.Token); } catch { process.Kill(true); throw; }
+            var description = await stderr; await stdout;
+            Assert(process.ExitCode == 0 && description.Contains("Video: h264") && description.Contains("Audio: aac"), "Safari output decodes with the original H.264 video and AAC audio");
+            if (args.Contains("--uhd")) Assert(description.Contains("3840x2160"), "4K MP2 regression keeps the full UHD video resolution");
+        }
+        bool encoderBusy = false;
+        try { await server.Streams.StartAsync("another-encoder", "one", true, server.Url!, CancellationToken.None); } catch (RemoteException e) { encoderBusy = e.Status == 409; }
+        Assert(encoderBusy, "Audio-only compatibility shares the single encoder limit with video conversion");
+        await Post("/api/stream/stop", new { }, csrf3);
+        Assert((await client.GetAsync(compatibleBase + "init.mp4")).StatusCode == HttpStatusCode.NotFound && server.Streams.Active.Count == 0, "Stopping compatibility invalidates its initialization segment and releases the slot");
         var converted = await Post("/api/stream", new { channelId = "one", transcode = true }, csrf3);
         Assert(converted.IsSuccessStatusCode, "FFmpeg starts only after an explicit conversion request" + (converted.IsSuccessStatusCode ? "" : ": " + await converted.Content.ReadAsStringAsync()));
         var convertedUrl = await JsonString(converted, "url");
@@ -178,6 +206,7 @@ try
         Assert(server.Streams.Active.Count == 0, "stopping a converted stream releases its task and stream slot");
         library.Uri = new(root + "/entry");
     }
+    else Assert((await Post("/api/stream", new { channelId = "one", compatible = true }, csrf3)).StatusCode == HttpStatusCode.Conflict, "Safari compatibility cannot bypass the desktop FFmpeg permission");
     var ws = new ClientWebSocket(); ws.Options.Cookies = cookies; ws.Options.SetRequestHeader("Origin", server.Url!);
     await ws.ConnectAsync(new Uri(server.Url!.Replace("http:", "ws:") + "/events"), CancellationToken.None);
     var buffer = new byte[8192]; using (var timeout = new CancellationTokenSource(5000)) { var received = await ws.ReceiveAsync(buffer, timeout.Token); Assert(received.Count > 0 && Encoding.UTF8.GetString(buffer, 0, received.Count).Contains("Fixture TV"), "WebSocket publishes player state automatically"); }

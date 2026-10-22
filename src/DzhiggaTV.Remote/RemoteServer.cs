@@ -178,7 +178,7 @@ public sealed class RemoteServer : IAsyncDisposable
         app.MapPost("/api/stream", async (HttpContext c) =>
         {
             var body = await c.Request.ReadFromJsonAsync<StreamBody>(c.RequestAborted) ?? throw new RemoteException("Выберите канал.");
-            return await Streams.StartAsync(Device(c).Id, body.ChannelId, body.Transcode, Url!, c.RequestAborted);
+            return await Streams.StartAsync(Device(c).Id, body.ChannelId, body.Transcode, Url!, c.RequestAborted, body.Compatible);
         });
         app.MapPost("/api/stream/stop", (HttpContext c) => { Streams.Stop(Device(c).Id); return Results.Ok(); });
         app.MapPost("/api/stream/ping", (HttpContext c) => { Streams.Touch(Device(c).Id); return Results.Ok(); });
@@ -252,5 +252,5 @@ public sealed class RemoteServer : IAsyncDisposable
     }
     public async ValueTask DisposeAsync() { await StopAsync(); Streams.Dispose(); }
     private sealed record PairBody(string Code, string Name);
-    private sealed record StreamBody(string ChannelId, bool Transcode = false);
+    private sealed record StreamBody(string ChannelId, bool Transcode = false, bool Compatible = false);
 }

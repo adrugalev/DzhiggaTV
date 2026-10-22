@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import {Tv, Star, CalendarDays, SlidersHorizontal, Settings, Search, Play, Monitor, Smartphone, ChevronLeft, ChevronRight, Volume2, VolumeX, Pause, Maximize, Minimize, RotateCcw, X, Wifi, WifiOff, Grid2X2, Check, MoreHorizontal, RefreshCw, PictureInPicture2, Cast, Info, LogOut, Square} from 'lucide-react';
+import {Tv, Star, CalendarDays, SlidersHorizontal, Settings, Search, Play, Monitor, Smartphone, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Volume2, VolumeX, Pause, Maximize, Minimize, RotateCcw, X, Wifi, WifiOff, Grid2X2, Check, MoreHorizontal, RefreshCw, PictureInPicture2, Cast, Info, LogOut, Square} from 'lucide-react';
 import {api, ApiError, setSession, stopOnExit} from './api';
 import {progress, range, time, readRecent, remember} from './types';
 import type {Channel, Catalog, Command, PlayerState, Programme, Session} from './types';
@@ -59,7 +59,8 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const [guideId,setGuideId] = useState(''), [guideDate,setGuideDate] = useState(''), [guide,setGuide] = useState<Programme[]>([]), [guideLoading,setGuideLoading] = useState(false);
   const [pickSlot,setPickSlot] = useState<number|null>(null), [recent,setRecent] = useState(readRecent);
   const [permission,setPermission] = useState(session.policy);
-  const video = useRef<HTMLVideoElement>(null), activeStream = useRef(false), switchGeneration=useRef(0), switching=useRef<AbortController|null>(null), catalogAbort=useRef<AbortController|null>(null), loadingRef=useRef(false);
+  const [filtersOpen,setFiltersOpen] = useState(false), [playerCollapsed,setPlayerCollapsed] = useState(false), [searchFocused,setSearchFocused] = useState(false);
+  const video = useRef<HTMLVideoElement>(null), activeStream = useRef(false), switchGeneration=useRef(0), switching=useRef<AbortController|null>(null), catalogAbort=useRef<AbortController|null>(null), loadingRef=useRef(false), compatibilityAttempted=useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
   const notify = useCallback((text:string)=>{setToast(text);clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),5000);},[]);
   useEffect(()=>{const t=setTimeout(()=>setDebounced(search.trim()),250);return()=>clearTimeout(t);},[search]);
@@ -100,24 +101,35 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   };
   const act=async (cmd:Command)=>{if(busy)return;setBusy(true);try{await command(cmd);}catch(e){notify(message(e));}finally{setBusy(false);}};
   const stop=useCallback(()=>{
-    ++switchGeneration.current;switching.current?.abort();setVideoUrl('');setVideoError('');setVideoLoading(false);setWatching(undefined);
+    ++switchGeneration.current;switching.current?.abort();setVideoUrl('');setVideoError('');setVideoLoading(false);setWatching(undefined);setPlayerCollapsed(false);
     if(video.current){video.current.pause();video.current.removeAttribute('src');video.current.load();}
     if(activeStream.current){stopOnExit();activeStream.current=false;}
   },[]);
   useEffect(()=>{const exit=()=>stopOnExit();window.addEventListener('pagehide',exit);const ping=setInterval(()=>{if(activeStream.current)void api('/api/stream/ping',{}).catch(()=>{});},15000);return()=>{clearInterval(ping);window.removeEventListener('pagehide',exit);switching.current?.abort();if(activeStream.current)stopOnExit();};},[]);
-  const watch=async (channel:Channel,transcode=false)=>{
+  const watch=async (channel:Channel,transcode=false,compatible=false)=>{
     if(!permission.viewing){notify('Просмотр на телефоне отключён на компьютере.');return;}
     const generation=++switchGeneration.current;switching.current?.abort();const abort=new AbortController();switching.current=abort;
-    setMode('watch');setTab('tv');setWatching(channel);setVideoError('');setVideoLoading(true);setVideoUrl('');
+    if(!transcode&&!compatible){compatibilityAttempted.current=false;setFiltersOpen(false);}
+    setMode('watch');setTab('tv');setWatching(channel);setVideoError('');setVideoLoading(true);setVideoUrl('');setVideoMode('');
     // A play() attempt begins in the tap handler; Safari may still require its native Play control after the URL arrives.
     video.current?.pause();
     try{
-      const result=await api<{url:string;mode:string}>('/api/stream',{channelId:channel.id,transcode},abort.signal);
+      const result=await api<{url:string;mode:string}>('/api/stream',{channelId:channel.id,transcode,compatible},abort.signal);
       if(generation!==switchGeneration.current)return;
       activeStream.current=true;setVideoMode(result.mode);setVideoUrl(result.url);setRecent(remember(channel.id));
       const element=video.current;
-      if(element){element.src=result.url;element.load();void element.play().catch(()=>{setVideoLoading(false);notify('Нажмите ▶ на видео, чтобы начать просмотр со звуком.');});}
+      if(element){element.src=result.url;element.load();void element.play().catch(e=>{if(generation===switchGeneration.current&&e?.name==='NotAllowedError'){setVideoLoading(false);notify('Нажмите ▶ на видео, чтобы начать просмотр со звуком.');}});}
     }catch(e){if(generation===switchGeneration.current&&!abort.signal.aborted){setVideoLoading(false);setVideoError(message(e));}}
+  };
+  const videoFailed=()=>{
+    const element=video.current;
+    if(!videoUrl||!watching||!element?.getAttribute('src')||element.getAttribute('src')!==videoUrl)return;
+    setVideoLoading(false);
+    const codecError=element.error?.code===3||element.error?.code===4;
+    if(codecError&&videoMode==='proxy'&&permission.transcoding&&!compatibilityAttempted.current){
+      compatibilityAttempted.current=true;notify('Подбираем совместимый звук · качество видео сохраняется');void watch(watching,false,true);return;
+    }
+    setVideoError(codecError?(videoMode==='compatible'?'Этот формат видео тоже несовместим с Safari. Можно преобразовать видео в H.264.':permission.transcoding?'Safari не поддерживает формат этого потока. Попробуйте совместимый звук или преобразование видео.':'Для этого канала включите «Совместимость iPhone» в окне Remote на компьютере. Это позволит преобразовать звук, сохранив качество видео.'):'Safari не смог загрузить поток. Проверьте сеть и лимит подключений провайдера.');
   };
   const choose=async (channel:Channel)=>{
     if(pickSlot!==null){const slots=[...(state?.multiscreen.channels??[null,null,null,null])];while(slots.length<=pickSlot)slots.push(null);slots.forEach((id,i)=>{if(id===channel.id)slots[i]=null;});slots[pickSlot]=channel.id;setPickSlot(null);setTab('remote');await act({action:'multiscreen.layout',channels:slots});return;}
@@ -134,32 +146,37 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const currentGuide=catalog.channels.find(c=>c.id===guideId)??(watching?.id===guideId?watching:undefined)??(state?.channelId===guideId?{id:guideId,name:state.channelName,category:'',favorite:false,number:0}:undefined);
   const fullscreen=()=>{const v=video.current as HTMLVideoElement&{webkitEnterFullscreen?:()=>void};if(!v)return;if(document.fullscreenElement)void document.exitFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else void v.requestFullscreen?.();};
   const setRemoteMode=(pc:boolean)=>{if(pc){stop();setMode('pc');}else setMode('watch');};
-  return <div className="app">
+  const catalogWatching=!!watching&&(tab==='tv'||tab==='favorites')&&pickSlot===null;
+  const expandedCatalog=!catalogWatching||filtersOpen;
+  const activeFilters=[category,playlist,collection,sort!=='playlist'?sort:''].filter(Boolean).length;
+  return <div className={'app '+(watching?'has-player ':'')+(catalogWatching?'catalog-view':'')}>
     <header><div className="wordmark">Dzhigga<span>TV</span><small>REMOTE</small></div><div className={'connection '+(online?'':'offline')}>{online?<Wifi size={14}/>:<WifiOff size={14}/>}<span>{online?'Дома':'Нет подключения'}</span></div></header>
     {!online&&<div className="offline-banner">Нет подключения к DzhiggaTV · пробуем восстановить связь</div>}
-    {watching&&<section className={'viewer '+(tab==='remote'||tab==='settings'?'viewer-small':'')}>
-      <div className="video-frame"><video ref={video} playsInline controls preload="none" src={videoUrl||undefined} onWaiting={()=>setVideoLoading(true)} onPlaying={()=>{setVideoLoading(false);setVideoError('');}} onCanPlay={()=>setVideoLoading(false)} onError={()=>{if(videoUrl){setVideoLoading(false);setVideoError('Safari не смог воспроизвести поток. Возможны несовместимые кодеки, сбой сети или лимит подключений провайдера.');}}} onDoubleClick={fullscreen}/>
+    {watching&&<section className={'viewer '+(tab==='remote'||tab==='settings'?'viewer-small ':'')+(playerCollapsed||searchFocused?'viewer-collapsed':'')} aria-label="Плеер телефона">
+      <div className="video-frame" id="remote-video"><video ref={video} playsInline controls preload="none" src={videoUrl||undefined} onWaiting={()=>setVideoLoading(true)} onPlaying={()=>{setVideoLoading(false);setVideoError('');}} onCanPlay={()=>setVideoLoading(false)} onError={videoFailed} onDoubleClick={fullscreen}/>
         {videoLoading&&<div className="video-status"><span className="loading-dot"/> Подключение…</div>}
         <button className="icon close-video" aria-label="Остановить просмотр" onClick={stop}><X size={18}/></button>
       </div>
-      <div className="now-playing"><div><span className="eyebrow">СМОТРЮ ЗДЕСЬ {videoMode==='transcode'?'· H.264 / AAC':''}</span><h2>{watching.name}</h2><button className="programme-link" onClick={()=>setDetail({channel:watching,programme:watching.current})}>{watching.current?.title??'Телепрограмма пока недоступна'} <Info size={13}/></button></div>
+      <div className="now-playing"><div><span className="eyebrow">СМОТРЮ ЗДЕСЬ {videoMode==='transcode'?'· H.264 / AAC':videoMode==='compatible'?'· ИСХОДНОЕ ВИДЕО / AAC':''}</span><h2>{watching.name}</h2><button className="programme-link" onClick={()=>setDetail({channel:watching,programme:watching.current})}>{watching.current?.title??'Телепрограмма пока недоступна'} <Info size={13}/></button></div>
+        <button className="icon collapse-player" aria-label={playerCollapsed?'Развернуть плеер':'Свернуть плеер'} aria-expanded={!playerCollapsed} aria-controls="remote-video" onClick={()=>setPlayerCollapsed(value=>!value)}>{playerCollapsed?<ChevronDown size={20}/>:<ChevronUp size={20}/>}</button>
         <button className="icon" aria-label="Полный экран" onClick={fullscreen}><Maximize/></button>
         {'webkitShowPlaybackTargetPicker' in (video.current??{})&&<button className="icon" aria-label="AirPlay" onClick={()=>{(video.current as HTMLVideoElement&{webkitShowPlaybackTargetPicker:()=>void}).webkitShowPlaybackTargetPicker();}}><Cast/></button>}
         {document.pictureInPictureEnabled&&<button className="icon" aria-label="Картинка в картинке" onClick={()=>void video.current?.requestPictureInPicture?.().catch(e=>notify(message(e)))}><PictureInPicture2/></button>}
       </div>
-      {videoError&&<div className="video-error"><p>{videoError}</p><button onClick={()=>void watch(watching)}><RefreshCw size={16}/> Повторить</button>{permission.transcoding&&<button onClick={()=>void watch(watching,true)}>Преобразовать для Safari</button>}</div>}
+      {videoError&&<div className="video-error"><p>{videoError}</p><button onClick={()=>void watch(watching)}><RefreshCw size={16}/> Повторить</button>{permission.transcoding&&<>{videoMode!=='compatible'&&videoMode!=='transcode'&&<button onClick={()=>void watch(watching,false,true)}>Совместимый звук · без потери видео</button>}<button onClick={()=>void watch(watching,true)}>Преобразовать видео в H.264</button></>}</div>}
     </section>}
     {(tab==='tv'||tab==='favorites'||pickSlot!==null)&&<section className="catalog-page">
-      <div className="catalog-top"><div className="section-title"><h1>{pickSlot!==null?`Канал для экрана ${pickSlot+1}`:tab==='favorites'?'Избранное':'Телевидение'}</h1><span>{catalog.total.toLocaleString('ru')} каналов</span></div>
+      <div className="catalog-top">{expandedCatalog&&<div className="catalog-heading"><div className="section-title"><h1>{pickSlot!==null?`Канал для экрана ${pickSlot+1}`:tab==='favorites'?'Избранное':'Телевидение'}</h1><span>{catalog.total.toLocaleString('ru')} каналов</span></div>
         <div className="mode-switch" aria-label="Режим выбора канала"><button className={mode==='watch'?'active':''} onClick={()=>setRemoteMode(false)}><Smartphone size={16}/> Смотреть здесь</button><button className={mode==='pc'?'active':''} disabled={!permission.control} onClick={()=>setRemoteMode(true)}><Monitor size={16}/> Управлять ПК</button></div>
-        <label className="search"><Search size={18}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Канал, фильм или матч" aria-label="Поиск канала или передачи"/>{search&&<button className="icon" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}</label>
-        <div className="filters"><select aria-label="Категория" value={category} onChange={e=>setCategory(e.target.value)}><option value="">Все категории</option>{catalog.categories.map(c=><option key={c}>{c}</option>)}</select>
+        </div>}
+        <div className="catalog-search"><label className="search"><Search size={18}/><input value={search} onFocus={()=>setSearchFocused(true)} onBlur={()=>setSearchFocused(false)} onChange={e=>setSearch(e.target.value)} placeholder="Канал, фильм или матч" aria-label="Поиск канала или передачи"/>{search&&<button className="icon" aria-label="Очистить поиск" onClick={()=>setSearch('')}><X size={16}/></button>}</label>{catalogWatching&&<button className={'filter-toggle '+(filtersOpen||activeFilters?'accent':'')} aria-label="Фильтры каналов" aria-expanded={filtersOpen} aria-controls="catalog-filters" onClick={()=>setFiltersOpen(value=>!value)}><SlidersHorizontal size={18}/>{activeFilters>0&&<small>{activeFilters}</small>}</button>}</div>
+        {expandedCatalog&&<div className="filters" id="catalog-filters"><select aria-label="Категория" value={category} onChange={e=>setCategory(e.target.value)}><option value="">Все категории</option>{catalog.categories.map(c=><option key={c}>{c}</option>)}</select>
           <select aria-label="Плейлист" value={playlist} onChange={e=>setPlaylist(e.target.value)}><option value="">Все плейлисты</option>{catalog.playlists.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
           <select aria-label="Подборка" value={tab==='favorites'?'favorites':collection} disabled={tab==='favorites'} onChange={e=>setCollection(e.target.value)}><option value="">Все каналы</option><option value="recent">Недавно смотрел</option>{catalog.collections.map(c=><option key={c}>{c}</option>)}</select>
-          <select aria-label="Сортировка" value={sort} onChange={e=>setSort(e.target.value)}><option value="playlist">По порядку</option><option value="name">А–Я</option></select></div>
+          <select aria-label="Сортировка" value={sort} onChange={e=>setSort(e.target.value)}><option value="playlist">По порядку</option><option value="name">А–Я</option></select></div>}
       </div>
       {catalogError&&<div className="empty"><p>{catalogError}</p><button onClick={()=>void loadCatalog(false)}>Повторить</button></div>}
-      <ChannelList channels={catalog.channels} resetKey={queryKey} total={catalog.total} loading={loading} loadMore={()=>void loadCatalog(true)} selected={mode==='pc'?state?.channelId:watching?.id} choose={c=>void choose(c)} favorite={c=>void favorite(c)} canFavorite={permission.favorites} context={setContext}/>
+      <ChannelList compact={catalogWatching} channels={catalog.channels} resetKey={queryKey} total={catalog.total} loading={loading} loadMore={()=>void loadCatalog(true)} selected={mode==='pc'?state?.channelId:watching?.id} choose={c=>void choose(c)} favorite={c=>void favorite(c)} canFavorite={permission.favorites} context={setContext}/>
     </section>}
     {tab==='guide'&&<section className="page guide"><div className="section-title"><h1>Телепрограмма</h1><CalendarDays size={22}/></div><p className="muted">Выберите канал в разделе ТВ или найдите его ниже.</p>
       <label className="search"><Search size={18}/><input aria-label="Найти канал для телепрограммы" placeholder="Найти канал" value={search} onChange={e=>setSearch(e.target.value)}/></label>
@@ -199,13 +216,15 @@ function VolumeSlider({value,disabled,commit}:{value:number;disabled:boolean;com
   useEffect(()=>{if(!dragging.current)setLocal(value);},[value]);
   return <input aria-label="Громкость компьютера" type="range" min="0" max="100" value={local} disabled={disabled} onPointerDown={()=>{dragging.current=true;}} onChange={e=>setLocal(Number(e.target.value))} onPointerUp={e=>{dragging.current=false;commit(Number(e.currentTarget.value));}} onPointerCancel={()=>{dragging.current=false;setLocal(value);}} onKeyUp={e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key))commit(Number(e.currentTarget.value));}}/>;
 }
-function ChannelList({channels,total,loading,loadMore,resetKey,selected,choose,favorite,canFavorite,context}:{channels:Channel[];total:number;loading:boolean;loadMore:()=>void;resetKey:string;selected?:string;choose:(c:Channel)=>void;favorite:(c:Channel)=>void;canFavorite:boolean;context:(c:Channel)=>void}) {
+function ChannelList({compact,channels,total,loading,loadMore,resetKey,selected,choose,favorite,canFavorite,context}:{compact:boolean;channels:Channel[];total:number;loading:boolean;loadMore:()=>void;resetKey:string;selected?:string;choose:(c:Channel)=>void;favorite:(c:Channel)=>void;canFavorite:boolean;context:(c:Channel)=>void}) {
   const ref=useRef<HTMLDivElement>(null), [top,setTop]=useState(0), [height,setHeight]=useState(500);
+  const rowHeight=compact?76:94, previousRowHeight=useRef(rowHeight);
+  useEffect(()=>{if(ref.current&&previousRowHeight.current!==rowHeight){const next=ref.current.scrollTop/previousRowHeight.current*rowHeight;ref.current.scrollTop=next;setTop(next);previousRowHeight.current=rowHeight;}},[rowHeight]);
   useEffect(()=>{if(ref.current){ref.current.scrollTop=0;setTop(0);}},[resetKey]);
   useEffect(()=>{if(!ref.current)return;const observer=new ResizeObserver(e=>setHeight(e[0].contentRect.height));observer.observe(ref.current);return()=>observer.disconnect();},[]);
-  const start=Math.max(0,Math.floor(top/94)-3), end=Math.min(channels.length,start+Math.ceil(height/94)+7);
-  return <div className="catalog-scroll" ref={ref} onScroll={e=>{const n=e.currentTarget;setTop(n.scrollTop);if(n.scrollTop+n.clientHeight>n.scrollHeight-400&&!loading&&channels.length<total)loadMore();}}>
-    <div style={{height:start*94}}/>{channels.slice(start,end).map(c=><ChannelRow key={c.id} channel={c} selected={c.id===selected} choose={()=>choose(c)} favorite={()=>favorite(c)} canFavorite={canFavorite} context={()=>context(c)}/>)}<div style={{height:Math.max(0,(channels.length-end)*94)}}/>
+  const start=Math.max(0,Math.floor(top/rowHeight)-3), end=Math.min(channels.length,start+Math.ceil(height/rowHeight)+7);
+  return <div className={'catalog-scroll '+(compact?'compact-list':'')} ref={ref} onScroll={e=>{const n=e.currentTarget;setTop(n.scrollTop);if(n.scrollTop+n.clientHeight>n.scrollHeight-400&&!loading&&channels.length<total)loadMore();}}>
+    <div style={{height:start*rowHeight}}/>{channels.slice(start,end).map(c=><ChannelRow key={c.id} channel={c} selected={c.id===selected} choose={()=>choose(c)} favorite={()=>favorite(c)} canFavorite={canFavorite} context={()=>context(c)}/>)}<div style={{height:Math.max(0,(channels.length-end)*rowHeight)}}/>
     {loading&&<div className="list-loading">Загружаем каналы…</div>}{!loading&&channels.length===0&&<div className="empty"><Search size={28}/><p>Каналы не найдены.<br/>Попробуйте другой поиск или категорию.</p></div>}
     {!loading&&channels.length<total&&<button className="load-more" onClick={loadMore}>Показать ещё</button>}
   </div>;

@@ -26,6 +26,7 @@ public sealed class RemoteSettingsWindow : Window
     private readonly StackPanel _devices = new();
     private readonly Button _start = new() { MinWidth = 155, Padding = new(17, 10, 17, 10), Margin = new(0, 0, 0, 16) };
     private readonly Button _refreshCode = new() { Content = "Обновить код", IsEnabled = false }, _copy = new() { Content = "Копировать ссылку", IsEnabled = false };
+    private readonly Button _compatibility = new() { Content = "Включить совместимость iPhone", Margin = new(10, 0, 0, 16) };
     private readonly Expander _settings = new() { Header = "Настройки сервера, просмотра и пульта", Margin = new(0, 18, 0, 12), IsExpanded = false };
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(2) };
     private AddressChoice[] _addressChoices = [];
@@ -53,7 +54,9 @@ public sealed class RemoteSettingsWindow : Window
         AddButton(networkActions, "Обновить сеть", () => { RefreshAddresses(); DescribeNetwork(); return Task.CompletedTask; });
         AddButton(networkActions, "Настройки сети Windows", () => { Process.Start(new ProcessStartInfo("ms-settings:network-status") { UseShellExecute = true }); return Task.CompletedTask; });
         serverPanel.Children.Add(networkActions); page.Children.Add(Card(serverPanel));
-        _start.SetResourceReference(BorderBrushProperty, "AccentBrush"); _start.HorizontalAlignment = HorizontalAlignment.Left; page.Children.Add(_start);
+        _start.SetResourceReference(BorderBrushProperty, "AccentBrush"); _start.HorizontalAlignment = HorizontalAlignment.Left;
+        var serverActions = new WrapPanel(); serverActions.Children.Add(_start); serverActions.Children.Add(_compatibility); page.Children.Add(serverActions);
+        _compatibility.Click += async (_, _) => await RunAsync(EnableCompatibilityAsync);
 
         var connection = new WrapPanel();
         var qrContent = new Grid(); qrContent.Children.Add(_qr); qrContent.Children.Add(_placeholder); _qrFrame.Child = qrContent;
@@ -83,10 +86,10 @@ public sealed class RemoteSettingsWindow : Window
         Check(optionsPanel, _direct, "Разрешить исходные IPTV-адреса на телефоне", options.AllowDirectUrls);
         Note(optionsPanel, "Прямой режим передаёт телефону адрес и токен провайдера. Рекомендуется локальный прокси.");
         Check(optionsPanel, _transcode, "Разрешить преобразование через FFmpeg", options.AllowTranscoding);
-        _ffmpeg.Text = options.FfmpegPath; Field(optionsPanel, "Путь к ffmpeg.exe", _ffmpeg);
+        _ffmpeg.Text = options.FfmpegPath.Length > 0 ? options.FfmpegPath : InstalledFfmpeg; Field(optionsPanel, "Путь к ffmpeg.exe", _ffmpeg);
         AddButton(optionsPanel, "Выбрать ffmpeg.exe…", () => { var d = new OpenFileDialog { Filter = "FFmpeg|ffmpeg.exe", CheckFileExists = true }; if (d.ShowDialog(this) == true) _ffmpeg.Text = d.FileName; return Task.CompletedTask; });
         _quality.ItemsSource = new[] { "480p", "720p", "1080p" }; _quality.SelectedIndex = options.TranscodeHeight switch { 480 => 0, 1080 => 2, _ => 1 }; Field(optionsPanel, "Качество при преобразовании", _quality);
-        Note(optionsPanel, "FFmpeg нужен несовместимым потокам и может повысить нагрузку CPU. Одновременно работает одна задача.");
+        Note(optionsPanel, "При ошибке кодека iPhone сначала попробует AAC-звук без изменения видео, сохранив UHD. Полное преобразование видео в H.264 запускается отдельной кнопкой на телефоне и может повысить нагрузку CPU. Одновременно работает одна задача.");
         Heading(optionsPanel, "Разрешения пульта", 18);
         Check(optionsPanel, _control, "Управлять Windows-плеером", options.AllowControl);
         Check(optionsPanel, _volume, "Менять громкость и выключать звук", options.AllowVolume);
@@ -102,6 +105,7 @@ public sealed class RemoteSettingsWindow : Window
             Refresh();
         });
         System.Windows.Automation.AutomationProperties.SetName(_address, "Сетевой адаптер Remote");
+        System.Windows.Automation.AutomationProperties.SetName(_ffmpeg, "FFmpeg для совместимости Remote");
         System.Windows.Automation.AutomationProperties.SetName(_qr, "QR-код подключения телефона");
         _timer.Tick += (_, _) => Refresh(); _timer.Start(); Closed += (_, _) => _timer.Stop();
         if (_remote.Running) RefreshCode(); Refresh(); DescribeNetwork();
@@ -132,6 +136,19 @@ public sealed class RemoteSettingsWindow : Window
         options.Validate(); return options;
     }
     private async Task SaveAsync() { _main.Model.SetSetting("remote.options", JsonSerializer.Serialize(Read())); await _main.Model.SaveAsync(); }
+    private static string InstalledFfmpeg => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV", "tools", "ffmpeg.exe");
+    private async Task EnableCompatibilityAsync()
+    {
+        if (!File.Exists(_ffmpeg.Text.Trim()))
+        {
+            _settings.IsExpanded = true; _ffmpeg.Focus();
+            throw new RemoteException("Выберите ffmpeg.exe в дополнительных настройках Remote, затем включите совместимость iPhone.");
+        }
+        _transcode.IsChecked = true; bool running = _remote.Running;
+        await SaveAsync();
+        if (running) { await _remote.StartAsync(Read()); RefreshCode(); }
+        _status.Text = "Совместимость iPhone включена. Обновите страницу на телефоне и выберите канал заново.";
+    }
     private void RefreshCode()
     {
         _pairingUrl = _remote.PairingUrl(); _qr.Source = RemoteQrCode.Create(_pairingUrl);
@@ -140,6 +157,9 @@ public sealed class RemoteSettingsWindow : Window
     private void Refresh()
     {
         _start.Content = _remote.Running ? "Выключить Remote" : "Включить Remote"; _start.IsEnabled = !_busy;
+        bool compatibilityEnabled = _main.RemoteOptions().AllowTranscoding;
+        _compatibility.Content = compatibilityEnabled ? "Совместимость iPhone включена" : "Включить совместимость iPhone";
+        _compatibility.IsEnabled = !_busy && !compatibilityEnabled;
         _url.Text = _remote.Url ?? "Сначала включите Remote";
         if (_lastServerStatus != _remote.Status) { _lastServerStatus = _remote.Status; _status.Text = _remote.Status; DescribeNetwork(); }
         bool codeVisible = _remote.Running && _qr.Source is not null;
@@ -161,7 +181,7 @@ public sealed class RemoteSettingsWindow : Window
         }
         var streams = _remote.Streams.Active;
         _diagnostic.Text = $"Устройств в сети: {devices.Count(d => d.Connected)} · Потоков: {streams.Count}/{_remote.Options.MaximumStreams} · Передано: {streams.Sum(s => s.Bytes) / 1048576d:F1} МБ" +
-            string.Concat(streams.Select(s => $"\n{_main.Model.AllChannels.Find(c => c.Id == s.ChannelId)?.Name ?? "Канал"} · {(s.Mode == "transcode" ? "FFmpeg" : s.Mode == "direct" ? "Напрямую" : "HLS-прокси")}")) +
+            string.Concat(streams.Select(s => $"\n{_main.Model.AllChannels.Find(c => c.Id == s.ChannelId)?.Name ?? "Канал"} · {(s.Mode == "transcode" ? "H.264 / AAC" : s.Mode == "compatible" ? "Исходное видео / AAC" : s.Mode == "direct" ? "Напрямую" : "HLS-прокси")}")) +
             (_remote.LastPlaybackError is { } error ? "\nПоследняя ошибка видео: " + error : "");
     }
     private async Task DiagnoseAsync()

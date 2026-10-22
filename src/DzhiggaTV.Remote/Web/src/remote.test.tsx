@@ -19,7 +19,9 @@ beforeEach(()=>{
   vi.spyOn(HTMLMediaElement.prototype,'load').mockImplementation(()=>{});
   vi.stubGlobal('fetch',vi.fn(async (path:string,init?:RequestInit)=>{
     requests.push({path,body:init?.body?JSON.parse(String(init.body)):undefined});
-    const data=path.startsWith('/api/catalog')?catalog:path==='/api/stream'?{url:'/media/stream/root',mode:'proxy'}:path==='/api/session'?session:{};
+    const body=init?.body?JSON.parse(String(init.body)):undefined;
+    const mode=body?.transcode?'transcode':body?.compatible?'compatible':'proxy';
+    const data=path.startsWith('/api/catalog')?catalog:path==='/api/stream'?{url:mode==='proxy'?'/media/stream/root':'/converted/stream/index.m3u8',mode}:path==='/api/session'?session:{};
     return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json'}});
   }));
 });
@@ -43,12 +45,67 @@ describe('independent mobile playback',()=>{
     render(<Television session={{...session,policy:{...session.policy,control:false}}} onLogout={()=>{}}/>);
     expect((screen.getByRole('button',{name:/Управлять ПК/}) as HTMLButtonElement).disabled).toBe(true);
   });
+  it('recovers a codec error once with copied video and AAC, then offers full conversion',async()=>{
+    const result=render(<Television session={{...session,policy:{...session.policy,transcoding:true}}} onLogout={()=>{}}/>);
+    fireEvent.click(await screen.findByText('Тест канал'));
+    const video=result.container.querySelector('video')!;
+    await waitFor(()=>expect(video.getAttribute('src')).toBe('/media/stream/root'));
+    Object.defineProperty(video,'error',{configurable:true,value:{code:4}});fireEvent.error(video);
+    await waitFor(()=>expect(video.getAttribute('src')).toBe('/converted/stream/index.m3u8'));
+    expect(requests.filter(r=>r.path==='/api/stream'&&r.body?.compatible===true)).toHaveLength(1);
+    expect(requests.filter(r=>r.path==='/api/stream'&&r.body?.transcode===true)).toHaveLength(0);
+    fireEvent.error(video);
+    expect(await screen.findByText(/Этот формат видео тоже несовместим/)).toBeTruthy();
+    expect(requests.filter(r=>r.path==='/api/stream'&&r.body?.compatible===true)).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button',{name:'Преобразовать видео в H.264'}));
+    await waitFor(()=>expect(requests.some(r=>r.path==='/api/stream'&&r.body?.transcode===true)).toBe(true));
+    expect(requests.filter(r=>r.path==='/api/command')).toHaveLength(0);
+  });
+  it('does not start an encoder after a network error',async()=>{
+    const result=render(<Television session={{...session,policy:{...session.policy,transcoding:true}}} onLogout={()=>{}}/>);
+    fireEvent.click(await screen.findByText('Тест канал'));
+    const video=result.container.querySelector('video')!;
+    await waitFor(()=>expect(video.getAttribute('src')).toBe('/media/stream/root'));
+    Object.defineProperty(video,'error',{configurable:true,value:{code:2}});fireEvent.error(video);
+    expect(await screen.findByText(/Safari не смог загрузить поток/)).toBeTruthy();
+    expect(requests.filter(r=>r.path==='/api/stream')).toHaveLength(1);
+  });
+  it('explains the desktop compatibility setting when conversion is disabled',async()=>{
+    const result=render(<Television session={session} onLogout={()=>{}}/>);
+    fireEvent.click(await screen.findByText('Тест канал'));
+    const video=result.container.querySelector('video')!;
+    await waitFor(()=>expect(video.getAttribute('src')).toBe('/media/stream/root'));
+    Object.defineProperty(video,'error',{configurable:true,value:{code:3}});fireEvent.error(video);
+    expect(await screen.findByText(/включите «Совместимость iPhone»/)).toBeTruthy();
+    expect(requests.filter(r=>r.path==='/api/stream')).toHaveLength(1);
+    expect(screen.queryByRole('button',{name:'Преобразовать видео в H.264'})).toBeNull();
+  });
   it('virtualizes a large catalog',async()=>{
     const large={...catalog,total:3000,channels:Array.from({length:100},(_,i)=>({...channel,id:String(i),name:'Канал '+i}))};
     vi.mocked(fetch).mockImplementation(async()=>new Response(JSON.stringify(large)));
     const result=render(<Television session={session} onLogout={()=>{}}/>);
     await screen.findByText('Канал 0');
     expect(result.container.querySelectorAll('.channel-row').length).toBeLessThan(20);
+  });
+  it('keeps channels searchable while browsing filters or collapsing the mounted player',async()=>{
+    const result=render(<Television session={session} onLogout={()=>{}}/>);
+    fireEvent.click(await screen.findByText('Тест канал'));
+    const video=result.container.querySelector('video')!;
+    await waitFor(()=>expect(video.getAttribute('src')).toBe('/media/stream/root'));
+    expect(screen.queryByLabelText('Категория')).toBeNull();
+    expect(screen.getByLabelText('Поиск канала или передачи')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:'Фильтры каналов'}));
+    expect(screen.getByLabelText('Категория')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button',{name:'Фильтры каналов'}));
+    expect(screen.queryByLabelText('Категория')).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:'Свернуть плеер'}));
+    expect(screen.getByRole('button',{name:'Развернуть плеер'}).getAttribute('aria-expanded')).toBe('false');
+    expect(result.container.querySelector('video')).toBe(video);
+    expect(video.getAttribute('src')).toBe('/media/stream/root');
+    expect(requests.filter(r=>r.path==='/api/stream')).toHaveLength(1);
+    expect(requests.filter(r=>r.path==='/api/stream/stop')).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button',{name:'Развернуть плеер'}));
+    expect(result.container.querySelector('video')).toBe(video);
   });
 });
 describe('API and local history',()=>{

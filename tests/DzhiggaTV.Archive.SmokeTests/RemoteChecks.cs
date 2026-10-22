@@ -103,6 +103,15 @@ internal static partial class Program
         await Wait(() => remote.Running && start.IsEnabled && qr.Source is not null && qr.Visibility == Visibility.Visible);
         using var client = new HttpClient(new HttpClientHandler { UseProxy = false });
         Check((await client.GetAsync(remote.Url + "/api/status")).IsSuccessStatusCode && copy.IsEnabled, "The actual Windows Enable button starts HTTP and reveals a working QR code");
+        if (Environment.GetEnvironmentVariable("DZHIGGATV_TEST_FFMPEG") is { } ffmpeg && System.IO.File.Exists(ffmpeg))
+        {
+            var ffmpegField = Descendants<TextBox>(window).Single(t => System.Windows.Automation.AutomationProperties.GetName(t) == "FFmpeg для совместимости Remote");
+            ffmpegField.Text = ffmpeg;
+            var compatibility = Descendants<Button>(window).Single(b => Equals(b.Content, "Включить совместимость iPhone"));
+            compatibility.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Wait(() => remote.Running && remote.Options.AllowTranscoding && start.IsEnabled && !compatibility.IsEnabled);
+            Check(main.RemoteOptions().AllowTranscoding && main.RemoteOptions().FfmpegPath == ffmpeg && copy.IsEnabled && (await client.GetAsync(remote.Url + "/api/status")).IsSuccessStatusCode, "The Windows compatibility button saves FFmpeg and restarts the existing Remote server");
+        }
         start.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         await Wait(() => !remote.Running && start.IsEnabled && qr.Visibility == Visibility.Collapsed);
         Check(!copy.IsEnabled && remote.Url is null, "The actual Windows Disable button closes the server and clears QR actions");
