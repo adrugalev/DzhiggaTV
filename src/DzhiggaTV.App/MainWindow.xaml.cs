@@ -94,6 +94,7 @@ public partial class MainWindow : Window
             Model.PlaybackStatus = e.Message;
             if (e.State == PlaybackState.Error) Model.Status = e.Message;
             HasPlayback = e.State is PlaybackState.Playing or PlaybackState.Paused or PlaybackState.Buffering or PlaybackState.Stalled or PlaybackState.Reconnecting or PlaybackState.Loading || IsArchivePlayback && e.State is PlaybackState.Idle or PlaybackState.Error;
+            if (e.State == PlaybackState.Idle && IsArchivePlayback) _ = GuardAsync(ContinueArchiveAsync);
             if (e.State == PlaybackState.Playing) RefreshMiniVideoAspect();
             _overlay?.RefreshState();
         });

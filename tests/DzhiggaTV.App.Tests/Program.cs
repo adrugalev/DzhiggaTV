@@ -148,6 +148,12 @@ internal static class Program
         Assert(!browser.IsBrowsing && browser.CurrentTitle == "Предыдущая", "After explicit playback, cards follow that recording.");
         await browser.GoBackAsync();
         Assert(browser.CurrentTitle == "Вчера" && model.CurrentTitle == "Предыдущая", "Reading older history must not replace the playing recording.");
+        model.SetArchiveProgramme(entries[4], entries[5], continuing: true); await browser.RefreshAsync();
+        Assert(browser.IsBrowsing && browser.CurrentTitle == "Вчера" && model.CurrentTitle == "Прямой эфир" && model.IsArchive,
+            "An automatic programme change in the recording must update playback metadata without discarding a browsed history card.");
+        model.SetArchiveProgramme(entries[3], entries[4], entries[5]); await browser.RefreshAsync();
+        Assert(!browser.IsBrowsing && browser.CurrentTitle == "Предыдущая",
+            "Explicitly starting another recording must still return its cards to playback when archive mode is unchanged.");
         model.SetArchiveProgramme(null); await browser.RefreshAsync(); await WaitUntilAsync(() => browser.CanGoBack, "Live cards must regain navigation.");
         var pending = browser.GoBackAsync(); model.Active = model.AllChannels.Single(c => c.Id == "other");
         await pending; await browser.RefreshAsync();

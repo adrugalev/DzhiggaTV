@@ -64,10 +64,12 @@ public sealed class MainViewModel : Observable, IDisposable
     public Programme? PlayingProgramme => _archiveProgramme ?? Active?.Current;
     public Programme? PlayingNext => IsArchive ? _archiveNext : Active?.Next;
     public Programme? PlayingAfterNext => IsArchive ? _archiveAfterNext : Active?.AfterNext;
-    public void SetArchiveProgramme(Programme? programme, Programme? next = null, Programme? afterNext = null)
+    public void SetArchiveProgramme(Programme? programme, Programme? next = null, Programme? afterNext = null, bool continuing = false)
     {
+        bool wasArchive = IsArchive;
         _archiveProgramme = programme; _archiveNext = next; _archiveAfterNext = afterNext; _archivePosition = programme?.Start;
-        Raise(nameof(IsArchive)); Raise(nameof(PlaybackProgrammeLabel)); RaisePlayback();
+        if (!continuing || wasArchive != IsArchive) { Raise(nameof(IsArchive)); Raise(nameof(PlaybackProgrammeLabel)); }
+        RaisePlayback();
     }
     public void SetArchivePosition(DateTimeOffset time) { _archivePosition = time; Raise(nameof(CurrentProgress)); }
     public string CurrentTitle => PlayingProgramme?.Title ?? "Программа пока недоступна";

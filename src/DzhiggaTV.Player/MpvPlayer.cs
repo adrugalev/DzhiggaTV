@@ -302,7 +302,7 @@ public sealed class MpvPlayer : IDisposable
                 _activeEntryId = _loadedEntryId = -1; _activeGeneration = request.Generation;
             }
             if (request.Duration is { } duration)
-                await CommandAsync(request, "loadfile", source?.Url ?? request.Url, "replace", "-1", $"start={(source is null ? Math.Min(request.ResumePosition, Math.Max(0, duration - 1)) : 0).ToString("0.###", CultureInfo.InvariantCulture)},end={(source?.Duration ?? duration).ToString("0.###", CultureInfo.InvariantCulture)}").ConfigureAwait(false);
+                await CommandAsync(request, "loadfile", source?.Url ?? request.Url, "replace", "-1", $"start={(source is null ? Math.Min(request.ResumePosition, Math.Max(0, duration - 1)) : 0).ToString("0.###", CultureInfo.InvariantCulture)},end={(source?.Duration ?? duration).ToString("0.###", CultureInfo.InvariantCulture)},demuxer-lavf-o=live_start_index=0").ConfigureAwait(false);
             else await CommandAsync(request, "loadfile", request.Url, "replace").ConfigureAwait(false);
             if (!IsCurrent(request)) throw new OperationCanceledException(request.Token);
             var entry = ReadLong("playlist/0/id");

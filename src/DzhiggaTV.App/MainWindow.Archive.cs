@@ -18,7 +18,16 @@ public partial class MainWindow
             await GuardAsync(() => PlayArchiveAsync(channel, programme));
     }
 
-    private sealed record ArchivePlayback(ChannelItem Channel, Programme Programme, DateTimeOffset LoadedStart, DateTimeOffset LoadedEnd);
+    private sealed class ArchivePlayback(ChannelItem channel, Programme programme, DateTimeOffset start, DateTimeOffset end, string? epgId)
+    {
+        public ChannelItem Channel { get; } = channel;
+        public Programme Programme { get; set; } = programme;
+        public DateTimeOffset LoadedStart { get; } = start;
+        public DateTimeOffset LoadedEnd { get; } = end;
+        public string? EpgId { get; set; } = epgId;
+        public bool GuideLoading { get; set; }
+        public bool Continuing { get; set; }
+    }
     private ArchivePlayback? _archivePlayback;
     public bool IsArchivePlayback => _archivePlayback is not null;
     public bool CanRestartCurrentProgramme => Model.Active is { Current: { } programme } channel &&
@@ -35,7 +44,8 @@ public partial class MainWindow
         {
             var native = Player.GetTimeline();
             var position = native.Position is { } seconds ? archive.LoadedStart.AddSeconds(Math.Max(0, seconds)) : Player.State == PlaybackState.Idle ? archive.LoadedEnd : archive.LoadedStart;
-            position = position < archive.Programme.Start ? archive.Programme.Start : position > archive.LoadedEnd ? archive.LoadedEnd : position;
+            position = position < archive.LoadedStart ? archive.LoadedStart : position > archive.LoadedEnd ? archive.LoadedEnd : position;
+            RefreshArchiveProgramme(archive, position);
             Model.SetArchivePosition(position);
             var first = archive.Programme.Start > source.Earliest(now) ? archive.Programme.Start : source.Earliest(now);
             var last = archive.Programme.End < now ? archive.Programme.End : now;
@@ -54,7 +64,9 @@ public partial class MainWindow
         await StartArchiveAsync(channel, programme, programme.Start);
     }
 
-    public async Task PlayArchiveAtAsync(ChannelItem channel, DateTimeOffset time)
+    public Task PlayArchiveAtAsync(ChannelItem channel, DateTimeOffset time) => OpenArchiveAtAsync(channel, time);
+
+    private async Task OpenArchiveAtAsync(ChannelItem channel, DateTimeOffset time, bool paused = false, bool continuing = false)
     {
         if (!_engineReady || !Model.IsAllowed(channel)) return;
         var now = DateTimeOffset.Now;
@@ -64,25 +76,28 @@ public partial class MainWindow
         if (Model.Mappings.TryGetValue(channel.Id, out var mapping))
             programme = (await Model.Store.GetNowNextAsync(mapping.EpgId, time)).Current;
         if (lookupGeneration != _playGeneration) return;
-        programme ??= new Programme(mapping?.EpgId ?? channel.Id, "Архив · " + time.ToLocalTime().ToString("dd.MM HH:mm"), time,
-            time.AddHours(2) < now ? time.AddHours(2) : now);
-        await StartArchiveAsync(channel, programme, time);
+        programme ??= ArchivePlaceholder(mapping?.EpgId ?? channel.Id, time, now);
+        await StartArchiveAsync(channel, programme, time, paused, continuing);
     }
 
-    private async Task StartArchiveAsync(ChannelItem channel, Programme programme, DateTimeOffset start, bool paused = false)
+    private async Task StartArchiveAsync(ChannelItem channel, Programme programme, DateTimeOffset start, bool paused = false, bool continuing = false)
     {
         if (!_engineReady || !Model.IsAllowed(channel)) return;
-        var now = DateTimeOffset.Now; var end = programme.End < now ? programme.End : now;
+        // EPG entries describe the video; they must not bound the recording itself.
+        // Bounded provider windows also work for catchup URLs that require a duration.
+        var now = DateTimeOffset.Now; var end = start.AddHours(2) < now ? start.AddHours(2) : now;
         string url = Catchup.BuildUrl(channel.Channel, start, end, now);
         var generation = ++_playGeneration;
         _playCancellation?.Cancel(); _playCancellation?.Dispose(); _playCancellation = new(); var token = _playCancellation.Token;
         await Model.ActivateChannelAsync(channel);
         if (generation != _playGeneration || token.IsCancellationRequested) return;
         NowNext? schedule = null;
-        if (Model.Mappings.TryGetValue(channel.Id, out var mapping)) schedule = await Model.Store.GetNowNextAsync(mapping.EpgId, programme.Start.AddSeconds(1), token);
+        if (Model.Mappings.TryGetValue(channel.Id, out var mapping)) schedule = await Model.Store.GetNowNextAsync(mapping.EpgId, start, token);
         if (generation != _playGeneration || token.IsCancellationRequested) return;
-        _archivePlayback = new(channel, programme, start, end);
-        Model.SetArchiveProgramme(programme, schedule?.Current is null ? null : schedule.Next, schedule?.Current is null ? null : schedule.AfterNext);
+        programme = schedule?.Current ?? programme;
+        if (start < programme.Start || start >= programme.End) programme = ArchivePlaceholder(mapping?.EpgId ?? channel.Id, start, now, schedule?.Next);
+        _archivePlayback = new(channel, programme, start, end, mapping?.EpgId);
+        Model.SetArchiveProgramme(programme, schedule?.Next, schedule?.AfterNext, continuing);
         HasPlayback = true; Model.PlaybackStatus = "Открываем архив…"; _overlay?.RefreshState();
         await Player.PlayArchiveAsync(url, (end - start).TotalSeconds, token, position =>
         {
@@ -94,6 +109,52 @@ public partial class MainWindow
         Model.State.RecordWatched(channel.Id); Model.SetSetting("last.channel", channel.Id); _ = GuardAsync(Model.SaveAsync); _overlay?.Reveal();
     }
 
+    private static Programme ArchivePlaceholder(string epgId, DateTimeOffset time, DateTimeOffset now, Programme? next = null)
+    {
+        var end = time.AddMinutes(5);
+        if (next is not null && next.Start > time && next.Start < end) end = next.Start;
+        if (end > now) end = now;
+        if (end <= time) end = time.AddSeconds(1);
+        return new(epgId, "Архив · " + time.ToLocalTime().ToString("dd.MM HH:mm"), time, end);
+    }
+
+    private void RefreshArchiveProgramme(ArchivePlayback archive, DateTimeOffset position)
+    {
+        string? epgId = Model.Mappings.GetValueOrDefault(archive.Channel.Id)?.EpgId;
+        if (archive.GuideLoading || archive.EpgId == epgId && position >= archive.Programme.Start && position < archive.Programme.End) return;
+        archive.GuideLoading = true;
+        var generation = _playGeneration;
+        var token = _playCancellation?.Token ?? CancellationToken.None;
+        _ = GuardAsync(async () =>
+        {
+            try
+            {
+                NowNext? schedule = epgId is null ? null : await Task.Run(() => Model.Store.GetNowNextAsync(epgId, position, token), token);
+                if (_closing || generation != _playGeneration || !ReferenceEquals(_archivePlayback, archive) || token.IsCancellationRequested ||
+                    Model.Mappings.GetValueOrDefault(archive.Channel.Id)?.EpgId != epgId) return;
+                archive.Programme = schedule?.Current ?? ArchivePlaceholder(epgId ?? archive.Channel.Id, position, DateTimeOffset.Now, schedule?.Next);
+                archive.EpgId = epgId;
+                Model.SetArchiveProgramme(archive.Programme, schedule?.Next, schedule?.AfterNext, continuing: true);
+                Model.SetArchivePosition(position);
+            }
+            finally { archive.GuideLoading = false; }
+        });
+    }
+
+    private async Task ContinueArchiveAsync()
+    {
+        if (_closing || Player.State != PlaybackState.Idle || _archivePlayback is not { Continuing: false } archive) return;
+        // A manual Stop clears the native request. Only a confirmed end of this window may advance it.
+        if (Player.GetTimeline().Position is not { } seconds || seconds < (archive.LoadedEnd - archive.LoadedStart).TotalSeconds - .25) return;
+        archive.Continuing = true;
+        try
+        {
+            if (DateTimeOffset.Now - archive.LoadedEnd <= TimeSpan.FromSeconds(5)) await ReturnToLiveAsync();
+            else await OpenArchiveAtAsync(archive.Channel, archive.LoadedEnd, Player.IsPaused, continuing: true);
+        }
+        finally { archive.Continuing = false; }
+    }
+
     public async Task SeekArchiveToAsync(DateTimeOffset time)
     {
         if (_archivePlayback is not { } archive)
@@ -102,9 +163,10 @@ public partial class MainWindow
             if (Model.Active is { } channel) await PlayArchiveAtAsync(channel, time);
             return;
         }
-        var earliest = archive.Channel.Archive!.Earliest(DateTimeOffset.Now);
-        if (time < earliest || time < archive.Programme.Start) time = earliest > archive.Programme.Start ? earliest : archive.Programme.Start;
-        var end = archive.Programme.End < DateTimeOffset.Now ? archive.Programme.End : DateTimeOffset.Now;
+        var now = DateTimeOffset.Now;
+        var earliest = archive.Channel.Archive!.Earliest(now);
+        if (time < earliest) time = earliest;
+        var end = now;
         if (time >= end) time = end.AddSeconds(-1);
         var generation = ++_playGeneration; bool paused = Player.IsPaused;
         bool reload = time < archive.LoadedStart || time >= archive.LoadedEnd || Player.State is PlaybackState.Idle or PlaybackState.Error;

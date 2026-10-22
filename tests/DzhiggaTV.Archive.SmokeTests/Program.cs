@@ -22,7 +22,7 @@ internal static class Program
         int profileIndex = Array.IndexOf(args, "--data-dir");
         if (args.Length == 0 || !Directory.Exists(args[0]) || profileIndex < 0 || profileIndex + 1 >= args.Length) return 2;
         string profile = Path.GetFullPath(args[profileIndex + 1]); if (Directory.Exists(profile)) return 2;
-        using var server = new FixtureServer(args[0]);
+        using var server = new FixtureServer(args[0]) { LivePlaylist = args.Contains("--archive-continuous") };
         SeedAsync(profile, server.Url).GetAwaiter().GetResult();
         var app = new App { ShutdownMode = ShutdownMode.OnExplicitShutdown }; app.InitializeComponent();
         app.Startup += async (_, _) =>
@@ -67,6 +67,18 @@ internal static class Program
         var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
         Check(main.GetArchiveTimeline() is { IsArchive: false }, "An archive-capable live channel exposes its rewind range");
         var overlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
+        if (args.Contains("--provider-only"))
+        {
+            await ProviderArchiveChecks(main, args);
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
+            return;
+        }
+        if (args.Contains("--archive-continuous"))
+        {
+            await ContinuousArchiveChecks(main, channel, server, handle);
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
+            return;
+        }
         if (args.Contains("--mini-window"))
         {
             await MiniWindowChecks(main, overlay, args);
@@ -164,8 +176,8 @@ internal static class Program
             "The latest of overlapping archive seek requests wins without an obsolete URL reload");
         await main.PlayArchiveAtAsync(channel, SeedNow.AddHours(-3));
         await Wait(() => main.Player.State == PlaybackState.Playing);
-        Check(main.IsArchivePlayback && main.Model.CurrentTitle.StartsWith("Архив · ", StringComparison.Ordinal) && main.Model.PlayingNext is null,
-            "Choosing a date and time also plays an archive when EPG data is absent");
+        Check(main.IsArchivePlayback && main.Model.CurrentTitle.StartsWith("Архив · ", StringComparison.Ordinal) && main.Model.PlayingNext?.Start == Past.Start,
+            "Choosing a time without a current EPG entry still plays the archive and retains known upcoming programmes");
         await main.PlayArchiveAsync(channel, Past); await Wait(() => main.Player.State == PlaybackState.Playing);
         main.ToggleFullscreen(); await Task.Delay(350);
         Check(((FrameworkElement)overlay.FindName("ArchiveTimelinePanel")).Visibility == Visibility.Visible &&
@@ -215,6 +227,18 @@ internal static class Program
         Check(((Button)main.FindName("CurrentProgrammeGuideButton")).Visibility == Visibility.Visible,
             "Channels without archive retain the programme link in the current-programme card");
         await main.PlayAsync(channel); await Wait(() => main.Player.State == PlaybackState.Playing);
+        await ProviderArchiveChecks(main, args);
+        if (args.Contains("--visual-only"))
+        {
+            if (args.Contains("--visual-stall")) { server.HoldRequests = true; await main.PlayAsync(channel); }
+            else if (!main.IsArchivePlayback) await main.PlayArchiveAsync(channel, Past);
+            main.Player.IsPaused = false;
+            Console.WriteLine("VISUAL_READY"); while (main.IsVisible) await Task.Delay(300);
+        }
+        Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
+    }
+    private static async Task ProviderArchiveChecks(MainWindow main, string[] args)
+    {
         int providerIndex = Array.IndexOf(args, "--provider-playlist");
         if (providerIndex >= 0 && providerIndex + 1 < args.Length)
         {
@@ -235,16 +259,104 @@ internal static class Program
             await main.SeekArchiveToAsync(start.AddSeconds(120));
             await Wait(() => main.Player.State == PlaybackState.Playing && main.GetArchiveTimeline()!.Position is var at && at >= start.AddSeconds(119) && at < start.AddSeconds(128), 20000);
             Check(main.Player.GetStatistics().Width > 0, "Real provider archive seeks forward two minutes after rewinding, with decoded video at the chosen time");
+            await main.SeekArchiveToAsync(start.AddSeconds(178));
+            await Wait(() => main.Player.State == PlaybackState.Playing && main.GetArchiveTimeline()!.Position is var at && at >= start.AddSeconds(178) && at < start.AddSeconds(184), 20000);
+            await Wait(() => main.GetArchiveTimeline()!.Position >= programme.End.AddMilliseconds(100), 30000);
+            int completed = 0;
+            void Ended(object? _, PlaybackStateChangedEventArgs state) { if (state.State == PlaybackState.Idle) Interlocked.Increment(ref completed); }
+            main.Player.StateChanged += Ended;
+            try
+            {
+                double? position = main.Player.GetTimeline().Position;
+                await Task.Delay(6000);
+                Check(completed == 0 && main.Player.State == PlaybackState.Playing && main.Player.GetStatistics().Width > 0 &&
+                    main.Player.GetTimeline().Position != position && main.IsArchivePlayback,
+                    "A real provider recording advances video after the chosen programme's end without completing playback or jumping to live");
+            }
+            finally { main.Player.StateChanged -= Ended; }
         }
-        if (args.Contains("--visual-only"))
-        {
-            if (args.Contains("--visual-stall")) { server.HoldRequests = true; await main.PlayAsync(channel); }
-            else if (!main.IsArchivePlayback) await main.PlayArchiveAsync(channel, Past);
-            main.Player.IsPaused = false;
-            Console.WriteLine("VISUAL_READY"); while (main.IsVisible) await Task.Delay(300);
-        }
-        Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
     }
+
+    private static async Task ContinuousArchiveChecks(MainWindow main, ChannelItem channel, FixtureServer server, IntPtr handle)
+    {
+        var start = SeedNow.AddHours(-2);
+        Programme[] entries =
+        [
+            new("guide-archive", "Предыдущая запись", start.AddMinutes(-1), start, "История."),
+            new("guide-archive", "Первая короткая передача", start, start.AddSeconds(4), "Описание первой передачи."),
+            new("guide-archive", "Вторая короткая передача", start.AddSeconds(4), start.AddSeconds(8), "Описание второй передачи."),
+            new("guide-archive", "Третья короткая передача", start.AddSeconds(8), start.AddSeconds(12), "Описание третьей передачи."),
+            new("guide-archive", "После пробела EPG", start.AddSeconds(15), start.AddMinutes(10), "Описание после пробела."),
+            new("guide-archive", "Настоящий прямой эфир", SeedNow.AddMinutes(-20), SeedNow.AddMinutes(40), "Эфирное описание.")
+        ];
+        async IAsyncEnumerable<Programme> Programmes() { foreach (var p in entries) { yield return p; await Task.CompletedTask; } }
+        await main.Model.Store.ReplaceEpgAsync(Programmes(), [new("guide-archive", channel.Name)]);
+        await main.Model.UpdateNowNextAsync();
+        await main.PlayArchiveAsync(channel, entries[1]);
+        await Wait(() => main.Player.State == PlaybackState.Playing && main.Player.GetTimeline().Position is >= 0);
+        Check(main.Player.GetTimeline().Position < 2,
+            "A rolling HLS archive starts at the requested first segment rather than the live playlist tail");
+        long recordingStart = server.LastArchiveStart;
+        main.Player.IsPaused = true; await Wait(() => main.Player.State == PlaybackState.Paused);
+        var pausedAt = main.GetArchiveTimeline()!.Position;
+        await Task.Delay(4500); main.GetArchiveTimeline();
+        Check(main.Model.CurrentTitle == entries[1].Title && Math.Abs((main.GetArchiveTimeline()!.Position - pausedAt).TotalSeconds) < .3,
+            "Archive programme changes follow the recording clock, never wall time during an intentional pause");
+        main.Player.IsPaused = false;
+        await Wait(() => main.Model.CurrentTitle == entries[2].Title && main.Player.State == PlaybackState.Playing, 10000);
+        Check(main.Model.CurrentDescription == entries[2].Description && main.Model.NextTitle == entries[3].Title &&
+            main.Model.AfterNextTitle == entries[4].Title && main.Model.Active?.Current?.Title == entries[5].Title,
+            "Recording crosses an EPG end without stopping and updates its title, description and next two programmes independently of live EPG");
+        await Wait(() => main.Programmes.CanGoBack);
+        await main.Programmes.GoBackAsync();
+        await Wait(() => main.Model.CurrentTitle == entries[3].Title, 10000);
+        Check(main.Programmes.IsBrowsing && main.Programmes.CurrentTitle == entries[1].Title,
+            "Automatic archive programme changes preserve a manually browsed history card");
+        await Wait(() => main.Model.CurrentTitle.StartsWith("Архив · ", StringComparison.Ordinal) && main.GetArchiveTimeline()!.Position >= start.AddSeconds(12), 10000);
+        Check(main.Player.State == PlaybackState.Playing && main.Model.IsArchive && main.Model.NextTitle == entries[4].Title,
+            "A gap between EPG entries keeps playing the recording and retains the upcoming programme");
+        await Wait(() => main.Model.CurrentTitle == entries[4].Title && main.GetArchiveTimeline()!.Position >= entries[4].Start, 10000);
+        Check(server.LastArchiveStart == recordingStart && main.IsArchivePlayback && main.Player.Volume == 0 &&
+            Descendants<NativeVideoHost>(main).Single().VideoHandle == handle,
+            "Three EPG boundaries and a gap do not reopen the stream, jump to live, change volume or replace the video surface");
+        await main.SeekArchiveToAsync(start.AddSeconds(1));
+        await Wait(() => main.Model.CurrentTitle == entries[1].Title && main.GetArchiveTimeline()!.Position is var at && at >= start.AddSeconds(1) && at < start.AddSeconds(3), 10000);
+        await main.SeekArchiveToAsync(start.AddSeconds(16));
+        await Wait(() => main.Model.CurrentTitle == entries[4].Title && main.GetArchiveTimeline()!.Position is var at && at >= start.AddSeconds(16) && at < start.AddSeconds(19), 10000);
+        Check(main.Player.State == PlaybackState.Playing && main.Model.CurrentDescription == entries[4].Description,
+            "Seeking backwards and forwards across programme boundaries keeps the requested recording time and its metadata");
+
+        // This channel has no guide at all. A supplied EPG-style end still cannot stop its video.
+        var unmapped = main.Model.AllChannels.Single(c => c.Id == "three");
+        var missing = new Programme("guide-three", "Запись без расписания", start, start.AddSeconds(3));
+        await main.PlayArchiveAsync(unmapped, missing);
+        await Wait(() => main.Player.State == PlaybackState.Playing && main.Player.GetTimeline().Position is >= 0);
+        long missingStart = server.LastArchiveStart;
+        await Wait(() => main.GetArchiveTimeline()!.Position >= start.AddSeconds(5), 10000);
+        Check(main.Player.State == PlaybackState.Playing && main.Model.IsArchive && main.Model.PlayingNext is null && server.LastArchiveStart == missingStart,
+            "A recording continues past its initial programme end when there is no next entry or no EPG");
+
+        var closeToLive = DateTimeOffset.Now.AddSeconds(-8);
+        await main.PlayArchiveAtAsync(channel, closeToLive);
+        await Wait(() => main.Player.State == PlaybackState.Playing && main.Player.GetTimeline().Position is >= 0);
+        long firstStart = server.LastArchiveStart; int requests = server.ArchiveRequests;
+        await Wait(() => main.Programmes.CanGoBack);
+        await main.Programmes.GoBackAsync();
+        await Wait(() => server.ArchiveRequests > requests && server.LastArchiveStart >= firstStart + 8 &&
+            main.Player.State == PlaybackState.Playing && main.Player.GetTimeline().Position is >= 0 and < 3, 16000);
+        Check(main.IsArchivePlayback && main.Model.IsArchive && main.Model.CurrentTitle == entries[5].Title &&
+            main.Programmes.IsBrowsing && main.Programmes.CurrentTitle == entries[4].Title,
+            "An exhausted provider window opens its exact continuation and stays in archive playback behind live");
+        await main.ReturnToLiveAsync(); await Wait(() => main.Player.State == PlaybackState.Playing);
+        await Task.Delay(600);
+        Check(!main.IsArchivePlayback && !main.Model.IsArchive && main.Model.CurrentTitle == entries[5].Title,
+            "An explicit return to live cannot be overwritten by a late archive continuation or guide lookup");
+        await main.PlayArchiveAtAsync(channel, DateTimeOffset.Now.AddSeconds(-2));
+        await Wait(() => !main.IsArchivePlayback && main.Player.State == PlaybackState.Playing, 10000);
+        Check(!main.Model.IsArchive && main.Model.CurrentTitle == entries[5].Title,
+            "Reaching the immediate live edge continues in live playback instead of stopping or repeatedly loading tiny archive windows");
+    }
+
     private static async Task MiniWindowChecks(MainWindow main, OverlayWindow overlay, string[] args)
     {
         main.Title = "DzhiggaTV · Проверка мини-плеера 1.5.8";
@@ -379,6 +491,7 @@ internal static class Program
         private int _archives;
         private long _lastArchiveStart;
         public volatile bool HoldRequests;
+        public bool LivePlaylist { get; init; }
         public int ArchiveRequests => Volatile.Read(ref _archives);
         public long LastArchiveStart => Interlocked.Read(ref _lastArchiveStart);
         public string Url { get; }
@@ -401,7 +514,10 @@ internal static class Program
                 while (HoldRequests && name.EndsWith(".m3u8")) await Task.Delay(80, _stop.Token);
                 if (!File.Exists(file)) { context.Response.StatusCode = 404; return; }
                 context.Response.ContentType = name.EndsWith(".m3u8") ? "application/vnd.apple.mpegurl" : "video/mp2t";
-                var bytes = await File.ReadAllBytesAsync(file, _stop.Token); context.Response.ContentLength64 = bytes.Length;
+                var bytes = await File.ReadAllBytesAsync(file, _stop.Token);
+                if (LivePlaylist && name.EndsWith(".m3u8")) bytes = System.Text.Encoding.UTF8.GetBytes(System.Text.Encoding.UTF8.GetString(bytes)
+                    .Replace("#EXT-X-ENDLIST", "").Replace("#EXT-X-PLAYLIST-TYPE:VOD", ""));
+                context.Response.ContentLength64 = bytes.Length;
                 if (context.Request.HttpMethod != "HEAD") await context.Response.OutputStream.WriteAsync(bytes, _stop.Token);
             }
             catch (Exception e) when (e is IOException or HttpListenerException or OperationCanceledException or ObjectDisposedException) { }

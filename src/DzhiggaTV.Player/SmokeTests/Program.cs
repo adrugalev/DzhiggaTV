@@ -124,6 +124,14 @@ internal static class Program
             delayedServer.Cancel();
             listener.Stop();
             await response;
+            await player.PlayArchiveAsync(first, 2);
+            await WaitUntil(() => player.State == PlaybackState.Idle, 8000);
+            Assert(true, "archive HLS start options do not break finite non-HLS recordings or native EOF detection");
+            await player.PlayAsync(latest);
+            await WaitUntil(() => player.State == PlaybackState.Playing);
+            await Task.Delay(2400);
+            Assert(player.State == PlaybackState.Playing && player.GetTimeline().Position > 2,
+                "returning to ordinary playback restores per-file archive end and demuxer options");
             if (args.Length >= 3)
             {
                 if (!File.Exists(args[2])) throw new ArgumentException("A local generated compressed fixture is required.");
