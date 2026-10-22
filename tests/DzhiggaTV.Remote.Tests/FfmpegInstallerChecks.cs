@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using DzhiggaTV.Remote;
@@ -31,7 +32,9 @@ internal static class FfmpegInstallerChecks
 
             var wrongHash = new FfmpegInstaller(Path.Combine(root, "bad-hash"), client, source with { Sha256 = new string('0', 64) }, Probe);
             Directory.CreateDirectory(Path.GetDirectoryName(wrongHash.InstalledPath)!); await File.WriteAllTextAsync(wrongHash.InstalledPath, "old");
-            check(await Fails(wrongHash) && File.ReadAllText(wrongHash.InstalledPath) == "old" && NoStaging(Path.Combine(root, "bad-hash")), "A checksum mismatch preserves the previous executable and removes the partial download");
+            check(await Fails(wrongHash) && File.ReadAllText(wrongHash.InstalledPath) == "old" && NoStaging(Path.Combine(root, "bad-hash")) &&
+                !File.Exists(FfmpegDownload.CachePath(source with { Sha256 = new string('0', 64) }, Path.Combine(root, "bad-hash"))),
+                "A checksum mismatch preserves the previous executable and removes the corrupt cached archive");
 
             foreach (var pair in new[] { ("traversal", Package("../outside.exe")), ("missing-license", Package(license: false)) })
             {
@@ -53,6 +56,49 @@ internal static class FfmpegInstallerChecks
             check(stopped && !File.Exists(cancelled.InstalledPath) && NoStaging(Path.Combine(root, "cancel")), "Cancelling preparation removes partial files and installs nothing");
             cancelHandler.Wait = false;
             check(Valid(await cancelled.EnsureAsync()), "Preparation can be retried after cancellation");
+
+            foreach (bool ignoreRange in new[] { false, true })
+            {
+                string tools = Path.Combine(root, ignoreRange ? "restart-full" : "resume");
+                var ranges = new RangeHandler(archive) { IgnoreRange = ignoreRange };
+                using var rangeClient = new HttpClient(ranges);
+                var resumed = new FfmpegInstaller(tools, rangeClient, source, Probe);
+                check(await Fails(resumed) && File.Exists(FfmpegDownload.CachePath(source, tools) + ".part"), "Interrupted transfer retains received bytes for retry");
+                resumed = new(tools, rangeClient, source, Probe); // A new application instance shares the persisted partial file.
+                check(Valid(await resumed.EnsureAsync()) && ranges.Offsets.SequenceEqual(new long[] { 0, archive.Length / 2 }),
+                    ignoreRange ? "A server ignoring Range replaces the partial file instead of corrupting it" : "After restart the download requests only the missing bytes and passes SHA-256");
+            }
+            {
+                string tools = Path.Combine(root, "bad-range"); var ranges = new RangeHandler(archive) { BadRange = true };
+                using var rangeClient = new HttpClient(ranges); var resumed = new FfmpegInstaller(tools, rangeClient, source, Probe);
+                await Fails(resumed);
+                check(await Fails(resumed) && !File.Exists(resumed.InstalledPath) && new FileInfo(FfmpegDownload.CachePath(source, tools) + ".part").Length == archive.Length / 2,
+                    "An incorrect Content-Range cannot append bytes or install a corrupt module");
+            }
+            {
+                var mirrored = source with { Mirrors = [new("https://github.com/GyanD/codexffmpeg/releases/download/fixture.zip")] };
+                var ranges = new RangeHandler(archive); using var rangeClient = new HttpClient(ranges);
+                var switched = new FfmpegInstaller(Path.Combine(root, "mirror"), rangeClient, mirrored, Probe);
+                check(Valid(await switched.EnsureAsync()) && ranges.Offsets.SequenceEqual(new long[] { 0, archive.Length / 2 }), "Mirror failover resumes the interrupted archive without downloading the prefix again");
+            }
+            foreach (bool permitted in new[] { true, false })
+            {
+                var redirect = new RedirectHandler(archive, permitted); using var redirectClient = new HttpClient(redirect);
+                var redirected = new FfmpegInstaller(Path.Combine(root, permitted ? "cdn" : "offsite"), redirectClient, source, Probe);
+                check(permitted ? Valid(await redirected.EnsureAsync()) && redirect.Requests == 2 : await Fails(redirected) && redirect.Requests == 1,
+                    permitted ? "Pinned download follows HTTPS GitHub asset CDN redirects" : "Off-site redirects are rejected before contacting an unapproved server");
+            }
+            {
+                string tools = Path.Combine(root, "cancel-body"); var ranges = new RangeHandler(archive) { PauseBody = true };
+                using var rangeClient = new HttpClient(ranges); using var stop = new CancellationTokenSource();
+                var resumable = new FfmpegInstaller(tools, rangeClient, source, Probe);
+                var downloading = resumable.EnsureAsync(token: stop.Token); await ranges.BodyPaused.Task; stop.Cancel();
+                bool stoppedBody = false; try { await downloading; } catch (OperationCanceledException) { stoppedBody = true; }
+                check(stoppedBody && new FileInfo(FfmpegDownload.CachePath(source, tools) + ".part").Length == archive.Length / 2 &&
+                    !File.Exists(resumable.InstalledPath) && NoStaging(tools), "Cancellation during the body preserves received bytes without installing or leaving extraction files");
+                resumable = new(tools, rangeClient, source, Probe);
+                check(Valid(await resumable.EnsureAsync()) && ranges.Offsets.Last() == archive.Length / 2, "The next enable resumes bytes saved by a cancelled transfer");
+            }
 
             int packageIndex = Array.IndexOf(args, "--ffmpeg-package");
             if (packageIndex >= 0)
@@ -83,6 +129,49 @@ internal static class FfmpegInstallerChecks
     }
     private sealed class ProgressCapture : IProgress<RemotePreparation>
     { internal readonly List<RemotePreparation> Items = []; public void Report(RemotePreparation value) => Items.Add(value); }
+    private sealed class RangeHandler(byte[] archive) : HttpMessageHandler
+    {
+        internal bool IgnoreRange, BadRange, PauseBody;
+        internal readonly TaskCompletionSource BodyPaused = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        internal readonly List<long> Offsets = [];
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            long offset = request.Headers.Range?.Ranges.Single().From ?? 0; Offsets.Add(offset);
+            if (Offsets.Count == 1)
+            {
+                var broken = new StreamContent(new InterruptedStream(archive, archive.Length / 2, PauseBody ? BodyPaused : null)); broken.Headers.ContentLength = archive.Length;
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = broken });
+            }
+            var response = new HttpResponseMessage(IgnoreRange ? HttpStatusCode.OK : HttpStatusCode.PartialContent)
+            { Content = new ByteArrayContent(IgnoreRange ? archive : archive[(int)offset..]) };
+            if (!IgnoreRange) response.Content.Headers.ContentRange = new ContentRangeHeaderValue(offset + (BadRange ? 1 : 0), archive.Length - 1, archive.Length);
+            return Task.FromResult(response);
+        }
+    }
+    private sealed class InterruptedStream(byte[] bytes, int limit, TaskCompletionSource? pause) : MemoryStream(bytes)
+    {
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            if (Position >= limit)
+            {
+                if (pause is null) throw new IOException("Synthetic disconnection");
+                pause.TrySetResult(); await Task.Delay(Timeout.Infinite, cancellationToken); return 0;
+            }
+            return await base.ReadAsync(buffer[..Math.Min(buffer.Length, limit - (int)Position)], cancellationToken);
+        }
+    }
+    private sealed class RedirectHandler(byte[] archive, bool permitted) : HttpMessageHandler
+    {
+        internal int Requests;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        {
+            Requests++;
+            if (Requests > 1) return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) });
+            var response = new HttpResponseMessage(HttpStatusCode.Found);
+            response.Headers.Location = new(permitted ? "https://release-assets.githubusercontent.com/pinned-ffmpeg" : "https://unapproved.example/ffmpeg.exe");
+            return Task.FromResult(response);
+        }
+    }
     private sealed class PackageHandler(byte[] archive) : HttpMessageHandler
     {
         internal int Requests; internal bool FailNext, Wait;

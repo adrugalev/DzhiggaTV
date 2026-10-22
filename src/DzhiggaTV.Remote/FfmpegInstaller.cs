@@ -3,23 +3,25 @@ using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using SharpCompress.Archives.SevenZip;
 
 namespace DzhiggaTV.Remote;
 
 public sealed record RemotePreparation(string Message, double? Percent = null);
 
-internal sealed record FfmpegPackage(Uri Url, string Sha256, string Version)
+internal sealed record FfmpegPackage(Uri Url, string Sha256, string Version, bool SevenZip = false, long? Size = null, Uri[]? Mirrors = null)
 {
     // Versioned archive and checksum published by the Windows builder linked from ffmpeg.org/download.html.
     internal static readonly FfmpegPackage Pinned = new(
-        new("https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.2-essentials_build.zip"),
-        "60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba", "9.0.2");
+        new("https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.7z"),
+        "4705843ccaaf54257c16ad90f3e952ece33c17df964ecf7bfdbb0f49c7171077", "9.0.2", true, 35430500,
+        [new("https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-9.0.2-essentials_build.7z")]);
 }
 
 /// <summary>Prepares a private, self-contained FFmpeg; never installs system codecs or changes PATH.</summary>
 public sealed class FfmpegInstaller
 {
-    private const long MaximumArchive = 180 * 1024 * 1024, MaximumExecutable = 250 * 1024 * 1024;
+    private const long MaximumExecutable = 250 * 1024 * 1024;
     private static readonly HttpClient DownloadClient = new(new SocketsHttpHandler
     {
         AllowAutoRedirect = false, ConnectTimeout = TimeSpan.FromSeconds(20), AutomaticDecompression = DecompressionMethods.None
@@ -49,14 +51,17 @@ public sealed class FfmpegInstaller
 
             Directory.CreateDirectory(_tools);
             staging = Path.Combine(_tools, ".ffmpeg-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(staging);
-            string archive = Path.Combine(staging, "download.zip"), executable = Path.Combine(staging, "ffmpeg.exe");
+            string executable = Path.Combine(staging, "ffmpeg.exe");
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token); deadline.CancelAfter(TimeSpan.FromMinutes(10));
-            await DownloadAsync(archive, progress, deadline.Token).ConfigureAwait(false);
+            string archive = await FfmpegDownload.AcquireAsync(_client, _package, _tools, progress, deadline.Token).ConfigureAwait(false);
             progress?.Report(new("Проверяем загруженные компоненты…"));
-            await using (var file = File.OpenRead(archive))
-                if (!Convert.ToHexString(await SHA256.HashDataAsync(file, token).ConfigureAwait(false)).Equals(_package.Sha256, StringComparison.OrdinalIgnoreCase))
-                    throw new RemoteException("Проверка FFmpeg не пройдена. Нажмите «Включить Remote», чтобы скачать компоненты заново.");
-            await ExtractAsync(archive, staging, token).ConfigureAwait(false);
+            string digest;
+            await using (var file = File.OpenRead(archive)) digest = Convert.ToHexString(await SHA256.HashDataAsync(file, token).ConfigureAwait(false));
+            if (!digest.Equals(_package.Sha256, StringComparison.OrdinalIgnoreCase))
+            { File.Delete(archive); throw new RemoteException("Проверка FFmpeg не пройдена. Нажмите «Включить Remote», чтобы скачать компоненты заново."); }
+            progress?.Report(new("Распаковываем FFmpeg…"));
+            await Task.Run(() => _package.SevenZip ? ExtractSevenZipAsync(archive, staging, token) : ExtractAsync(archive, staging, token), token).ConfigureAwait(false);
+            progress?.Report(new("Проверяем кодеки FFmpeg…"));
             if (!await _probe(executable, token).ConfigureAwait(false))
                 throw new RemoteException("FFmpeg не прошёл проверку H.264, AAC и HLS. Попробуйте подготовить Remote ещё раз.");
             token.ThrowIfCancellationRequested();
@@ -68,12 +73,13 @@ public sealed class FfmpegInstaller
             // A cancelled or incomplete download never replaces a working executable.
             token.ThrowIfCancellationRequested(); File.Move(executable, InstalledPath, true);
             Remember(InstalledPath);
+            try { File.Delete(archive); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             progress?.Report(new("Компоненты Remote готовы", 100));
             return InstalledPath;
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
         catch (OperationCanceledException) { throw new RemoteException("Загрузка компонентов заняла слишком много времени. Проверьте интернет и повторите включение Remote."); }
-        catch (Exception error) when (error is HttpRequestException or IOException or UnauthorizedAccessException or InvalidDataException)
+        catch (Exception error) when (error is HttpRequestException or IOException or UnauthorizedAccessException or InvalidDataException or SharpCompress.Common.SharpCompressException)
         { throw new RemoteException("Не удалось загрузить или установить компоненты Remote. Проверьте интернет и свободное место, затем повторите включение."); }
         finally
         {
@@ -92,30 +98,6 @@ public sealed class FfmpegInstaller
         Remember(path); return true;
     }
     private void Remember(string path) { var f = new FileInfo(path); _verified[path] = (f.Length, f.LastWriteTimeUtc); }
-
-    private async Task DownloadAsync(string destination, IProgress<RemotePreparation>? progress, CancellationToken token)
-    {
-        progress?.Report(new("Загружаем FFmpeg для Remote…", 0));
-        using var request = new HttpRequestMessage(HttpMethod.Get, _package.Url);
-        request.Headers.UserAgent.ParseAdd("DzhiggaTV-Remote/2.0");
-        using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        long? size = response.Content.Headers.ContentLength;
-        if (size > MaximumArchive) throw new InvalidDataException("Oversized FFmpeg package.");
-        await using var input = await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
-        await using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 131072, true);
-        byte[] buffer = new byte[131072]; long received = 0; var throttle = Stopwatch.StartNew();
-        int count;
-        while ((count = await input.ReadAsync(buffer, token).ConfigureAwait(false)) > 0)
-        {
-            received += count; if (received > MaximumArchive) throw new InvalidDataException("Oversized FFmpeg package.");
-            await output.WriteAsync(buffer.AsMemory(0, count), token).ConfigureAwait(false);
-            if (throttle.ElapsedMilliseconds < 200) continue;
-            double? percent = size > 0 ? Math.Min(100, 100d * received / size.Value) : null;
-            progress?.Report(new($"Загружаем FFmpeg · {received / 1048576d:F1}" + (size > 0 ? $" из {size / 1048576d:F1}" : "") + " МБ", percent)); throttle.Restart();
-        }
-        if (size is not null && received != size) throw new InvalidDataException("Incomplete FFmpeg package.");
-    }
 
     private static async Task ExtractAsync(string archive, string destination, CancellationToken token)
     {
@@ -140,6 +122,43 @@ public sealed class FfmpegInstaller
             while ((count = await input.ReadAsync(buffer, token).ConfigureAwait(false)) > 0)
             { total += count; if (total > maximum) throw new InvalidDataException("Oversized FFmpeg component."); await output.WriteAsync(buffer.AsMemory(0, count), token).ConfigureAwait(false); }
             executable |= name == "ffmpeg.exe"; license |= name == "LICENSE.txt";
+        }
+        if (!executable || !license) throw new InvalidDataException("Incomplete FFmpeg archive.");
+    }
+
+    private static async Task ExtractSevenZipAsync(string path, string destination, CancellationToken token)
+    {
+        using var archive = SevenZipArchive.Open(path);
+        var entries = archive.Entries.ToArray();
+        if (entries.Length > 2000 || entries.Any(e => e.IsEncrypted) || entries.Sum(e => e.Size) > 800L * 1024 * 1024)
+            throw new InvalidDataException("Unexpected FFmpeg archive.");
+        foreach (var entry in entries)
+        {
+            string key = (entry.Key ?? "").Replace('\\', '/');
+            if (key.StartsWith('/') || key.Contains(':') || key.Split('/').Contains("..")) throw new InvalidDataException("Unsafe archive path.");
+        }
+        using var reader = archive.ExtractAllEntries();
+        bool executable = false, license = false, readme = false;
+        // Read solid archives sequentially so preceding entries are decompressed only once.
+        while (reader.MoveToNextEntry())
+        {
+            token.ThrowIfCancellationRequested();
+            string name = (reader.Entry.Key ?? "").Replace('\\', '/');
+            if (name.StartsWith('/') || name.Contains(':') || name.Split('/').Contains("..")) throw new InvalidDataException("Unsafe archive path.");
+            string? outputName = name.EndsWith("/bin/ffmpeg.exe", StringComparison.OrdinalIgnoreCase) ? "ffmpeg.exe" :
+                name.EndsWith("/LICENSE", StringComparison.OrdinalIgnoreCase) || name.EndsWith("/LICENSE.txt", StringComparison.OrdinalIgnoreCase) ? "LICENSE.txt" :
+                name.EndsWith("/README.txt", StringComparison.OrdinalIgnoreCase) ? "README.txt" : null;
+            if (outputName is null || reader.Entry.IsDirectory) continue;
+            long maximum = outputName == "ffmpeg.exe" ? MaximumExecutable : 1024 * 1024;
+            if (reader.Entry.Size is < 1 || reader.Entry.Size > maximum) throw new InvalidDataException("Oversized FFmpeg component.");
+            using var input = reader.OpenEntryStream();
+            await using var output = new FileStream(Path.Combine(destination, outputName), FileMode.CreateNew, FileAccess.Write, FileShare.None, 131072, true);
+            byte[] buffer = new byte[131072]; long total = 0; int count;
+            while ((count = await input.ReadAsync(buffer, token).ConfigureAwait(false)) > 0)
+            { total += count; if (total > maximum) throw new InvalidDataException("Oversized FFmpeg component."); await output.WriteAsync(buffer.AsMemory(0, count), token).ConfigureAwait(false); }
+            executable |= outputName == "ffmpeg.exe"; license |= outputName == "LICENSE.txt";
+            readme |= outputName == "README.txt";
+            if (executable && license && readme) break;
         }
         if (!executable || !license) throw new InvalidDataException("Incomplete FFmpeg archive.");
     }

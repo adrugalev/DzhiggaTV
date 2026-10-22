@@ -4,6 +4,7 @@
 
 | Компонент | Версия/источник | Лицензия и текст |
 |---|---|---|
+| SharpCompress | 1.0.0; [NuGet](https://www.nuget.org/packages/SharpCompress/1.0.0), [исходники](https://github.com/adamhathcock/sharpcompress). Распаковка FFmpeg 7z внутри Remote; без внешних программ. | MIT: `licenses/SharpCompress-MIT.txt`; notices из README пакета: `licenses/SharpCompress-ThirdPartyNotices.txt`. |
 | .NET / Windows Desktop runtime | .NET 10, self-contained win-x64 при публикации; точная SDK-версия в build-manifest.json | MIT и notices встроенных компонентов: `licenses/dotnet-LICENSE.txt`, `licenses/dotnet-ThirdPartyNotices.txt`, `licenses/WindowsDesktop-ThirdPartyNotices.txt`. [Исходники runtime](https://github.com/dotnet/runtime), [WPF](https://github.com/dotnet/wpf). |
 | Microsoft.Data.Sqlite и Core | 10.0.13; [NuGet Microsoft.Data.Sqlite](https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.13) | MIT, `licenses/Microsoft.Data.Sqlite-MIT.txt`; [исходный код тега](https://github.com/dotnet/efcore/tree/v10.0.13). |
 | SQLitePCLRaw bundle/core/provider/native | 2.1.13; транзитивные пакеты Microsoft.Data.Sqlite | Apache-2.0 для обёрток и пакетов; `licenses/SQLitePCLRaw-LICENSE.txt`, `licenses/Apache-2.0.txt`; [репозиторий](https://github.com/ericsink/SQLitePCL.raw). |

@@ -5,4 +5,7 @@
     <ProjectReference Include="../DzhiggaTV.Core/DzhiggaTV.Core.csproj" />
     <EmbeddedResource Include="Web/dist/**/*" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SharpCompress" Version="1.0.0" />
+  </ItemGroup>
 </Project>
