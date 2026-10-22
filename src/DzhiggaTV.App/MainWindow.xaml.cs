@@ -538,7 +538,7 @@ public partial class MainWindow : Window
         if (_shutdownComplete) return;
         e.Cancel = true;
         if (_closing) return;
-        _closing = true; _timer.Stop(); _updateTimer.Stop(); _updateLifetime.Cancel(); _playCancellation?.Cancel(); _sports?.Close(); _overlay?.Close();
+        _closing = true; _timer.Stop(); _updateTimer.Stop(); _updateLifetime.Cancel(); _remoteLifetime.Cancel(); _playCancellation?.Cancel(); _sports?.Close(); _overlay?.Close();
         if (IsMini) RememberMiniWindow();
         Programmes.Dispose();
         if (Remote is not null) await Remote.DisposeAsync();

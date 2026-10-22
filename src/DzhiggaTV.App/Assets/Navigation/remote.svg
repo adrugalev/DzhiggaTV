@@ -1,14 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
   <defs>
-    <linearGradient id="color" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7AC4FF"/><stop offset="1" stop-color="#4A68F1"/></linearGradient>
-    <linearGradient id="highlight" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D5F4FF"/><stop offset="1" stop-color="#8AB0FF"/></linearGradient>
-    <g id="remote" fill="none" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M29 14 H73 Q86 14 86 27 V101 Q86 114 73 114 H29 Q16 114 16 101 V27 Q16 14 29 14 Z M40 26 H62 M43 102 H59 M42 47 L42 78 L64 62.5 Z M94 36 Q106 23 118 36 M98 45 Q106 36 114 45 M105 54 H107"/>
+    <linearGradient id="phone-color" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7AC4FF"/><stop offset="1" stop-color="#4A68F1"/></linearGradient>
+    <linearGradient id="phone-highlight" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D5F4FF"/><stop offset="1" stop-color="#8AB0FF"/></linearGradient>
+    <linearGradient id="wifi-color" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8BE8FF"/><stop offset="1" stop-color="#6685FF"/></linearGradient>
+    <linearGradient id="wifi-highlight" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E4FDFF"/><stop offset="1" stop-color="#B8DAFF"/></linearGradient>
+    <g id="phone" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="14" y="10" width="54" height="108" rx="13"/>
+    </g>
+    <rect id="screen" x="21" y="18" width="40" height="92" rx="8" fill="none"/>
+    <path id="phone-details" d="M35 27 H47 M34 102 H48" fill="none" stroke-linecap="round"/>
+    <g id="wifi" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M78.79 42.79 A30 30 0 0 1 121.21 42.79 M85.86 49.86 A20 20 0 0 1 114.14 49.86 M92.93 56.93 A10 10 0 0 1 107.07 56.93"/>
+      <circle cx="100" cy="64" r="1"/>
     </g>
   </defs>
-  <g transform="matrix(0.9818179775269988 0 0 0.9818179775269988 -1.7818157303239843 1.1636494382720741)">
-    <use href="#remote" stroke="#1D4B8C" stroke-width="8"/>
-    <use href="#remote" stroke="url(#color)" stroke-width="5.8"/>
-    <use href="#remote" stroke="url(#highlight)" stroke-width="1.4"/>
-  </g>
+  <use href="#phone" stroke="#1D4B8C" stroke-width="8"/>
+  <use href="#phone" stroke="url(#phone-color)" stroke-width="5.8"/>
+  <use href="#phone" stroke="url(#phone-highlight)" stroke-width="1.4"/>
+  <use href="#screen" stroke="#1D4B8C" stroke-width="4.6"/>
+  <use href="#screen" stroke="url(#phone-color)" stroke-width="3.2"/>
+  <use href="#screen" stroke="url(#phone-highlight)" stroke-width="1"/>
+  <use href="#phone-details" stroke="#1D4B8C" stroke-width="6"/>
+  <use href="#phone-details" stroke="url(#phone-color)" stroke-width="4.6"/>
+  <use href="#phone-details" stroke="url(#phone-highlight)" stroke-width="1.2"/>
+  <use href="#wifi" stroke="#245F9F" stroke-width="6"/>
+  <use href="#wifi" stroke="url(#wifi-color)" stroke-width="4.4"/>
+  <use href="#wifi" stroke="url(#wifi-highlight)" stroke-width="0.9"/>
 </svg>

@@ -17,14 +17,15 @@ public sealed record RemoteOptions
     public bool AllowFavorites { get; init; } = true;
     public bool AllowTranscoding { get; init; }
     public string FfmpegPath { get; init; } = "";
+    public bool DependenciesPrepared { get; init; }
     public int TranscodeHeight { get; init; } = 720;
-    public void Validate()
+    public void Validate(bool requireFfmpeg = true)
     {
         if (Port is < 1024 or > 65535 || MaximumStreams is < 1 or > 4 ||
             Delivery is not ("proxy" or "auto" or "direct") || TranscodeHeight is not (480 or 720 or 1080))
             throw new RemoteException("Проверьте порт (1024–65535), число потоков (1–4) и режим передачи.");
         if (Delivery == "direct" && !AllowDirectUrls) throw new RemoteException("Для прямого режима разрешите передачу исходного адреса потока доверенному телефону.");
-        if (AllowTranscoding && (!File.Exists(FfmpegPath) || !Path.IsPathFullyQualified(FfmpegPath)))
+        if (requireFfmpeg && AllowTranscoding && (!File.Exists(FfmpegPath) || !Path.IsPathFullyQualified(FfmpegPath)))
             throw new RemoteException("Выберите установленный ffmpeg.exe, чтобы включить преобразование видео.");
     }
 }

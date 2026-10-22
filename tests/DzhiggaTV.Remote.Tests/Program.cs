@@ -13,6 +13,8 @@ using Microsoft.Extensions.Logging;
 
 var results = new List<string>();
 void Assert(bool condition, string name) { if (!condition) throw new Exception(name); results.Add(name); Console.WriteLine("PASS " + name); }
+await FfmpegInstallerChecks.RunAsync(Assert, args);
+if (args.Contains("--components-only")) return;
 int Port() { var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); var port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop(); return port; }
 string directory = Path.Combine(Path.GetTempPath(), "DzhiggaTV-remote-tests-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(directory);
 if (args.Contains("--networks")) { Console.WriteLine(JsonSerializer.Serialize(RemoteNetwork.Addresses())); return; }

@@ -18,7 +18,7 @@ internal static partial class Program
         var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); int port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
         await using var remote = new RemoteServer(new DesktopRemoteLibrary(main), System.IO.Path.Combine(main.Model.DataDirectory, "remote-integration"),
             _ => new("127.0.0.1", 8, "isolated integration", true, false), new SourcePolicy(true));
-        await RemoteSettingsChecks(main, remote, port);
+        await RemoteSettingsChecks(main, remote, port, args.Contains("--remote-download"));
         await remote.StartAsync(new() { Port = port });
         var cookies = new CookieContainer();
         using var client = new HttpClient(new HttpClientHandler { CookieContainer = cookies, UseProxy = false }) { BaseAddress = new(remote.Url!), Timeout = TimeSpan.FromSeconds(12) };
@@ -78,9 +78,24 @@ internal static partial class Program
         remote.Devices.Revoke(null); Check((await client.GetAsync(url)).StatusCode == HttpStatusCode.Unauthorized && remote.Streams.Active.Count == 0, "Revocation closes integrated mobile streams without stopping the Windows player");
         await remote.StopAsync(); Check(!remote.Running && main.Player.IsInitialized, "Stopping Remote leaves the native video engine initialized");
     }
-    private static async Task RemoteSettingsChecks(MainWindow main, RemoteServer remote, int port)
+    private static async Task RemoteSettingsChecks(MainWindow main, RemoteServer remote, int port, bool download)
     {
-        main.Model.SetSetting("remote.options", JsonSerializer.Serialize(new RemoteOptions { Port = port }));
+        string? testFfmpeg = download ? null : Environment.GetEnvironmentVariable("DZHIGGATV_TEST_FFMPEG");
+        main.Model.SetSetting("remote.options", JsonSerializer.Serialize(new RemoteOptions { Port = port, DependenciesPrepared = !download && testFfmpeg is null, FfmpegPath = testFfmpeg ?? "" }));
+        if (download)
+        {
+            var interrupted = new RemoteSettingsWindow(main, main, remote); interrupted.Show();
+            var enable = Descendants<Button>(interrupted).Single(b => Equals(b.Content, "Включить Remote"));
+            enable.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(Descendants<ProgressBar>(interrupted).Single().Visibility == Visibility.Visible && !enable.IsEnabled, "First enable shows a preparation progress bar and prevents duplicate starts");
+            Descendants<Button>(interrupted).Single(b => Equals(b.Content, "Отмена")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Wait(() => enable.IsEnabled);
+            Check(!remote.Running && !main.RemoteOptions().DependenciesPrepared, "The actual Cancel button stops preparation before the server can start");
+            enable.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); interrupted.Close();
+            string tools = System.IO.Path.Combine(main.Model.DataDirectory, "tools");
+            await Wait(() => !System.IO.Directory.EnumerateDirectories(tools, ".ffmpeg-*").Any());
+            Check(!remote.Running && !main.RemoteOptions().DependenciesPrepared, "Closing Remote during preparation cancels the download and cannot start the server later");
+        }
         var window = new RemoteSettingsWindow(main, main, remote); window.Show();
         await Task.Delay(150); window.UpdateLayout();
         var expander = Descendants<Expander>(window).Single(); expander.IsExpanded = true; window.UpdateLayout();
@@ -100,10 +115,21 @@ internal static partial class Program
         }
         var start = Descendants<Button>(window).Single(b => Equals(b.Content, "Включить Remote"));
         start.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        await Wait(() => remote.Running && start.IsEnabled && qr.Source is not null && qr.Visibility == Visibility.Visible);
+        try { await Wait(() => remote.Running && start.IsEnabled && qr.Source is not null && qr.Visibility == Visibility.Visible, download ? 660000 : 15000); }
+        catch (TimeoutException) { throw new InvalidOperationException("Remote activation timed out: " + string.Join(" | ", Descendants<TextBlock>(window).Select(t => t.Text).Where(t => t.Contains("FFmpeg") || t.Contains("компонент")))); }
         using var client = new HttpClient(new HttpClientHandler { UseProxy = false });
         Check((await client.GetAsync(remote.Url + "/api/status")).IsSuccessStatusCode && copy.IsEnabled, "The actual Windows Enable button starts HTTP and reveals a working QR code");
-        if (Environment.GetEnvironmentVariable("DZHIGGATV_TEST_FFMPEG") is { } ffmpeg && System.IO.File.Exists(ffmpeg))
+        if (download) testFfmpeg = main.RemoteOptions().FfmpegPath;
+        if (testFfmpeg is not null)
+        {
+            Check(remote.Options.AllowTranscoding && remote.Options.DependenciesPrepared && remote.Options.FfmpegPath == testFfmpeg && main.RemoteOptions().DependenciesPrepared, "First Remote activation verifies existing codecs and automatically enables mobile compatibility");
+            var conversion = Descendants<CheckBox>(window).Single(c => c.Content is TextBlock t && t.Text == "Разрешить преобразование через FFmpeg");
+            conversion.IsChecked = false;
+            Descendants<Button>(window).Single(b => Equals(b.Content, "Сохранить и применить")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Wait(() => start.IsEnabled && !remote.Options.AllowTranscoding);
+            Check(!main.RemoteOptions().AllowTranscoding, "Turning off conversion after preparation is respected when applying settings");
+        }
+        if (testFfmpeg is { } ffmpeg && System.IO.File.Exists(ffmpeg))
         {
             var ffmpegField = Descendants<TextBox>(window).Single(t => System.Windows.Automation.AutomationProperties.GetName(t) == "FFmpeg для совместимости Remote");
             ffmpegField.Text = ffmpeg;

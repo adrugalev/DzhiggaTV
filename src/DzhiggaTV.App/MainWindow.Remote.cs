@@ -9,6 +9,8 @@ namespace DzhiggaTV.App;
 public partial class MainWindow
 {
     public RemoteServer Remote { get; private set; } = null!;
+    internal FfmpegInstaller RemoteComponents { get; private set; } = null!;
+    private readonly CancellationTokenSource _remoteLifetime = new();
     private readonly Dictionary<string, Window> _pairingWindows = [];
     public Task ShowRemoteAsync() => WithModalAsync(() =>
     {
@@ -22,9 +24,31 @@ public partial class MainWindow
     }
     private void InitializeRemote()
     {
+        RemoteComponents = new(Path.Combine(Model.DataDirectory, "tools"));
         Remote = new(new DesktopRemoteLibrary(this), Model.DataDirectory);
         Remote.Changed += () => Dispatcher.BeginInvoke(DispatcherPriority.Background, ShowRemotePairing);
-        if (RemoteOptions() is { AutoStart: true } options) _ = GuardAsync(async () => { try { await Remote.StartAsync(options); } catch (RemoteException e) { Model.Status = e.Message; } });
+        if (RemoteOptions() is { AutoStart: true } options) _ = GuardAsync(async () =>
+        {
+            try
+            {
+                options = await PrepareRemoteOptionsAsync(options, new Progress<RemotePreparation>(p => Model.Status = p.Message), _remoteLifetime.Token);
+                _remoteLifetime.Token.ThrowIfCancellationRequested();
+                Model.SetSetting("remote.options", JsonSerializer.Serialize(options)); await Model.SaveAsync();
+                await Remote.StartAsync(options, _remoteLifetime.Token);
+            }
+            catch (RemoteException e) { Model.Status = e.Message; }
+            catch (OperationCanceledException) when (_remoteLifetime.IsCancellationRequested) { }
+        });
+    }
+    internal async Task<RemoteOptions> PrepareRemoteOptionsAsync(RemoteOptions options, IProgress<RemotePreparation>? progress, CancellationToken token)
+    {
+        options.Validate(requireFfmpeg: false);
+        if (options.AllowTranscoding || options.AllowViewing && !options.DependenciesPrepared)
+        {
+            string path = await RemoteComponents.EnsureAsync(options.FfmpegPath, progress, token);
+            options = options with { FfmpegPath = path, AllowTranscoding = true, DependenciesPrepared = true };
+        }
+        token.ThrowIfCancellationRequested(); options.Validate(); return options;
     }
     private void ShowRemotePairing()
     {
