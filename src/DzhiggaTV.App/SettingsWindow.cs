@@ -23,7 +23,7 @@ public sealed class SettingsWindow : Window
         var bottom = new DockPanel(); DockPanel.SetDock(bottom,Dock.Bottom); dock.Children.Add(bottom); bottom.Children.Add(_notice);
         var close = new Button { Content = "Готово", HorizontalAlignment = HorizontalAlignment.Right }; close.Click += (_, _) => Close(); bottom.Children.Add(close);
         dock.Children.Add(_tabs);
-        General(); Appearance(); Playlists(); Collections(); Epg(); Logos(); Video(); Audio(); Controls(); Performance(); Diagnostics(); About();
+        General(); Appearance(); Remote(); Playlists(); Collections(); Epg(); Logos(); Video(); Audio(); Controls(); Performance(); Diagnostics(); About();
         Closing += async (_, _) => await M.SaveAsync();
     }
     private StackPanel Page(string name, string intro)
@@ -73,6 +73,12 @@ public sealed class SettingsWindow : Window
         var p=Page("Внешний вид","Основной язык — русский. В интерфейсе используются системные шрифты Windows. Анимации не требуются для навигации.");
         Choice(p,"Тема","theme",[("Тёмная","dark"),("Светлая","light")],"dark",s=>Theme.Apply(s=="light"));
         Note(p,"Изменяйте ширину списка каналов, перетаскивая разделитель. Кнопка ☰ сворачивает левую навигацию. Интерфейс не использует обязательные анимации и учитывает reduced motion отсутствием движения.");
+    }
+    private void Remote()
+    {
+        var p = Page("Remote", "Смотрите телевизор на телефоне по домашнему Wi-Fi и управляйте плеером на компьютере. Мобильный просмотр не переключает канал на ПК.");
+        Button(p, "Открыть DzhiggaTV Remote", () => { new RemoteSettingsWindow(_main, this).ShowDialog(); return Task.CompletedTask; });
+        Note(p, "Remote выключен по умолчанию. Для подключения отсканируйте QR-код и подтвердите устройство. Внешний сервер и отдельная учётная запись не нужны.");
     }
     private void Playlists()
     {

@@ -11,7 +11,7 @@ using DzhiggaTV.App;
 using DzhiggaTV.Core;
 using DzhiggaTV.Player;
 
-internal static class Program
+internal static partial class Program
 {
     private static readonly List<string> Passed = [];
     private static readonly DateTimeOffset SeedNow = DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.Now.ToUnixTimeSeconds());
@@ -67,6 +67,12 @@ internal static class Program
         var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
         Check(main.GetArchiveTimeline() is { IsArchive: false }, "An archive-capable live channel exposes its rewind range");
         var overlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
+        if (args.Contains("--remote"))
+        {
+            await RemoteChecks(main, server, args);
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
+            return;
+        }
         if (args.Contains("--provider-only"))
         {
             await ProviderArchiveChecks(main, args);

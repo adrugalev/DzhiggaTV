@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF><PlatformTarget>x64</PlatformTarget></PropertyGroup>
-  <ItemGroup><ProjectReference Include="../../src/DzhiggaTV.App/DzhiggaTV.App.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../../src/DzhiggaTV.App/DzhiggaTV.App.csproj" /><PackageReference Include="ZXing.Net" Version="0.16.11" /></ItemGroup>
 </Project>

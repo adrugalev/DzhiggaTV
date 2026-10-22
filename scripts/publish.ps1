@@ -4,6 +4,7 @@ if (!$OutputDirectory) { $OutputDirectory = Join-Path $RepositoryRoot 'outputs\D
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $OutputDirectory) { throw 'Каталог выпуска уже существует. Укажите новый -OutputDirectory, чтобы сохранить предыдущую сборку.' }
 & (Join-Path $PSScriptRoot 'download-mpv.ps1')
+& (Join-Path $PSScriptRoot 'build-remote.ps1') -SkipTests:$SkipTests
 if (!$SkipTests) { & (Join-Path $PSScriptRoot 'test.ps1') }
 $stage = Join-Path $RepositoryRoot ('work\publish-' + [Guid]::NewGuid().ToString('N'))
 Invoke-DzhiggaDotnet -Arguments @('publish', (Join-Path $RepositoryRoot 'src\DzhiggaTV.App\DzhiggaTV.App.csproj'), '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=false', '-p:PublishTrimmed=false', '-p:DebugType=None', '-o', $stage, '--nologo')

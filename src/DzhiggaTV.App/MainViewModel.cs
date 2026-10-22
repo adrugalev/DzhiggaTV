@@ -20,6 +20,7 @@ public sealed class MainViewModel : Observable, IDisposable
     public Dictionary<string, ChannelMapping> Mappings { get; private set; } = [];
     public Dictionary<string, EpgChannel> EpgChannels { get; private set; } = [];
     public string DataDirectory { get; }
+    public long RemoteRevision { get; private set; }
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _searchCancellation;
     private string _programmeSearchQuery = "";
@@ -116,6 +117,7 @@ public sealed class MainViewModel : Observable, IDisposable
         var activeId = Active?.Id; var selectedId = SelectedChannel?.Id;
         ++_catalogGeneration; _logoLoading.Clear(); _logoRetry.Clear();
         AllChannels.Clear();
+        RemoteRevision++;
         AllChannels.AddRange(channels.Select((c, index) => new ChannelItem(c)
         {
             Number = index + 1,
@@ -381,7 +383,7 @@ public sealed class MainViewModel : Observable, IDisposable
     public async Task SaveAsync()
     {
         await _saveLock.WaitAsync();
-        try { await Store.SaveUserStateAsync(State); } finally { _saveLock.Release(); }
+        try { await Store.SaveUserStateAsync(State); RemoteRevision++; } finally { _saveLock.Release(); }
     }
     public void Dispose() { _lifetime.Cancel(); _http.Dispose(); _searchCancellation?.Cancel(); /* In-flight writers own their connection until completion. */ }
 }

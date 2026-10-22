@@ -36,6 +36,14 @@ public sealed class SportsEveningWindow : Window
     private (Rect Bounds, WindowState State)? _restore;
     public double Volume => _audio.Volume;
     public bool IsMuted => _audio.IsMuted;
+    public string? RemoteAudioId => _audio.SelectedId;
+    public bool RemoteFullscreen => _isFullscreen;
+    public void RemoteVolume(double? volume, bool? muted)
+    {
+        if (volume is { } v) _audio.Volume = v;
+        if (muted is { } m) _audio.IsMuted = m;
+        RefreshAudio();
+    }
 
     public SportsEveningWindow(MainWindow main, double volume, bool muted)
     {

@@ -7,6 +7,7 @@ var tests = new List<(string Name, Func<Task> Run)>
     ("M3U: signed URLs are unchanged and excluded from stable IDs", TestStableIdentity),
     ("M3U: duplicate entries receive separate stable IDs", TestDuplicateIdentity),
     ("M3U: async UTF-8 BOM and comments", TestAsyncParser),
+    ("M3U: VLC HTTP headers remain scoped to their channel", TestVlcHeaders),
     ("User state: favorites and collection order", TestOrdering),
     ("Programme text: film metadata, plot paragraphs and credits stay separate without losing content", TestProgrammeText),
     ("DPAPI: current-user round trip", TestDpapi),
@@ -33,6 +34,13 @@ foreach (var (name, test) in tests)
 }
 Console.WriteLine($"{tests.Count - failed}/{tests.Count} cases without failure; {failed} failed.");
 return failed == 0 ? 0 : 1;
+
+static Task TestVlcHeaders()
+{
+    var rows = M3uParser.Parse("#EXTM3U\n#EXTINF:-1,One\n#EXTVLCOPT:http-user-agent=Fixture/1\n#EXTVLCOPT:http-referrer=https://provider.example/\nhttps://provider.example/one\n#EXTINF:-1,Two\nhttps://provider.example/two\n", "fixture");
+    Equal("Fixture/1", rows[0].Attributes!["http-user-agent"]); Equal("https://provider.example/", rows[0].Attributes!["http-referrer"]);
+    True(!rows[1].Attributes!.ContainsKey("http-user-agent")); return Task.CompletedTask;
+}
 
 static Task TestProgrammeText()
 {

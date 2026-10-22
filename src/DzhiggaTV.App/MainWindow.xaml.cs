@@ -132,6 +132,7 @@ public partial class MainWindow : Window
         await GuardAsync(async () =>
         {
             await Model.InitializeAsync();
+            InitializeRemote();
             ApplySettings(); _initialized = true; InitializeEngine();
             _overlay = new(this) { Owner = this, DataContext = Model }; _overlay.Show(); SyncOverlay(); _timer.Start();
             _updateTimer.Start(); _ = CheckUpdatesInBackgroundAsync(); _ = CleanUpdateCacheAsync();
@@ -539,6 +540,7 @@ public partial class MainWindow : Window
         _closing = true; _timer.Stop(); _updateTimer.Stop(); _updateLifetime.Cancel(); _playCancellation?.Cancel(); _sports?.Close(); _overlay?.Close();
         if (IsMini) RememberMiniWindow();
         Programmes.Dispose();
+        if (Remote is not null) await Remote.DisposeAsync();
         Model.SetSetting("volume", Player.Volume); Model.SetSetting("muted", Player.IsMuted);
         await GuardAsync(Model.SaveAsync);
         try { Updates.Dispose(); Model.Dispose(); Player.Dispose(); }

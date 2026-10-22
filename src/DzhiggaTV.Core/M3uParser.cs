@@ -84,6 +84,12 @@ public sealed partial class M3uParser
                 _group = line[8..].Trim();
                 return;
             }
+            if (line.StartsWith("#EXTVLCOPT:", StringComparison.OrdinalIgnoreCase))
+            {
+                var option = line[11..].Split('=', 2);
+                if (_name is not null && option.Length == 2 && option[0].ToLowerInvariant() is "http-user-agent" or "http-referrer" or "http-referer" or "http-origin") _attributes[option[0]] = option[1];
+                return;
+            }
             if (line.StartsWith('#')) return;
             if (_name is null) return; // Header URLs and orphan lines are not channels.
             var name = string.IsNullOrWhiteSpace(_name) ? "Канал " + (Channels.Count + 1) : _name;
