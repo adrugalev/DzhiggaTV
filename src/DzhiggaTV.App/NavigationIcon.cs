@@ -72,7 +72,7 @@ public sealed class NavigationIcon : Grid
     private static void IconChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)
     {
         var icon = (NavigationIcon)sender;
-        ImageSource source = e.NewValue is "remote" ? RemoteNavigationArtwork.Create() : new BitmapImage(new Uri($"pack://application:,,,/DzhiggaTV;component/Assets/Navigation/{e.NewValue}.png")); source.Freeze();
+        var source = new BitmapImage(new Uri($"pack://application:,,,/DzhiggaTV;component/Assets/Navigation/{e.NewValue}.png")); source.Freeze();
         icon._color.Source = source; icon._neutral.OpacityMask = new ImageBrush(source) { Stretch = Stretch.Uniform };
     }
     private static void ActiveChanged(DependencyObject sender, DependencyPropertyChangedEventArgs e)

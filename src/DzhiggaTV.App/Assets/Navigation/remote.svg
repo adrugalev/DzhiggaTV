@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="color" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7AC4FF"/><stop offset="1" stop-color="#4A68F1"/></linearGradient>
+    <linearGradient id="highlight" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#D5F4FF"/><stop offset="1" stop-color="#8AB0FF"/></linearGradient>
+    <g id="remote" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M29 14 H73 Q86 14 86 27 V101 Q86 114 73 114 H29 Q16 114 16 101 V27 Q16 14 29 14 Z M40 26 H62 M43 102 H59 M42 47 L42 78 L64 62.5 Z M94 36 Q106 23 118 36 M98 45 Q106 36 114 45 M105 54 H107"/>
+    </g>
+  </defs>
+  <g transform="matrix(0.9818179775269988 0 0 0.9818179775269988 -1.7818157303239843 1.1636494382720741)">
+    <use href="#remote" stroke="#1D4B8C" stroke-width="8"/>
+    <use href="#remote" stroke="url(#color)" stroke-width="5.8"/>
+    <use href="#remote" stroke="url(#highlight)" stroke-width="1.4"/>
+  </g>
+</svg>
