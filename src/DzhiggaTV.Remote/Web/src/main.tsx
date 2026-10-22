@@ -160,14 +160,15 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const currentGuide=catalog.channels.find(c=>c.id===guideId)??(watching?.id===guideId?watching:undefined)??(state?.channelId===guideId?{id:guideId,name:state.channelName,category:'',favorite:false,number:0}:undefined);
   const fullscreen=()=>{const v=video.current as HTMLVideoElement&{webkitEnterFullscreen?:()=>void};if(!v)return;if(document.fullscreenElement)void document.exitFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else void v.requestFullscreen?.();};
   const setRemoteMode=(pc:boolean)=>{if(pc){stop();setMode('pc');}else setMode('watch');};
+  const showPlayer=!!watching&&tab!=='remote';
   const catalogWatching=!!watching&&(tab==='tv'||tab==='favorites')&&pickSlot===null;
   const expandedCatalog=!catalogWatching||filtersOpen;
   const activeFilters=[category,playlist,collection,sort!=='playlist'?sort:''].filter(Boolean).length;
   const actualVideo=()=>!!videoUrl&&video.current?.getAttribute('src')===videoUrl;
-  return <div className={'app '+(watching?'has-player ':'')+(catalogWatching?'catalog-view':'')}>
+  return <div className={'app '+(showPlayer?'has-player ':'')+(catalogWatching?'catalog-view':'')}>
     <header><div className="wordmark">Dzhigga<span>TV</span><small>REMOTE</small></div><div className={'connection '+(online?'':'offline')}>{online?<Wifi size={14}/>:<WifiOff size={14}/>}<span>{online?'Дома':'Нет подключения'}</span></div></header>
     {!online&&<div className="offline-banner">Нет подключения к DzhiggaTV · пробуем восстановить связь</div>}
-    <section hidden={!watching} className={'viewer '+(tab==='remote'||tab==='settings'?'viewer-small ':'')+(playerCollapsed||searchFocused?'viewer-collapsed':'')} aria-label="Плеер телефона">
+    <section hidden={!showPlayer} className={'viewer '+(tab==='settings'?'viewer-small ':'')+(playerCollapsed||searchFocused?'viewer-collapsed':'')} aria-label="Плеер телефона">
       <div className="video-frame" id="remote-video"><video ref={video} playsInline controls preload="auto" onWaiting={()=>{if(actualVideo())setVideoLoading(true);}} onPlaying={()=>{if(actualVideo()){setVideoLoading(false);setVideoError('');}}} onCanPlay={()=>{if(actualVideo())setVideoLoading(false);}} onError={videoFailed} onDoubleClick={fullscreen}/>
         {videoLoading&&<div className="video-status"><span className="loading-dot"/> Подключение…</div>}
         <button className="icon close-video" aria-label="Остановить просмотр" onClick={stop}><X size={18}/></button>
