@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {Television} from './main';
 import {api, setSession} from './api';
 import {progress, remember, readRecent} from './types';
@@ -27,6 +27,43 @@ beforeEach(()=>{
 });
 afterEach(()=>{cleanup();vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('independent mobile playback',()=>{
+  it('starts the mounted media element inside the channel tap before awaiting the server',async()=>{
+    let inTap=false;
+    const allowed=new WeakSet<HTMLMediaElement>(), plays:{source:string|null;gesture:boolean}[]=[];
+    vi.mocked(HTMLMediaElement.prototype.play).mockImplementation(function(this:HTMLMediaElement){
+      plays.push({source:this.getAttribute('src'),gesture:inTap});
+      if(inTap)allowed.add(this);
+      return allowed.has(this)?Promise.resolve():Promise.reject(new DOMException('Gesture required','NotAllowedError'));
+    });
+    const result=render(<Television session={session} onLogout={()=>{}}/>);
+    const element=result.container.querySelector('video')!;
+    expect(plays).toHaveLength(0);
+    const channelButton=await screen.findByText('Тест канал');
+    inTap=true;fireEvent.click(channelButton);inTap=false;
+    expect(plays[0]).toEqual({source:'/playback-primer.mp4',gesture:true});
+    await waitFor(()=>expect(element.getAttribute('src')).toBe('/media/stream/root'));
+    expect(result.container.querySelector('video')).toBe(element);
+    expect(plays).toEqual([{source:'/playback-primer.mp4',gesture:true},{source:'/media/stream/root',gesture:false}]);
+    expect(element.muted).toBe(false);
+    fireEvent.pause(element);fireEvent.canPlay(element);
+    expect(plays).toHaveLength(2);
+    expect(screen.queryByText(/Нажмите ▶/)).toBeNull();
+  });
+  it('cancels a pending sound start when viewing is stopped before priming finishes',async()=>{
+    let finish!:()=>void;
+    vi.mocked(HTMLMediaElement.prototype.play).mockImplementationOnce(()=>new Promise<void>(resolve=>{finish=resolve;}));
+    const result=render(<Television session={session} onLogout={()=>{}}/>);
+    const element=result.container.querySelector('video')!;
+    fireEvent.click(await screen.findByText('Тест канал'));
+    await waitFor(()=>expect(requests.some(r=>r.path==='/api/stream')).toBe(true));
+    await act(async()=>{await Promise.resolve();await Promise.resolve();});
+    fireEvent.click(screen.getByRole('button',{name:'Остановить просмотр'}));
+    await act(async()=>{finish();await Promise.resolve();});
+    expect(element.getAttribute('src')).toBe('/playback-primer.mp4');
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1);
+    expect(requests.filter(r=>r.path==='/api/stream/stop')).toHaveLength(1);
+    expect(screen.queryByRole('button',{name:'Остановить просмотр'})).toBeNull();
+  });
   it('starts a mobile stream without sending a PC command',async()=>{
     render(<Television session={session} onLogout={()=>{}}/>);
     fireEvent.click(await screen.findByText('Тест канал'));

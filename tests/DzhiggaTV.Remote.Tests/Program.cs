@@ -98,6 +98,14 @@ try
     var html = await client.GetStringAsync("/"); Assert(html.Contains("viewport-fit=cover") && html.Contains("assets/"), "embedded mobile application is served without Node");
     var icon = await client.GetByteArrayAsync("/icon-192.png");
     Assert(icon.Length > 1000 && System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(icon.AsSpan(16, 4)) == 192, "home screen assets include a real 192px PNG icon");
+    using (var primerRequest = new HttpRequestMessage(HttpMethod.Get, "/playback-primer.mp4"))
+    {
+        primerRequest.Headers.Range = new(0, 1);
+        using var primer = await client.SendAsync(primerRequest);
+        Assert(primer.StatusCode == HttpStatusCode.PartialContent && primer.Content.Headers.ContentType?.MediaType == "video/mp4" && primer.Content.Headers.ContentRange?.From == 0 && primer.Content.Headers.ContentRange?.To == 1 && (await primer.Content.ReadAsByteArrayAsync()).Length == 2, "Safari sound-start clip supports MP4 byte-range requests");
+    }
+    var soundStart = await client.GetByteArrayAsync("/playback-primer.mp4");
+    Assert(soundStart.Length < 4096 && Encoding.Latin1.GetString(soundStart).Contains("avc1") && Encoding.Latin1.GetString(soundStart).Contains("mp4a"), "Sound-start clip is tiny and contains both H.264 and a real AAC track");
     Assert((await client.GetAsync("/api/catalog")).StatusCode == HttpStatusCode.Unauthorized, "unauthenticated catalog is blocked");
     Assert((await Post("/api/command", new { action = "next" })).StatusCode == HttpStatusCode.Unauthorized, "unauthenticated control is blocked");
     Assert((await client.GetAsync("/encoder/unknown/root")).StatusCode == HttpStatusCode.Unauthorized, "internal encoder endpoint rejects ordinary browser requests");

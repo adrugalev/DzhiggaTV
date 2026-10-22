@@ -8,6 +8,13 @@ import './style.css';
 
 const message = (e: unknown) => e instanceof Error ? e.message : 'Не удалось выполнить действие.';
 const empty: Catalog = {channels:[], total:0, categories:[], playlists:[], collections:[], revision:0};
+// A tiny local H.264/AAC clip with a silent audio track. Keep one media element:
+// Safari grants sound playback to that element when play() runs in the tap handler.
+const playbackPrimer='/playback-primer.mp4';
+function prepareVideo(element:HTMLVideoElement) {
+  element.loop=true;
+  if(element.getAttribute('src')!==playbackPrimer){element.src=playbackPrimer;element.load();}
+}
 type Tab = 'tv'|'favorites'|'guide'|'remote'|'settings';
 
 function App() {
@@ -61,6 +68,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const [permission,setPermission] = useState(session.policy);
   const [filtersOpen,setFiltersOpen] = useState(false), [playerCollapsed,setPlayerCollapsed] = useState(false), [searchFocused,setSearchFocused] = useState(false);
   const video = useRef<HTMLVideoElement>(null), activeStream = useRef(false), switchGeneration=useRef(0), switching=useRef<AbortController|null>(null), catalogAbort=useRef<AbortController|null>(null), loadingRef=useRef(false), compatibilityAttempted=useRef(false);
+  useEffect(()=>{if(video.current)prepareVideo(video.current);},[]);
   const toastTimer = useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
   const notify = useCallback((text:string)=>{setToast(text);clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),5000);},[]);
   useEffect(()=>{const t=setTimeout(()=>setDebounced(search.trim()),250);return()=>clearTimeout(t);},[search]);
@@ -102,24 +110,30 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const act=async (cmd:Command)=>{if(busy)return;setBusy(true);try{await command(cmd);}catch(e){notify(message(e));}finally{setBusy(false);}};
   const stop=useCallback(()=>{
     ++switchGeneration.current;switching.current?.abort();setVideoUrl('');setVideoError('');setVideoLoading(false);setWatching(undefined);setPlayerCollapsed(false);
-    if(video.current){video.current.pause();video.current.removeAttribute('src');video.current.load();}
+    if(video.current){video.current.pause();prepareVideo(video.current);}
     if(activeStream.current){stopOnExit();activeStream.current=false;}
   },[]);
   useEffect(()=>{const exit=()=>stopOnExit();window.addEventListener('pagehide',exit);const ping=setInterval(()=>{if(activeStream.current)void api('/api/stream/ping',{}).catch(()=>{});},15000);return()=>{clearInterval(ping);window.removeEventListener('pagehide',exit);switching.current?.abort();if(activeStream.current)stopOnExit();};},[]);
-  const watch=async (channel:Channel,transcode=false,compatible=false)=>{
+  const watch=async (channel:Channel,transcode=false,compatible=false,fromGesture=true)=>{
     if(!permission.viewing){notify('Просмотр на телефоне отключён на компьютере.');return;}
     const generation=++switchGeneration.current;switching.current?.abort();const abort=new AbortController();switching.current=abort;
     if(!transcode&&!compatible){compatibilityAttempted.current=false;setFiltersOpen(false);}
     setMode('watch');setTab('tv');setWatching(channel);setVideoError('');setVideoLoading(true);setVideoUrl('');setVideoMode('');
-    // A play() attempt begins in the tap handler; Safari may still require its native Play control after the URL arrives.
-    video.current?.pause();
+    // Start sound playback before the first await, while this is still the user's tap.
+    // Wait until that play request settles before replacing its source. React never
+    // owns src or remounts the element while switching channels or retrying codecs.
+    const element=video.current;
+    let priming:Promise<void>=Promise.resolve();
+    if(fromGesture&&element){prepareVideo(element);priming=element.play().catch(()=>{});}
     try{
       const result=await api<{url:string;mode:string}>('/api/stream',{channelId:channel.id,transcode,compatible},abort.signal);
-      if(generation!==switchGeneration.current)return;
-      activeStream.current=true;setVideoMode(result.mode);setVideoUrl(result.url);setRecent(remember(channel.id));
-      const element=video.current;
-      if(element){element.src=result.url;element.load();void element.play().catch(e=>{if(generation===switchGeneration.current&&e?.name==='NotAllowedError'){setVideoLoading(false);notify('Нажмите ▶ на видео, чтобы начать просмотр со звуком.');}});}
-    }catch(e){if(generation===switchGeneration.current&&!abort.signal.aborted){setVideoLoading(false);setVideoError(message(e));}}
+      if(generation!==switchGeneration.current||abort.signal.aborted||element!==video.current)return;
+      activeStream.current=true;
+      await priming;
+      if(generation!==switchGeneration.current||abort.signal.aborted||element!==video.current)return;
+      setVideoMode(result.mode);setVideoUrl(result.url);setRecent(remember(channel.id));
+      if(element){element.loop=false;element.src=result.url;element.load();void element.play().catch(e=>{if(generation===switchGeneration.current&&element.getAttribute('src')===result.url&&e?.name==='NotAllowedError'){setVideoLoading(false);notify('Нажмите ▶ на видео, чтобы начать просмотр со звуком.');}});}
+    }catch(e){if(generation===switchGeneration.current&&!abort.signal.aborted){if(element?.getAttribute('src')===playbackPrimer)element.pause();setVideoLoading(false);setVideoError(message(e));}}
   };
   const videoFailed=()=>{
     const element=video.current;
@@ -127,7 +141,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
     setVideoLoading(false);
     const codecError=element.error?.code===3||element.error?.code===4;
     if(codecError&&videoMode==='proxy'&&permission.transcoding&&!compatibilityAttempted.current){
-      compatibilityAttempted.current=true;notify('Подбираем совместимый звук · качество видео сохраняется');void watch(watching,false,true);return;
+      compatibilityAttempted.current=true;notify('Подбираем совместимый звук · качество видео сохраняется');void watch(watching,false,true,false);return;
     }
     setVideoError(codecError?(videoMode==='compatible'?'Этот формат видео тоже несовместим с Safari. Можно преобразовать видео в H.264.':permission.transcoding?'Safari не поддерживает формат этого потока. Попробуйте совместимый звук или преобразование видео.':'Для этого канала включите «Совместимость iPhone» в окне Remote на компьютере. Это позволит преобразовать звук, сохранив качество видео.'):'Safari не смог загрузить поток. Проверьте сеть и лимит подключений провайдера.');
   };
@@ -149,22 +163,23 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const catalogWatching=!!watching&&(tab==='tv'||tab==='favorites')&&pickSlot===null;
   const expandedCatalog=!catalogWatching||filtersOpen;
   const activeFilters=[category,playlist,collection,sort!=='playlist'?sort:''].filter(Boolean).length;
+  const actualVideo=()=>!!videoUrl&&video.current?.getAttribute('src')===videoUrl;
   return <div className={'app '+(watching?'has-player ':'')+(catalogWatching?'catalog-view':'')}>
     <header><div className="wordmark">Dzhigga<span>TV</span><small>REMOTE</small></div><div className={'connection '+(online?'':'offline')}>{online?<Wifi size={14}/>:<WifiOff size={14}/>}<span>{online?'Дома':'Нет подключения'}</span></div></header>
     {!online&&<div className="offline-banner">Нет подключения к DzhiggaTV · пробуем восстановить связь</div>}
-    {watching&&<section className={'viewer '+(tab==='remote'||tab==='settings'?'viewer-small ':'')+(playerCollapsed||searchFocused?'viewer-collapsed':'')} aria-label="Плеер телефона">
-      <div className="video-frame" id="remote-video"><video ref={video} playsInline controls preload="none" src={videoUrl||undefined} onWaiting={()=>setVideoLoading(true)} onPlaying={()=>{setVideoLoading(false);setVideoError('');}} onCanPlay={()=>setVideoLoading(false)} onError={videoFailed} onDoubleClick={fullscreen}/>
+    <section hidden={!watching} className={'viewer '+(tab==='remote'||tab==='settings'?'viewer-small ':'')+(playerCollapsed||searchFocused?'viewer-collapsed':'')} aria-label="Плеер телефона">
+      <div className="video-frame" id="remote-video"><video ref={video} playsInline controls preload="auto" onWaiting={()=>{if(actualVideo())setVideoLoading(true);}} onPlaying={()=>{if(actualVideo()){setVideoLoading(false);setVideoError('');}}} onCanPlay={()=>{if(actualVideo())setVideoLoading(false);}} onError={videoFailed} onDoubleClick={fullscreen}/>
         {videoLoading&&<div className="video-status"><span className="loading-dot"/> Подключение…</div>}
         <button className="icon close-video" aria-label="Остановить просмотр" onClick={stop}><X size={18}/></button>
       </div>
-      <div className="now-playing"><div><span className="eyebrow">СМОТРЮ ЗДЕСЬ {videoMode==='transcode'?'· H.264 / AAC':videoMode==='compatible'?'· ИСХОДНОЕ ВИДЕО / AAC':''}</span><h2>{watching.name}</h2><button className="programme-link" onClick={()=>setDetail({channel:watching,programme:watching.current})}>{watching.current?.title??'Телепрограмма пока недоступна'} <Info size={13}/></button></div>
+      {watching&&<><div className="now-playing"><div><span className="eyebrow">СМОТРЮ ЗДЕСЬ {videoMode==='transcode'?'· H.264 / AAC':videoMode==='compatible'?'· ИСХОДНОЕ ВИДЕО / AAC':''}</span><h2>{watching.name}</h2><button className="programme-link" onClick={()=>setDetail({channel:watching,programme:watching.current})}>{watching.current?.title??'Телепрограмма пока недоступна'} <Info size={13}/></button></div>
         <button className="icon collapse-player" aria-label={playerCollapsed?'Развернуть плеер':'Свернуть плеер'} aria-expanded={!playerCollapsed} aria-controls="remote-video" onClick={()=>setPlayerCollapsed(value=>!value)}>{playerCollapsed?<ChevronDown size={20}/>:<ChevronUp size={20}/>}</button>
         <button className="icon" aria-label="Полный экран" onClick={fullscreen}><Maximize/></button>
         {'webkitShowPlaybackTargetPicker' in (video.current??{})&&<button className="icon" aria-label="AirPlay" onClick={()=>{(video.current as HTMLVideoElement&{webkitShowPlaybackTargetPicker:()=>void}).webkitShowPlaybackTargetPicker();}}><Cast/></button>}
         {document.pictureInPictureEnabled&&<button className="icon" aria-label="Картинка в картинке" onClick={()=>void video.current?.requestPictureInPicture?.().catch(e=>notify(message(e)))}><PictureInPicture2/></button>}
       </div>
-      {videoError&&<div className="video-error"><p>{videoError}</p><button onClick={()=>void watch(watching)}><RefreshCw size={16}/> Повторить</button>{permission.transcoding&&<>{videoMode!=='compatible'&&videoMode!=='transcode'&&<button onClick={()=>void watch(watching,false,true)}>Совместимый звук · без потери видео</button>}<button onClick={()=>void watch(watching,true)}>Преобразовать видео в H.264</button></>}</div>}
-    </section>}
+      {videoError&&<div className="video-error"><p>{videoError}</p><button onClick={()=>void watch(watching)}><RefreshCw size={16}/> Повторить</button>{permission.transcoding&&<>{videoMode!=='compatible'&&videoMode!=='transcode'&&<button onClick={()=>void watch(watching,false,true)}>Совместимый звук · без потери видео</button>}<button onClick={()=>void watch(watching,true)}>Преобразовать видео в H.264</button></>}</div>}</>}
+    </section>
     {(tab==='tv'||tab==='favorites'||pickSlot!==null)&&<section className="catalog-page">
       <div className="catalog-top">{expandedCatalog&&<div className="catalog-heading"><div className="section-title"><h1>{pickSlot!==null?`Канал для экрана ${pickSlot+1}`:tab==='favorites'?'Избранное':'Телевидение'}</h1><span>{catalog.total.toLocaleString('ru')} каналов</span></div>
         <div className="mode-switch" aria-label="Режим выбора канала"><button className={mode==='watch'?'active':''} onClick={()=>setRemoteMode(false)}><Smartphone size={16}/> Смотреть здесь</button><button className={mode==='pc'?'active':''} disabled={!permission.control} onClick={()=>setRemoteMode(true)}><Monitor size={16}/> Управлять ПК</button></div>

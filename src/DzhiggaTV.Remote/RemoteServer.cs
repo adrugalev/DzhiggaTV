@@ -247,8 +247,8 @@ public sealed class RemoteServer : IAsyncDisposable
         var name = "DzhiggaTV.Remote.Web.dist." + path.Replace('/', '.');
         var stream = typeof(RemoteServer).Assembly.GetManifestResourceStream(name);
         if (stream is null) return Results.NotFound();
-        var type = Path.GetExtension(path) switch { ".html" => "text/html; charset=utf-8", ".js" => "text/javascript; charset=utf-8", ".css" => "text/css; charset=utf-8", ".json" or ".webmanifest" => "application/manifest+json", ".png" => "image/png", ".svg" => "image/svg+xml", _ => "application/octet-stream" };
-        return Results.Stream(stream, type);
+        var type = Path.GetExtension(path) switch { ".html" => "text/html; charset=utf-8", ".js" => "text/javascript; charset=utf-8", ".css" => "text/css; charset=utf-8", ".json" or ".webmanifest" => "application/manifest+json", ".png" => "image/png", ".svg" => "image/svg+xml", ".mp4" => "video/mp4", _ => "application/octet-stream" };
+        return Results.Stream(stream, type, enableRangeProcessing: type == "video/mp4");
     }
     public async ValueTask DisposeAsync() { await StopAsync(); Streams.Dispose(); }
     private sealed record PairBody(string Code, string Name);
