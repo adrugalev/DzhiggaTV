@@ -44,18 +44,20 @@ public static class RemoteNetwork
     }
     private static HashSet<string> PrivateAdapters()
     {
+        // NLM's automation enumerator is unreliable on the WPF STA dispatcher.
+        // Keep all COM objects and enumeration in one MTA apartment.
+        return Thread.CurrentThread.GetApartmentState() == ApartmentState.STA
+            ? Task.Run(PrivateAdaptersCore).GetAwaiter().GetResult() : PrivateAdaptersCore();
+    }
+    private static HashSet<string> PrivateAdaptersCore()
+    {
         var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (!OperatingSystem.IsWindows()) return result;
-        object? manager = null;
         try
         {
-            manager = Activator.CreateInstance(Type.GetTypeFromCLSID(new Guid("DCB00C01-570F-4A9B-8D69-199FDBA5723B"))!);
-            foreach (dynamic network in (IEnumerable)((dynamic)manager!).GetNetworks(1))
-                if ((int)network.GetCategory() is 1 or 2)
-                    foreach (dynamic connection in (IEnumerable)network.GetNetworkConnections()) result.Add(((Guid)connection.GetAdapterId()).ToString());
+            return WindowsNetworkProfiles.PrivateAdapters();
         }
-        catch (Exception e) when (e is COMException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException or InvalidCastException) { /* Unknown profile is never treated as private. */ }
-        finally { if (manager is not null && Marshal.IsComObject(manager)) Marshal.ReleaseComObject(manager); }
+        catch (Exception e) when (e is COMException or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException or InvalidCastException or ArgumentException) { /* Unknown profile is never treated as private. */ }
         return result;
     }
 }

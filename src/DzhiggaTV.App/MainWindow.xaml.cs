@@ -294,6 +294,7 @@ public partial class MainWindow : Window
         if (sender is not Button { Tag: string tag } button) return;
         if (tag == "guide") { await ShowGuideAsync(); return; }
         if (tag == "sports") { await ShowSportsEveningAsync(); return; }
+        if (tag == "remote") { await ShowRemoteAsync(); return; }
         if (tag == "categories")
         {
             var menu = new ContextMenu { Placement = System.Windows.Controls.Primitives.PlacementMode.Right, MaxHeight = Math.Min(520, SystemParameters.WorkArea.Height - 80) };

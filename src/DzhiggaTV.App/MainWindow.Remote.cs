@@ -10,6 +10,11 @@ public partial class MainWindow
 {
     public RemoteServer Remote { get; private set; } = null!;
     private readonly Dictionary<string, Window> _pairingWindows = [];
+    public Task ShowRemoteAsync() => WithModalAsync(() =>
+    {
+        if (Remote is not null) new RemoteSettingsWindow(this, this).ShowDialog();
+        return Task.CompletedTask;
+    });
     public RemoteOptions RemoteOptions()
     {
         try { return JsonSerializer.Deserialize<RemoteOptions>(Model.Setting("remote.options", "{}")) ?? new(); }

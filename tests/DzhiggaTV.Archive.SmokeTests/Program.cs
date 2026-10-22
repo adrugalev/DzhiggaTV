@@ -67,6 +67,12 @@ internal static partial class Program
         var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
         Check(main.GetArchiveTimeline() is { IsArchive: false }, "An archive-capable live channel exposes its rewind range");
         var overlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
+        if (args.Contains("--remote-preview"))
+        {
+            var preview = new RemoteSettingsWindow(main, main); preview.Show();
+            Console.WriteLine("ISOLATED_REMOTE_WINDOW_READY");
+            await Task.Delay(TimeSpan.FromMinutes(20)); preview.Close(); return;
+        }
         if (args.Contains("--remote"))
         {
             await RemoteChecks(main, server, args);

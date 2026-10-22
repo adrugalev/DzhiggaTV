@@ -4,6 +4,8 @@ using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 using DzhiggaTV.App;
 using DzhiggaTV.Player;
 using DzhiggaTV.Remote;
@@ -16,6 +18,7 @@ internal static partial class Program
         var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); int port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
         await using var remote = new RemoteServer(new DesktopRemoteLibrary(main), System.IO.Path.Combine(main.Model.DataDirectory, "remote-integration"),
             _ => new("127.0.0.1", 8, "isolated integration", true, false), new SourcePolicy(true));
+        await RemoteSettingsChecks(main, remote, port);
         await remote.StartAsync(new() { Port = port });
         var cookies = new CookieContainer();
         using var client = new HttpClient(new HttpClientHandler { CookieContainer = cookies, UseProxy = false }) { BaseAddress = new(remote.Url!), Timeout = TimeSpan.FromSeconds(12) };
@@ -74,5 +77,37 @@ internal static partial class Program
         main.WindowState = WindowState.Normal;
         remote.Devices.Revoke(null); Check((await client.GetAsync(url)).StatusCode == HttpStatusCode.Unauthorized && remote.Streams.Active.Count == 0, "Revocation closes integrated mobile streams without stopping the Windows player");
         await remote.StopAsync(); Check(!remote.Running && main.Player.IsInitialized, "Stopping Remote leaves the native video engine initialized");
+    }
+    private static async Task RemoteSettingsChecks(MainWindow main, RemoteServer remote, int port)
+    {
+        main.Model.SetSetting("remote.options", JsonSerializer.Serialize(new RemoteOptions { Port = port }));
+        var window = new RemoteSettingsWindow(main, main, remote); window.Show();
+        await Task.Delay(150); window.UpdateLayout();
+        var expander = Descendants<Expander>(window).Single(); expander.IsExpanded = true; window.UpdateLayout();
+        var address = Descendants<ComboBox>(window).Single(c => System.Windows.Automation.AutomationProperties.GetName(c) == "Сетевой адаптер Remote");
+        Check(address.Items.Cast<object>().All(x => x is string) && address.SelectedItem is string label && label.Contains("Автоматически"), "Remote adapter renders a readable name instead of a record's debug text");
+        var qr = Descendants<Image>(window).Single();
+        var copy = Descendants<Button>(window).Single(b => Equals(b.Content, "Копировать ссылку"));
+        Check(qr.Visibility == Visibility.Collapsed && !copy.IsEnabled, "Disabled Remote shows a dark placeholder and disables unavailable QR actions");
+        foreach (var width in new[] { 620d, 760d, 960d })
+        {
+            window.Width = Math.Clamp(width, window.MinWidth, window.MaxWidth); window.Height = Math.Clamp(620, window.MinHeight, window.MaxHeight); window.UpdateLayout();
+            var text = Descendants<TextBlock>(window).Where(t => t.IsVisible && !string.IsNullOrWhiteSpace(t.Text) && t.ActualWidth > 0 && t.ActualHeight > 0)
+                .Select(t => (t.Text, Bounds: t.TransformToAncestor(window).TransformBounds(new Rect(t.RenderSize)))).ToArray();
+            var collisions = text.SelectMany((a, i) => text.Skip(i + 1).Select(b => (A: a, B: b)))
+                .Where(pair => { var overlap = Rect.Intersect(pair.A.Bounds, pair.B.Bounds); return !overlap.IsEmpty && overlap.Width > 1 && overlap.Height > 1; }).ToArray();
+            Check(collisions.Length == 0, $"Remote text panels never overlap at {window.Width:F0} DIP (expanded settings)");
+        }
+        var start = Descendants<Button>(window).Single(b => Equals(b.Content, "Включить Remote"));
+        start.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Wait(() => remote.Running && start.IsEnabled && qr.Source is not null && qr.Visibility == Visibility.Visible);
+        using var client = new HttpClient(new HttpClientHandler { UseProxy = false });
+        Check((await client.GetAsync(remote.Url + "/api/status")).IsSuccessStatusCode && copy.IsEnabled, "The actual Windows Enable button starts HTTP and reveals a working QR code");
+        start.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Wait(() => !remote.Running && start.IsEnabled && qr.Visibility == Visibility.Collapsed);
+        Check(!copy.IsEnabled && remote.Url is null, "The actual Windows Disable button closes the server and clears QR actions");
+        window.Close();
+        var launcher = Descendants<Button>(main).Single(b => Equals(b.Tag, "remote"));
+        Check(Descendants<NavigationIcon>(launcher).Single().Icon == "remote", "Remote has its own sidebar launcher using the shared colored hover animation");
     }
 }
