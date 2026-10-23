@@ -25,13 +25,13 @@ public sealed class RemoteStreams : IDisposable
     {
         get { lock (_gate) { Prune(); return _streams.Values.Select(v => new StreamInfo(v.DeviceId, v.Source.ChannelId, v.Mode, Interlocked.Read(ref v.Bytes), v.Started)).ToArray(); } }
     }
-    public async Task<object> StartAsync(string deviceId, string channelId, bool transcode, string serverUrl, CancellationToken token, bool compatible = false)
+    public async Task<object> StartAsync(string deviceId, string channelId, bool transcode, string serverUrl, CancellationToken token, bool compatible = false, DateTimeOffset? programmeStart = null)
     {
         var options = _options();
         if (!options.AllowViewing) throw new RemoteException("Просмотр на телефонах отключён на компьютере.", 403);
         long generation, epoch;
         lock (_gate) { generation = _starts.GetValueOrDefault(deviceId) + 1; _starts[deviceId] = generation; epoch = _epoch; }
-        var source = await _library.SourceAsync(channelId, token); _policy.Validate(source.Uri); token.ThrowIfCancellationRequested();
+        var source = await _library.SourceAsync(channelId, programmeStart, token); _policy.Validate(source.Uri); token.ThrowIfCancellationRequested();
         Viewing viewing;
         lock (_gate)
         {

@@ -185,7 +185,13 @@ public partial class MainWindow : Window
         await Player.PlayAsync(Path.GetFullPath(file)); HasPlayback = true; _overlay?.RefreshState();
     }
     private async void Channel_Selected(object sender, SelectionChangedEventArgs e)
-    { if (_initialized && ChannelList.SelectedItem is ChannelItem item && Model.Active?.Id != item.Id) await PlayAsync(item); }
+    { if (_initialized && ChannelList.SelectedItem is ChannelItem item && Model.Active?.Id != item.Id) await GuardAsync(() => PlaySearchResultAsync(item)); }
+    private async void Channel_SearchClick(object sender, MouseButtonEventArgs e)
+    {
+        if (FindParent<Button>(e.OriginalSource as DependencyObject) is not null || (e.GetPosition(ChannelList) - _dragOrigin).Length > SystemParameters.MinimumVerticalDragDistance) return;
+        if (FindParent<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext is ChannelItem { SearchProgramme: not null } item && Model.Active?.Id == item.Id)
+            await GuardAsync(() => PlaySearchResultAsync(item));
+    }
     public async Task NextChannelAsync(int direction)
     {
         var list = Model.VisibleChannels; if (list.Count == 0) return;

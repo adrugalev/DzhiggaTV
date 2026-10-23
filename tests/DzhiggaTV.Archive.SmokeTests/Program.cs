@@ -73,6 +73,12 @@ internal static partial class Program
             Console.WriteLine("ISOLATED_REMOTE_WINDOW_READY");
             await Task.Delay(TimeSpan.FromMinutes(20)); preview.Close(); return;
         }
+        if (args.Contains("--remote-quick"))
+        {
+            await RemoteQuickChecks(main, server, overlay, args);
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
+            return;
+        }
         if (args.Contains("--remote"))
         {
             await RemoteChecks(main, server, args);

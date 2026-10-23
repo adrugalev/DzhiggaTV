@@ -11,6 +11,7 @@ namespace DzhiggaTV.App;
 public partial class OverlayWindow : Window
 {
     private readonly MainWindow _main;
+    private readonly RemoteQuickConnectView _remoteQuick;
     private DateTime _lastMove = DateTime.UtcNow;
     private readonly PointerRevealGate _pointerReveal = new();
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
@@ -26,6 +27,8 @@ public partial class OverlayWindow : Window
         _main = main;
         var volume = main.Player.Volume;
         InitializeComponent();
+        _remoteQuick = new(main); OverlayRoot.Children.Add(_remoteQuick); Panel.SetZIndex(_remoteQuick, 10);
+        _remoteQuick.Dismissed += () => { if (IsVisible) Reveal(); };
         PlaybackStatus.RetryRequested += async (_, _) => await _main.GuardAsync(async () =>
         {
             if (_main.IsArchivePlayback) await _main.TogglePlaybackPauseAsync();
@@ -37,8 +40,8 @@ public partial class OverlayWindow : Window
         VolumeSlider.Value = volume; _volumeReady = true;
         Loaded += (_, _) => { RefreshHoverState(); UpdateVisibility(); };
         SizeChanged += (_, _) => { UpdateCompactLayout(); RefreshHoverState(); UpdateVisibility(); };
-        IsVisibleChanged += (_, _) => { if (!IsVisible) { CancelSeek(); ClosePlayerMenu(); } RefreshHoverState(); UpdateVisibility(); };
-        Closed += (_, _) => ClosePlayerMenu();
+        IsVisibleChanged += (_, _) => { if (!IsVisible) { CancelSeek(); ClosePlayerMenu(); _remoteQuick.Dismiss(); } RefreshHoverState(); UpdateVisibility(); };
+        Closed += (_, _) => { _remoteQuick.Dismiss(); ClosePlayerMenu(); };
         ControlsPanel.SizeChanged += (_, _) => FullscreenProgrammeInfo.Margin = new(16, 0, 0, Math.Max(48, ControlsPanel.ActualHeight + 12));
     }
     public void Reveal()
@@ -99,12 +102,14 @@ public partial class OverlayWindow : Window
     private void UpdateVisibility()
     {
         if (ControlsPanel is null) return;
+        var quickOpen = _remoteQuick.Visibility == Visibility.Visible;
         var keyboardControls = _seeking || _keyboardNavigation && (ControlsPanel.IsKeyboardFocusWithin || FullscreenProgrammeInfo.IsKeyboardFocusWithin);
         var readingDescription = _pointerInside && FullscreenProgrammeReadingArea.IsMouseOver;
         var idle = (_main.IsFullscreen || _main.IsMini) && _main.HasPlayback &&
-            Drawer.Visibility != Visibility.Visible && !_menuOpen && !keyboardControls && !readingDescription &&
+            Drawer.Visibility != Visibility.Visible && !_menuOpen && !quickOpen && !keyboardControls && !readingDescription &&
             DateTime.UtcNow - _lastMove > TimeSpan.FromSeconds(3.5);
-        ControlsPanel.Visibility = _menuOpen || keyboardControls || (_pointerInside && !idle) ? Visibility.Visible : Visibility.Collapsed;
+        ControlsPanel.Visibility = quickOpen || _menuOpen || keyboardControls || (_pointerInside && !idle) ? Visibility.Visible : Visibility.Collapsed;
+        RemoteButton.SetResourceReference(ForegroundProperty, _main.Remote.Running || quickOpen ? "AccentBrush" : "TextBrush");
         if (ControlsPanel.Visibility != Visibility.Visible) HideSeekPreview();
         MiniWindowActions.Visibility = _main.IsMini ? ControlsPanel.Visibility : Visibility.Collapsed;
         MiniPinButton.Foreground = (System.Windows.Media.Brush)FindResource(_main.Topmost ? "AccentBrush" : "TextBrush");
@@ -118,6 +123,7 @@ public partial class OverlayWindow : Window
         var layout = (ActualWidth, ActualHeight, FullscreenMetadataScroll.Visibility);
         if (_compactLayout == layout) return;
         _compactLayout = layout;
+        _remoteQuick.FitToViewport(ActualWidth, ActualHeight);
         FullscreenProgrammeInfo.Width = FullscreenProgrammeInfo.MaxWidth = Math.Max(0, ActualWidth * .35);
         FullscreenSynopsisScroll.MaxHeight = Math.Max(30, Math.Min(180, ActualHeight * .20));
         FullscreenMetadataScroll.MaxHeight = Math.Max(24, Math.Min(110, ActualHeight * .12));
@@ -164,6 +170,7 @@ public partial class OverlayWindow : Window
     private void Overlay_MouseDown(object sender, MouseButtonEventArgs e)
     {
         Reveal();
+        if (_remoteQuick.IsMouseOver) return;
         if (ReferenceEquals(e.OriginalSource, OverlayRoot)) HideStreamInformation();
         if (e.OriginalSource is not Grid) return;
         if (e.ClickCount == 2) _main.ToggleFullscreen();
@@ -177,6 +184,8 @@ public partial class OverlayWindow : Window
     }
     private async void Overlay_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && _remoteQuick.Visibility == Visibility.Visible) { _remoteQuick.Dismiss(); e.Handled = true; return; }
+        if (_remoteQuick.IsKeyboardFocusWithin) return;
         if (ArchiveSeekSlider.IsKeyboardFocusWithin && IsSeekKey(e.Key)) return;
         if ((FullscreenSynopsisScroll.IsKeyboardFocusWithin || FullscreenMetadataScroll.IsKeyboardFocusWithin) &&
             e.Key is Key.Up or Key.Down or Key.PageUp or Key.PageDown or Key.Home or Key.End) return;
@@ -195,6 +204,12 @@ public partial class OverlayWindow : Window
         await _main.HandleKeyAsync(e);
     }
     private async void Import_Click(object sender, RoutedEventArgs e) => await _main.ImportPlaylistAsync();
+    private async void Remote_Click(object sender, RoutedEventArgs e)
+    {
+        if (_remoteQuick.Visibility == Visibility.Visible) _remoteQuick.Dismiss();
+        else { ClosePlayerMenu(); Drawer.Visibility = Visibility.Collapsed; StatisticsPanel.Visibility = Visibility.Collapsed; await _remoteQuick.OpenAsync(); }
+        UpdateVisibility();
+    }
     private async void ChannelBack_Click(object sender, RoutedEventArgs e) => await _main.NextChannelAsync(-1);
     private async void ChannelNext_Click(object sender, RoutedEventArgs e) => await _main.NextChannelAsync(1);
     private async void Pause_Click(object sender, RoutedEventArgs e) { await _main.GuardAsync(_main.TogglePlaybackPauseAsync); RefreshState(); }

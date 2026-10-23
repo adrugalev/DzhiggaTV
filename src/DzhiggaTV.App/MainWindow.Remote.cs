@@ -11,6 +11,8 @@ public partial class MainWindow
     public RemoteServer Remote { get; private set; } = null!;
     internal FfmpegInstaller RemoteComponents { get; private set; } = null!;
     private readonly CancellationTokenSource _remoteLifetime = new();
+    private readonly SemaphoreSlim _quickRemoteGate = new(1, 1);
+    private Task _remoteStartup = Task.CompletedTask;
     private readonly Dictionary<string, Window> _pairingWindows = [];
     public Task ShowRemoteAsync() => WithModalAsync(() =>
     {
@@ -27,7 +29,7 @@ public partial class MainWindow
         RemoteComponents = new(Path.Combine(Model.DataDirectory, "tools"));
         Remote = new(new DesktopRemoteLibrary(this), Model.DataDirectory);
         Remote.Changed += () => Dispatcher.BeginInvoke(DispatcherPriority.Background, ShowRemotePairing);
-        if (RemoteOptions() is { AutoStart: true } options) _ = GuardAsync(async () =>
+        if (RemoteOptions() is { AutoStart: true } options) _remoteStartup = GuardAsync(async () =>
         {
             try
             {
@@ -49,6 +51,25 @@ public partial class MainWindow
             options = options with { FfmpegPath = path, AllowTranscoding = true, DependenciesPrepared = true };
         }
         token.ThrowIfCancellationRequested(); options.Validate(); return options;
+    }
+    internal async Task StartQuickRemoteAsync(RemoteServer server, IProgress<RemotePreparation> progress, CancellationToken cancellation)
+    {
+        using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellation, _remoteLifetime.Token);
+        var token = lifetime.Token;
+        await _quickRemoteGate.WaitAsync(token);
+        try
+        {
+            await _remoteStartup.WaitAsync(token);
+            var options = (server.Running ? server.Options : RemoteOptions()) with
+            { AllowViewing = true, AllowTranscoding = true, Delivery = "proxy" };
+            options = await PrepareRemoteOptionsAsync(options, progress, token);
+            token.ThrowIfCancellationRequested();
+            if (!server.Running || server.Options != options) await server.StartAsync(options, token);
+            token.ThrowIfCancellationRequested();
+            Model.SetSetting("remote.options", JsonSerializer.Serialize(options));
+            await Model.SaveAsync();
+        }
+        finally { _quickRemoteGate.Release(); }
     }
     private void ShowRemotePairing()
     {

@@ -88,7 +88,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const revision=state?.revision??0;
   useEffect(()=>{
     if(!watching)return;let alive=true;
-    const update=()=>{void api<Catalog>('/api/catalog?ids='+encodeURIComponent(watching.id)).then(c=>{if(alive&&c.channels[0])setWatching(c.channels[0]);}).catch(()=>{});};
+    const update=()=>{void api<Catalog>('/api/catalog?ids='+encodeURIComponent(watching.id)).then(c=>{if(alive&&c.channels[0])setWatching(previous=>({...c.channels[0],match:previous?.match}));}).catch(()=>{});};
     const timer=setInterval(update,30000);return()=>{alive=false;clearInterval(timer);};
   },[watching?.id]);
   const queryKey=JSON.stringify([debounced,category,playlist,collection,sort,tab==='favorites',pickSlot!==null,refresh,revision,recent]);
@@ -122,7 +122,8 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
     if(fromGesture){initialComplete.current=true;initialRequest.current?.abort();setPlaybackAction(null);}
     const generation=++switchGeneration.current;switching.current?.abort();const abort=new AbortController();switching.current=abort;
     if(!transcode&&!compatible){compatibilityAttempted.current=false;setFiltersOpen(false);}
-    setMode('watch');setTab('tv');setWatching(channel);setVideoError('');setVideoLoading(true);setVideoUrl('');setVideoMode('');
+    const archive=channel.match&&Date.parse(channel.match.end)<=Date.now()?channel.match:undefined;
+    setMode('watch');setTab('tv');setWatching({...channel,match:archive});setVideoError('');setVideoLoading(true);setVideoUrl('');setVideoMode('');
     // Start sound playback before the first await, while this is still the user's tap.
     // Wait until that play request settles before replacing its source. React never
     // owns src or remounts the element while switching channels or retrying codecs.
@@ -130,7 +131,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
     let priming:Promise<void>=Promise.resolve();
     if(fromGesture&&element){element.muted=false;prepareVideo(element);priming=element.play().catch(()=>{});}
     try{
-      const result=await api<{url:string;mode:string}>('/api/stream',{channelId:channel.id,transcode,compatible},abort.signal);
+      const result=await api<{url:string;mode:string}>('/api/stream',{channelId:channel.id,transcode,compatible,programmeStart:archive?.start},abort.signal);
       if(generation!==switchGeneration.current||abort.signal.aborted||element!==video.current)return;
       activeStream.current=true;
       await priming;
@@ -181,7 +182,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   };
   const choose=async (channel:Channel)=>{
     if(pickSlot!==null){const slots=[...(state?.multiscreen.channels??[null,null,null,null])];while(slots.length<=pickSlot)slots.push(null);slots.forEach((id,i)=>{if(id===channel.id)slots[i]=null;});slots[pickSlot]=channel.id;setPickSlot(null);setTab('remote');await act({action:'multiscreen.layout',channels:slots});return;}
-    if(mode==='pc'){await act({action:'play',channelId:channel.id});notify(`На ПК: ${channel.name}`);}else await watch(channel);
+    if(mode==='pc'){await act({action:'play',channelId:channel.id,programmeStart:channel.match?.start});notify(`На ПК: ${channel.match?.title??channel.name}`);}else await watch(channel);
   };
   const favorite=async (c:Channel)=>{try{await command({action:'favorite',channelId:c.id,value:c.favorite?0:1});setRefresh(n=>n+1);}catch(e){notify(message(e));}};
   useEffect(()=>{
@@ -195,6 +196,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
   const fullscreen=()=>{const v=video.current as HTMLVideoElement&{webkitEnterFullscreen?:()=>void};if(!v)return;if(document.fullscreenElement)void document.exitFullscreen();else if(v.webkitEnterFullscreen)v.webkitEnterFullscreen();else void v.requestFullscreen?.();};
   const setRemoteMode=(pc:boolean)=>{if(pc){stop();setMode('pc');}else setMode('watch');};
   const showPlayer=!!watching&&tab!=='remote';
+  const watchingProgramme=watching?.match??watching?.current;
   const catalogWatching=!!watching&&(tab==='tv'||tab==='favorites')&&pickSlot===null;
   const expandedCatalog=!catalogWatching||filtersOpen;
   const activeFilters=[category,playlist,collection,sort!=='playlist'?sort:''].filter(Boolean).length;
@@ -208,7 +210,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
         {playbackAction&&!videoError&&<button className="playback-action" onClick={continuePlayback}>{playbackAction==='sound'?<Volume2 size={17}/>:<Play size={17}/>} {playbackAction==='sound'?'Включить звук':'Начать просмотр'}</button>}
         <button className="icon close-video" aria-label="Остановить просмотр" onClick={stop}><X size={18}/></button>
       </div>
-      {watching&&<><div className="now-playing"><div><span className="eyebrow">СМОТРЮ ЗДЕСЬ {videoMode==='transcode'?'· H.264 / AAC':videoMode==='compatible'?'· ИСХОДНОЕ ВИДЕО / AAC':''}</span><h2>{watching.name}</h2><button className="programme-link" onClick={()=>setDetail({channel:watching,programme:watching.current})}>{watching.current?.title??'Телепрограмма пока недоступна'} <Info size={13}/></button></div>
+      {watching&&<><div className="now-playing"><div><span className="eyebrow">{watching.match?'СМОТРЮ АРХИВ':'СМОТРЮ ЗДЕСЬ'} {videoMode==='transcode'?'· H.264 / AAC':videoMode==='compatible'?'· ИСХОДНОЕ ВИДЕО / AAC':''}</span><h2>{watching.name}</h2><button className="programme-link" onClick={()=>setDetail({channel:watching,programme:watchingProgramme})}>{watchingProgramme?.title??'Телепрограмма пока недоступна'} <Info size={13}/></button></div>
         <button className="icon collapse-player" aria-label={playerCollapsed?'Развернуть плеер':'Свернуть плеер'} aria-expanded={!playerCollapsed} aria-controls="remote-video" onClick={()=>setPlayerCollapsed(value=>!value)}>{playerCollapsed?<ChevronDown size={20}/>:<ChevronUp size={20}/>}</button>
         <button className="icon" aria-label="Полный экран" onClick={fullscreen}><Maximize/></button>
         {'webkitShowPlaybackTargetPicker' in (video.current??{})&&<button className="icon" aria-label="AirPlay" onClick={()=>{(video.current as HTMLVideoElement&{webkitShowPlaybackTargetPicker:()=>void}).webkitShowPlaybackTargetPicker();}}><Cast/></button>}
@@ -252,8 +254,8 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
     </section>}
     <nav aria-label="Разделы">{([{id:'tv',title:'ТВ',icon:Tv},{id:'favorites',title:'Избранное',icon:Star},{id:'guide',title:'Программа',icon:CalendarDays},{id:'remote',title:'Пульт',icon:SlidersHorizontal},{id:'settings',title:'Настройки',icon:Settings}] as const).map(item=><button key={item.id} aria-current={tab===item.id?'page':undefined} className={tab===item.id?'active':''} onClick={()=>navigate(item.id)}><item.icon size={22}/><span>{item.title}</span></button>)}</nav>
     {toast&&<div role="status" className="toast">{toast}</div>}
-    {detail&&<Modal close={()=>setDetail(undefined)}><span className="eyebrow">{detail.channel.name}</span><h2>{detail.programme?.title??detail.channel.name}</h2>{detail.programme&&<><span className="muted">{range(detail.programme)}</span><p className="tag">{detail.programme.category}</p><p className="synopsis">{detail.programme.description||'Описание этой передачи пока недоступно.'}</p></>}<p className="fine">Включится текущий прямой эфир канала.</p><div className="modal-actions"><button className="primary" disabled={!permission.viewing} onClick={()=>{void watch(detail.channel);setDetail(undefined);}}><Smartphone size={18}/> Смотреть здесь</button><button disabled={!permission.control} onClick={()=>{void act({action:'play',channelId:detail.channel.id});setDetail(undefined);}}><Monitor size={18}/> Включить на ПК</button></div></Modal>}
-    {context&&<Modal close={()=>setContext(undefined)}><span className="eyebrow">КАНАЛ</span><h2>{context.name}</h2><button className="wide primary" onClick={()=>{void watch(context);setContext(undefined);}}><Smartphone size={18}/> Смотреть на телефоне</button><button className="wide" disabled={!permission.control} onClick={()=>{void act({action:'play',channelId:context.id});setContext(undefined);}}><Monitor size={18}/> Включить на ПК</button><button className="wide" disabled={!permission.favorites} onClick={()=>{void favorite(context);setContext(undefined);}}><Star size={18}/> {context.favorite?'Убрать из избранного':'Добавить в избранное'}</button><button className="wide" onClick={()=>{setDetail({channel:context,programme:context.current});setContext(undefined);}}><Info size={18}/> О передаче</button>{permission.favorites&&catalog.collections.map(name=><div className="collection-action" key={name}><span>{name}</span><button onClick={()=>{void act({action:'collection.add',channelId:context.id,name});setContext(undefined);}}>Добавить</button><button aria-label={`Убрать из подборки ${name}`} onClick={()=>{void act({action:'collection.remove',channelId:context.id,name});setContext(undefined);}}><X size={16}/></button></div>)}</Modal>}
+    {detail&&<Modal close={()=>setDetail(undefined)}><span className="eyebrow">{detail.channel.name}</span><h2>{detail.programme?.title??detail.channel.name}</h2>{detail.programme&&<><span className="muted">{range(detail.programme)}</span><p className="tag">{detail.programme.category}</p><p className="synopsis">{detail.programme.description||'Описание этой передачи пока недоступно.'}</p></>}<p className="fine">{detail.programme&&Date.parse(detail.programme.start)>Date.now()?'Передача ещё не началась.':detail.programme&&Date.parse(detail.programme.end)<=Date.now()?'Откроется выбранная запись из архива.':'Включится текущий прямой эфир канала.'}</p><div className="modal-actions"><button className="primary" disabled={!permission.viewing||!!detail.programme&&Date.parse(detail.programme.start)>Date.now()} onClick={()=>{void watch({...detail.channel,match:detail.programme});setDetail(undefined);}}><Smartphone size={18}/> Смотреть здесь</button><button disabled={!permission.control||!!detail.programme&&Date.parse(detail.programme.start)>Date.now()} onClick={()=>{void act({action:'play',channelId:detail.channel.id,programmeStart:detail.programme?.start});setDetail(undefined);}}><Monitor size={18}/> Включить на ПК</button></div></Modal>}
+    {context&&<Modal close={()=>setContext(undefined)}><span className="eyebrow">КАНАЛ</span><h2>{context.name}</h2><button className="wide primary" onClick={()=>{void watch(context);setContext(undefined);}}><Smartphone size={18}/> Смотреть на телефоне</button><button className="wide" disabled={!permission.control} onClick={()=>{void act({action:'play',channelId:context.id,programmeStart:context.match?.start});setContext(undefined);}}><Monitor size={18}/> Включить на ПК</button><button className="wide" disabled={!permission.favorites} onClick={()=>{void favorite(context);setContext(undefined);}}><Star size={18}/> {context.favorite?'Убрать из избранного':'Добавить в избранное'}</button><button className="wide" onClick={()=>{setDetail({channel:context,programme:context.match??context.current});setContext(undefined);}}><Info size={18}/> О передаче</button>{permission.favorites&&catalog.collections.map(name=><div className="collection-action" key={name}><span>{name}</span><button onClick={()=>{void act({action:'collection.add',channelId:context.id,name});setContext(undefined);}}>Добавить</button><button aria-label={`Убрать из подборки ${name}`} onClick={()=>{void act({action:'collection.remove',channelId:context.id,name});setContext(undefined);}}><X size={16}/></button></div>)}</Modal>}
   </div>;
 }
 

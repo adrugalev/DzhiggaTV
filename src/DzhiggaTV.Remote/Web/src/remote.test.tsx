@@ -237,6 +237,52 @@ describe('independent mobile playback',()=>{
     expect(result.container.querySelector('video')).toBe(video);
   });
 });
+describe('programme search playback',()=>{
+  const archive={title:'Архивный матч',start:new Date(now-7200000).toISOString(),end:new Date(now-3600000).toISOString()};
+  function searched(match=archive){
+    initialPc({...pcState,channelId:undefined});
+    const fallback=vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async(input,init)=>{
+      const path=String(input);
+      if(path.startsWith('/api/catalog?')&&new URL(path,'http://localhost').searchParams.get('search')){
+        requests.push({path});return new Response(JSON.stringify({...catalog,channels:[{...channel,match}]}));
+      }
+      return fallback(input,init);
+    });
+  }
+  it('plays the selected archive on the phone and retains its time through codec retries',async()=>{
+    searched();const result=render(<Television session={{...session,policy:{...session.policy,transcoding:true}}} onLogout={()=>{}}/>);
+    fireEvent.change(screen.getByLabelText('Поиск канала или передачи'),{target:{value:'Архивный матч'}});
+    fireEvent.click(await screen.findByText(archive.title));
+    const video=result.container.querySelector('video')!;
+    await waitFor(()=>expect(video.getAttribute('src')).toBe('/media/stream/root'));
+    expect(requests.find(r=>r.path==='/api/stream')?.body?.programmeStart).toBe(archive.start);
+    expect(screen.getByText('СМОТРЮ АРХИВ')).toBeTruthy();
+    Object.defineProperty(video,'error',{configurable:true,value:{code:4}});fireEvent.error(video);
+    await waitFor(()=>expect(video.getAttribute('src')).toBe('/converted/stream/index.m3u8'));
+    fireEvent.error(video);fireEvent.click(await screen.findByRole('button',{name:'Преобразовать видео в H.264'}));
+    await waitFor(()=>expect(requests.some(r=>r.body?.transcode===true)).toBe(true));
+    expect(requests.filter(r=>r.path==='/api/stream').map(r=>r.body?.programmeStart)).toEqual([archive.start,archive.start,archive.start]);
+    expect(requests.filter(r=>r.path==='/api/command')).toHaveLength(0);
+  });
+  it('sends the selected programme to the Windows player in PC mode',async()=>{
+    searched();render(<Television session={session} onLogout={()=>{}}/>);
+    fireEvent.click(screen.getByRole('button',{name:/Управлять ПК/}));
+    fireEvent.change(screen.getByLabelText('Поиск канала или передачи'),{target:{value:archive.title}});
+    fireEvent.click(await screen.findByText(archive.title));
+    await waitFor(()=>expect(requests.some(r=>r.path==='/api/command'&&r.body?.programmeStart===archive.start)).toBe(true));
+    expect(requests.filter(r=>r.path==='/api/stream')).toHaveLength(0);
+  });
+  it('opens live TV for a search match that is still on air',async()=>{
+    searched({...programme,title:'Текущий матч'});render(<Television session={session} onLogout={()=>{}}/>);
+    fireEvent.change(screen.getByLabelText('Поиск канала или передачи'),{target:{value:'Текущий матч'}});
+    fireEvent.click(await screen.findByText('Текущий матч'));
+    await waitFor(()=>expect(requests.some(r=>r.path==='/api/stream')).toBe(true));
+    expect(requests.find(r=>r.path==='/api/stream')?.body?.programmeStart).toBeUndefined();
+    expect(screen.queryByText('СМОТРЮ АРХИВ')).toBeNull();
+  });
+});
+
 describe('API and local history',()=>{
   it('sends CSRF only in the command header and keeps credentials out of URLs',async()=>{
     await api('/api/command',{action:'mute'});

@@ -5,6 +5,18 @@ namespace DzhiggaTV.App;
 
 public partial class MainWindow
 {
+    private (string Channel, DateTimeOffset Start)? _openingSearchResult;
+    public async Task PlaySearchResultAsync(ChannelItem channel)
+    {
+        var programme = channel.SearchProgramme;
+        if (programme is null || programme.End > DateTimeOffset.UtcNow)
+        { if (Model.Active?.Id != channel.Id || IsArchivePlayback) await PlayAsync(channel); return; }
+        var key = (channel.Id, programme.Start);
+        if (_openingSearchResult == key || _archivePlayback is { } archive && archive.Channel.Id == channel.Id && archive.Programme.Start == programme.Start) return;
+        _openingSearchResult = key;
+        try { await PlayArchiveAsync(channel, programme); }
+        finally { if (_openingSearchResult == key) _openingSearchResult = null; }
+    }
     private async void PreviousProgramme_Click(object sender, System.Windows.RoutedEventArgs e) => await GuardAsync(Programmes.GoBackAsync);
     private async void FollowingProgramme_Click(object sender, System.Windows.RoutedEventArgs e) => await GuardAsync(Programmes.GoForwardAsync);
     private async void ProgrammeLive_Click(object sender, System.Windows.RoutedEventArgs e) => await GuardAsync(async () =>

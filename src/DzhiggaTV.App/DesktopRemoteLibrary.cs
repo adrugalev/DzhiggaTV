@@ -64,9 +64,25 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
         var epg = await Ui(() => row.Epg is { } id ? M.EpgChannels.GetValueOrDefault(id) : null, token);
         return await M.Logos.ResolveAsync(row.Channel, row.Custom, epg, cancellationToken: token);
     }
-    public Task<StreamSource> SourceAsync(string channelId, CancellationToken token) => Ui(() =>
+    private async Task<Programme> PlayableProgrammeAsync(string channelId, DateTimeOffset start, CancellationToken token)
+    {
+        var row = await Ui(() => { var c = Allowed(channelId); return (c.Channel, Epg: M.Mappings.GetValueOrDefault(c.Id)?.EpgId); }, token);
+        var now = DateTimeOffset.UtcNow;
+        if (row.Epg is null || start > now) throw new RemoteException("Передача ещё не началась или отсутствует в телепрограмме.", 404);
+        var programme = (await Task.Run(() => M.Store.GetNowNextAsync(row.Epg, start, token), token)).Current;
+        if (programme is null || programme.Start != start || programme.End <= now && !Catchup.CanPlay(row.Channel, programme, now))
+            throw new RemoteException("Выбранная передача недоступна в архиве этого канала.", 404);
+        return programme;
+    }
+    public Task<StreamSource> SourceAsync(string channelId, CancellationToken token) => SourceAsync(channelId, null, token);
+    public async Task<StreamSource> SourceAsync(string channelId, DateTimeOffset? programmeStart, CancellationToken token)
+    {
+        var programme = programmeStart is { } start ? await PlayableProgrammeAsync(channelId, start, token) : null;
+        return await Ui(() =>
     {
         var c = Allowed(channelId); var url = c.Channel.Url;
+        var now = DateTimeOffset.UtcNow;
+        if (programme is not null && programme.End <= now) url = Catchup.BuildUrl(c.Channel, programme.Start, now, now);
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var (key, value) in c.Channel.Attributes ?? new Dictionary<string, string>())
         {
@@ -87,12 +103,19 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) throw new RemoteException("Адрес канала не поддерживается Remote.", 415);
         return new StreamSource(c.Id, c.Name, uri, headers);
     }, token);
+    }
     public Task<RemotePlayerState> StateAsync(CancellationToken token) => Ui(main.RemoteState, token);
     public Task CommandAsync(RemoteCommand command, CancellationToken token) => UiAsync(async () =>
     {
         token.ThrowIfCancellationRequested();
         switch (command.Action)
         {
+            case "play" when command.ProgrammeStart is { } start:
+                var programme = await PlayableProgrammeAsync(command.ChannelId ?? "", start, token);
+                var selected = Allowed(command.ChannelId!);
+                if (programme.End <= DateTimeOffset.UtcNow) await main.PlayArchiveAsync(selected, programme);
+                else await main.PlayAsync(selected);
+                break;
             case "favorite":
                 var favorite = Allowed(command.ChannelId ?? ""); if (favorite.IsFavorite != (command.Value != 0)) await M.ToggleFavoriteAsync(favorite); break;
             case "collection.add": case "collection.remove":
