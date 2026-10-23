@@ -45,7 +45,7 @@ public sealed class RemoteSettingsWindow : Window
         var area = SystemParameters.WorkArea;
         MaxWidth = Math.Max(360, area.Width - 24); MaxHeight = Math.Max(360, area.Height - 30);
         MinWidth = Math.Min(620, MaxWidth); MinHeight = Math.Min(480, MaxHeight);
-        Width = Math.Min(960, MaxWidth); Height = Math.Min(790, MaxHeight); WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Width = Math.Min(680, MaxWidth); Height = Math.Min(790, MaxHeight); WindowStartupLocation = WindowStartupLocation.CenterOwner;
         WindowBounds.Attach(this, () => false);
         var root = new DockPanel { Margin = new(24) }; Content = root;
         var heading = new StackPanel(); DockPanel.SetDock(heading, Dock.Top); root.Children.Add(heading);
