@@ -1,4 +1,5 @@
 using System.Text;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -21,6 +22,12 @@ public partial class OverlayWindow : Window
     private readonly FullscreenChromeVisibility _fullscreenChrome = new();
     private readonly DispatcherTimer _fullscreenHideTimer = new(DispatcherPriority.Input);
     private readonly PointerRevealGate _pointerReveal = new();
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CursorPosition { public int X, Y; }
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out CursorPosition position);
+    private Point _pointerPosition;
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
     private ContextMenu? _playerMenu;
     private Programme? _descriptionProgramme;
@@ -105,26 +112,30 @@ public partial class OverlayWindow : Window
         if (!IsVisible || (!OverlayRoot.IsMouseOver && !_menuOpen)) { _pointerInside = false; return; }
         // The overlay is a separate owned HWND. Use coordinates as well as enter /
         // leave events so moving/resizing the owner never leaves a stale hover flag.
-        var point = Mouse.GetPosition(OverlayRoot);
+        // WPF's cached position can remain over a button while the cursor is on
+        // the native resize frame. Read the current screen position in that case too.
+        var point = GetCursorPos(out var cursor) ? OverlayRoot.PointFromScreen(new(cursor.X, cursor.Y)) : Mouse.GetPosition(OverlayRoot);
+        _pointerPosition = point;
         _pointerInside = point.X >= 0 && point.Y >= 0 && point.X < OverlayRoot.ActualWidth && point.Y < OverlayRoot.ActualHeight;
     }
+    private bool PointerOver(FrameworkElement panel) => _pointerInside && panel.IsVisible &&
+        new Rect(panel.TranslatePoint(new Point(), OverlayRoot), panel.RenderSize).Contains(_pointerPosition);
     private void UpdateVisibility()
     {
         if (ControlsPanel is null) return;
         _fullscreenHideTimer.Stop();
         var quickOpen = _remoteQuick.Visibility == Visibility.Visible;
-        var keyboardControls = _seeking || _keyboardNavigation && (ControlsPanel.IsKeyboardFocusWithin || FullscreenProgrammeInfo.IsKeyboardFocusWithin);
-        var fullscreen = _main.IsFullscreen && _main.HasPlayback;
+        var keyboardControls = _seeking || _keyboardNavigation && (ControlsPanel.IsKeyboardFocusWithin || FullscreenProgrammeInfo.IsKeyboardFocusWithin || MiniWindowActions.IsKeyboardFocusWithin);
+        var autoHide = (_main.IsFullscreen || _main.IsMini) && _main.HasPlayback;
         var held = Drawer.Visibility == Visibility.Visible || _menuOpen || quickOpen || keyboardControls ||
-            ControlsPanel.IsMouseCaptureWithin || FullscreenProgrammeInfo.IsMouseCaptureWithin ||
-            _pointerInside && (ControlsPanel.IsMouseOver || FullscreenProgrammeInfo.IsMouseOver);
+            ControlsPanel.IsMouseCaptureWithin || FullscreenProgrammeInfo.IsMouseCaptureWithin || MiniWindowActions.IsMouseCaptureWithin ||
+            (PointerOver(ControlsPanel) || PointerOver(FullscreenProgrammeInfo) || _main.IsMini && PointerOver(MiniWindowActions));
         var remaining = _fullscreenChrome.Remaining(DateTime.UtcNow, held);
-        var idle = fullscreen ? remaining == TimeSpan.Zero : _main.IsMini && _main.HasPlayback && !held &&
-            DateTime.UtcNow - _lastMove >= TimeSpan.FromSeconds(3.5);
+        var idle = autoHide && remaining == TimeSpan.Zero;
         var visible = quickOpen || _menuOpen || keyboardControls ||
-            !idle && (_pointerInside || fullscreen && ControlsPanel.IsVisible);
+            !idle && (_pointerInside || autoHide && ControlsPanel.IsVisible);
         ControlsPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        if (IsVisible && fullscreen && visible && remaining is { } delay && delay > TimeSpan.Zero)
+        if (IsVisible && autoHide && visible && remaining is { } delay && delay > TimeSpan.Zero)
         {
             _fullscreenHideTimer.Interval = delay;
             _fullscreenHideTimer.Start();
@@ -132,6 +143,8 @@ public partial class OverlayWindow : Window
         RemoteButton.SetResourceReference(ForegroundProperty, _main.Remote.Running || quickOpen ? "AccentBrush" : "TextBrush");
         if (ControlsPanel.Visibility != Visibility.Visible) HideSeekPreview();
         MiniWindowActions.Visibility = _main.IsMini ? ControlsPanel.Visibility : Visibility.Collapsed;
+        ToolTipService.SetIsEnabled(MiniPinButton, MiniWindowActions.IsVisible);
+        ToolTipService.SetIsEnabled(MiniCloseButton, MiniWindowActions.IsVisible);
         MiniPinButton.Foreground = (System.Windows.Media.Brush)FindResource(_main.Topmost ? "AccentBrush" : "TextBrush");
         MiniPinButton.ToolTip = _main.Topmost ? "Поверх всех окон · выключить" : "Закрепить поверх всех окон";
         System.Windows.Automation.AutomationProperties.SetHelpText(MiniPinButton, _main.Topmost ? "Закреплён поверх окон" : "Без закрепления");
@@ -173,7 +186,7 @@ public partial class OverlayWindow : Window
     }
     private void Overlay_MouseLeave(object sender, MouseEventArgs e)
     {
-        if (_main.IsFullscreen && ControlsPanel.IsVisible) _fullscreenChrome.Reveal(DateTime.UtcNow);
+        if ((_main.IsFullscreen || _main.IsMini) && ControlsPanel.IsVisible) _fullscreenChrome.Reveal(DateTime.UtcNow);
         _pointerInside = false; UpdateVisibility();
     }
     private void Chrome_HoverChanged(object sender, MouseEventArgs e)

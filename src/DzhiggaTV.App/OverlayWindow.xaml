@@ -28,7 +28,7 @@
   <local:PlaybackStatusView x:Name="PlaybackStatus" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="14"/>
   <StackPanel x:Name="Welcome" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="430" Margin="30"><TextBlock Text="▶" Foreground="{DynamicResource AccentBrush}" FontSize="52" HorizontalAlignment="Center"/><TextBlock Text="Ваш эфир. Ваш ритм." FontSize="27" FontWeight="Light" HorizontalAlignment="Center" Margin="0,22,0,12"/><TextBlock Text="Импортируйте плейлист и выберите канал.&#10;Телепрограмма и логотипы — из EPG.ONE." TextAlignment="Center" Foreground="#91A0AC" LineHeight="23"/><Button Content="Открыть плейлист" Click="Import_Click" Background="#19413F" Margin="0,24,0,0" HorizontalAlignment="Center"/></StackPanel>
   <Border x:Name="StatisticsPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,12,12,48" Background="#DD10181F" CornerRadius="8" Padding="15" Visibility="Collapsed" MaxWidth="550"><DockPanel><TextBlock DockPanel.Dock="Top" Text="Информация о потоке" FontWeight="SemiBold" Margin="0,0,0,12"/><ScrollViewer VerticalScrollBarVisibility="Auto"><TextBlock x:Name="StatisticsText" FontFamily="Cascadia Mono, Consolas" FontSize="11" Foreground="#DDE8ED" TextWrapping="Wrap"/></ScrollViewer></DockPanel></Border>
-  <StackPanel x:Name="MiniWindowActions" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" Visibility="Collapsed">
+  <StackPanel x:Name="MiniWindowActions" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" Visibility="Collapsed" MouseEnter="Chrome_HoverChanged" MouseLeave="Chrome_HoverChanged" LostMouseCapture="Chrome_HoverChanged">
    <Button x:Name="MiniPinButton" Style="{StaticResource PlayerButton}" Click="MiniPin_Click" AutomationProperties.Name="Поверх всех окон">
     <Path Data="M 6,2 L 14,2 M 8,2 L 8,8 L 4,12 L 16,12 L 12,8 L 12,2 M 10,12 L 10,18" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="18" Stretch="Uniform"/>
    </Button>
@@ -65,7 +65,7 @@
      </Grid>
      <ProgressBar Value="{Binding CurrentProgress, Mode=OneWay}" Height="3" Background="#35414A" Foreground="#63D9CD"/>
     </StackPanel></Border>
-  <Border x:Name="ControlsPanel" VerticalAlignment="Bottom" Background="#D911191F" CornerRadius="7" Margin="3" Padding="6,4" Visibility="Collapsed" MouseEnter="Chrome_HoverChanged" MouseLeave="Chrome_HoverChanged" KeyboardNavigation.TabNavigation="Cycle">
+  <Border x:Name="ControlsPanel" VerticalAlignment="Bottom" Background="#D911191F" CornerRadius="7" Margin="3" Padding="6,4" Visibility="Collapsed" MouseEnter="Chrome_HoverChanged" MouseLeave="Chrome_HoverChanged" LostMouseCapture="Chrome_HoverChanged" KeyboardNavigation.TabNavigation="Cycle">
    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
     <StackPanel x:Name="ArchiveTimelinePanel" Grid.ColumnSpan="3" Margin="6,3,6,7" Visibility="Collapsed">
      <Grid Margin="0,0,0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
