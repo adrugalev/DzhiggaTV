@@ -1,11 +1,14 @@
 using DzhiggaTV.Core;
 using DzhiggaTV.Player;
+using DzhiggaTV.Services;
 
 namespace DzhiggaTV.App;
 
 public partial class MainWindow
 {
     private (string Channel, DateTimeOffset Start)? _openingSearchResult;
+    private readonly ArchiveAvailabilityClient _archiveAvailability = new();
+    private CancellationTokenSource? _archiveProbe;
     public async Task PlaySearchResultAsync(ChannelItem channel)
     {
         var programme = channel.SearchProgramme;
@@ -39,6 +42,7 @@ public partial class MainWindow
         public string? EpgId { get; set; } = epgId;
         public bool GuideLoading { get; set; }
         public bool Continuing { get; set; }
+        public int EpgRevision { get; set; } = -1;
     }
     private ArchivePlayback? _archivePlayback;
     public bool IsArchivePlayback => _archivePlayback is not null;
@@ -85,8 +89,8 @@ public partial class MainWindow
         if (channel.Archive is not { } source || !source.Contains(time, now)) throw new InvalidOperationException("Выбранное время недоступно в архиве канала.");
         var lookupGeneration = ++_playGeneration;
         Programme? programme = null;
-        if (Model.Mappings.TryGetValue(channel.Id, out var mapping))
-            programme = (await Model.Store.GetNowNextAsync(mapping.EpgId, time)).Current;
+        var mapping = Model.EpgFor(channel.Id);
+        if (mapping is not null) programme = (await Model.Guide.GetNowNextAsync(mapping, time)).Current;
         if (lookupGeneration != _playGeneration) return;
         programme ??= ArchivePlaceholder(mapping?.EpgId ?? channel.Id, time, now);
         await StartArchiveAsync(channel, programme, time, paused, continuing);
@@ -100,15 +104,26 @@ public partial class MainWindow
         var now = DateTimeOffset.Now; var end = start.AddHours(2) < now ? start.AddHours(2) : now;
         string url = Catchup.BuildUrl(channel.Channel, start, end, now);
         var generation = ++_playGeneration;
+        _archiveProbe?.Cancel(); _archiveProbe?.Dispose();
+        using var probe = CancellationTokenSource.CreateLinkedTokenSource(_remoteLifetime.Token); _archiveProbe = probe;
+        _overlay?.HideArchiveNotice();
+        try
+        {
+            var availability = await _archiveAvailability.CheckAsync(channel.Channel, url, probe.Token);
+            if (generation != _playGeneration || probe.IsCancellationRequested) return;
+            if (availability.Unavailable) throw new ArchiveUnavailableException(channel.Name + ": " + availability.Message);
+        }
+        finally { if (_archiveProbe == probe) _archiveProbe = null; }
         _playCancellation?.Cancel(); _playCancellation?.Dispose(); _playCancellation = new(); var token = _playCancellation.Token;
         await Model.ActivateChannelAsync(channel);
         if (generation != _playGeneration || token.IsCancellationRequested) return;
         NowNext? schedule = null;
-        if (Model.Mappings.TryGetValue(channel.Id, out var mapping)) schedule = await Model.Store.GetNowNextAsync(mapping.EpgId, start, token);
+        var mapping = Model.EpgFor(channel.Id);
+        if (mapping is not null) schedule = await Model.Guide.GetNowNextAsync(mapping, start, token);
         if (generation != _playGeneration || token.IsCancellationRequested) return;
         programme = schedule?.Current ?? programme;
         if (start < programme.Start || start >= programme.End) programme = ArchivePlaceholder(mapping?.EpgId ?? channel.Id, start, now, schedule?.Next);
-        _archivePlayback = new(channel, programme, start, end, mapping?.EpgId);
+        _archivePlayback = new(channel, programme, start, end, mapping?.EpgId) { EpgRevision = Model.EpgTimeRevision };
         Model.SetArchiveProgramme(programme, schedule?.Next, schedule?.AfterNext, continuing);
         HasPlayback = true; Model.PlaybackStatus = "Открываем архив…"; _overlay?.RefreshState();
         await Player.PlayArchiveAsync(url, (end - start).TotalSeconds, token, position =>
@@ -132,8 +147,9 @@ public partial class MainWindow
 
     private void RefreshArchiveProgramme(ArchivePlayback archive, DateTimeOffset position)
     {
-        string? epgId = Model.Mappings.GetValueOrDefault(archive.Channel.Id)?.EpgId;
-        if (archive.GuideLoading || archive.EpgId == epgId && position >= archive.Programme.Start && position < archive.Programme.End) return;
+        var epg = Model.EpgFor(archive.Channel.Id); string? epgId = epg?.EpgId;
+        int revision = Model.EpgTimeRevision;
+        if (archive.GuideLoading || archive.EpgRevision == revision && archive.EpgId == epgId && position >= archive.Programme.Start && position < archive.Programme.End) return;
         archive.GuideLoading = true;
         var generation = _playGeneration;
         var token = _playCancellation?.Token ?? CancellationToken.None;
@@ -141,11 +157,11 @@ public partial class MainWindow
         {
             try
             {
-                NowNext? schedule = epgId is null ? null : await Task.Run(() => Model.Store.GetNowNextAsync(epgId, position, token), token);
+                NowNext? schedule = epg is null ? null : await Task.Run(() => Model.Guide.GetNowNextAsync(epg, position, token), token);
                 if (_closing || generation != _playGeneration || !ReferenceEquals(_archivePlayback, archive) || token.IsCancellationRequested ||
-                    Model.Mappings.GetValueOrDefault(archive.Channel.Id)?.EpgId != epgId) return;
+                    Model.EpgFor(archive.Channel.Id) != epg || Model.EpgTimeRevision != revision) return;
                 archive.Programme = schedule?.Current ?? ArchivePlaceholder(epgId ?? archive.Channel.Id, position, DateTimeOffset.Now, schedule?.Next);
-                archive.EpgId = epgId;
+                archive.EpgId = epgId; archive.EpgRevision = revision;
                 Model.SetArchiveProgramme(archive.Programme, schedule?.Next, schedule?.AfterNext, continuing: true);
                 Model.SetArchivePosition(position);
             }
@@ -155,7 +171,7 @@ public partial class MainWindow
 
     private async Task ContinueArchiveAsync()
     {
-        if (_closing || Player.State != PlaybackState.Idle || _archivePlayback is not { Continuing: false } archive) return;
+        if (_closing || _archiveProbe is not null || Player.State != PlaybackState.Idle || _archivePlayback is not { Continuing: false } archive) return;
         // A manual Stop clears the native request. Only a confirmed end of this window may advance it.
         if (Player.GetTimeline().Position is not { } seconds || seconds < (archive.LoadedEnd - archive.LoadedStart).TotalSeconds - .25) return;
         archive.Continuing = true;

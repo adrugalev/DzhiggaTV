@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using DzhiggaTV.Core;
 using System.Globalization;
 using System.Text.Json;
 using System.Windows;
@@ -14,7 +15,8 @@ namespace DzhiggaTV.App;
 
 public partial class MainWindow : Window
 {
-    public const double TitleBarHeight = 48;
+    public const double TitleBarHeight = 40;
+    public static Thickness MainViewingMargin { get; } = new(20, 12, 24, 14);
     public static GridLength TitleBarRowHeight { get; } = new(TitleBarHeight);
     public const double StatusBarHeight = 16;
     private const double MiniResizeBorder = 8;
@@ -157,11 +159,13 @@ public partial class MainWindow : Window
     public async Task GuardAsync(Func<Task> action)
     {
         try { await action(); } catch (OperationCanceledException) { }
+        catch (ArchiveUnavailableException error) { Model.Status = error.Message; _overlay?.ShowArchiveNotice(error.Message); }
         catch { Model.Status = "Действие не завершено. Проверьте доступность файла или сети и повторите."; }
     }
     public async Task PlayAsync(ChannelItem item)
     {
         if (!_engineReady || !Model.IsAllowed(item)) return;
+        _archiveProbe?.Cancel(); _overlay?.HideArchiveNotice();
         ClearArchivePlayback();
         var generation = ++_playGeneration;
         _playCancellation?.Cancel(); _playCancellation?.Dispose(); _playCancellation = new();
@@ -181,6 +185,7 @@ public partial class MainWindow : Window
     public async Task PlayLocalAsync(string file)
     {
         if (!_engineReady) return;
+        _archiveProbe?.Cancel();
         ClearArchivePlayback();
         await Player.PlayAsync(Path.GetFullPath(file)); HasPlayback = true; _overlay?.RefreshState();
     }
@@ -341,6 +346,7 @@ public partial class MainWindow : Window
         Add("Переименовать в приложении…", () => WithModalAsync(async () => { if (TextPrompt.Show(this, "Название канала", "Новое название", item.Name) is { Length: > 0 } name) { Model.State.Renames[item.Id] = name; item.Name = name; await Model.SaveAsync(); Model.RaisePlayback(); } }));
         Add("Пользовательская категория…", () => WithModalAsync(async () => { if (TextPrompt.Show(this, "Категория", "Название категории", item.Group) is { Length: > 0 } group) { Model.State.CustomCategories[item.Id] = group; await Model.SaveAsync(); await Model.ReloadAsync(); } }));
         Add("Назначить телепрограмму…", () => WithModalAsync(() => { new MappingWindow(this, item).ShowDialog(); return Model.RefreshEpgViewAsync(); }));
+        Add("Поправка времени телепрограммы…", () => WithModalAsync(() => { new EpgTimingWindow(this, this, item).ShowDialog(); return Task.CompletedTask; }));
         Add("Установить логотип…", () => WithModalAsync(async () => { var d = new OpenFileDialog { Filter = "Изображения|*.png;*.jpg;*.jpeg;*.webp;*.bmp" }; if (d.ShowDialog(this) == true) { Model.State.UserLogos[item.Id] = d.FileName; Model.InvalidateLogo(item.Id); await Model.SaveAsync(); await Model.LoadViewportAsync([item]); } }));
         Add("Скрыть канал", async () => { Model.State.Hidden.Add(item.Id); await Model.SaveAsync(); Model.RefreshFilter(); });
         menu.PlacementTarget = ChannelList; menu.IsOpen = true; e.Handled = true;
@@ -456,7 +462,7 @@ public partial class MainWindow : Window
         Header.Visibility = Navigation.Visibility = ChannelPanel.Visibility = Splitter.Visibility = ViewingHeading.Visibility = ProgrammePanel.Visibility = StatusBar.Visibility = Visibility.Visible;
         TopRow.Height = new(TitleBarHeight); StatusRow.Height = new(StatusBarHeight); ViewingHeadingRow.Height = GridLength.Auto;
         NavigationColumn.MinWidth = 64; SetNavigationCollapsed(_navigationCollapsed); ChannelColumn.Width = new(350); ChannelColumn.MinWidth = 270; SplitterColumn.Width = new(5);
-        ViewingPanel.Margin = new(20,20,24,14); VideoBorder.CornerRadius = new(12); VideoBorder.BorderThickness = new(1);
+        ViewingPanel.Margin = MainViewingMargin; VideoBorder.CornerRadius = new(12); VideoBorder.BorderThickness = new(1);
         if (_snapshot is { } s) { Width = s.Width; Height = s.Height; Left = s.Left; Top = s.Top; WindowState = s.State; }
         UpdateWindowFrame();
         UpdateProgrammePanelLayout();

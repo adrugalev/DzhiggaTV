@@ -1,9 +1,9 @@
 namespace DzhiggaTV.Core;
 
-public sealed record ProgrammeSearchScope(string ChannelId, string EpgChannelId, DateTimeOffset? ArchiveFrom = null)
+public sealed record ProgrammeSearchScope(string ChannelId, string EpgChannelId, DateTimeOffset? ArchiveFrom = null, int OffsetMinutes = 0)
 {
-    public static ProgrammeSearchScope From(Channel channel, string epgChannelId, DateTimeOffset now) =>
-        new(channel.Id, epgChannelId, Catchup.From(channel)?.Earliest(now));
+    public static ProgrammeSearchScope From(Channel channel, string epgChannelId, DateTimeOffset now, int offsetMinutes = 0) =>
+        new(channel.Id, epgChannelId, Catchup.From(channel)?.Earliest(now), offsetMinutes);
 }
 
 public static class ProgrammeSearch

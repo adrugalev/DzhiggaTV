@@ -57,7 +57,8 @@ internal static class Program
             ("Library search finds current and playable archive titles across all channels without stale or restricted results", ProgrammeSearchAsync),
             ("Maximized bounds respect taskbars and secondary monitors while F11 fills the monitor", WindowBoundsAsync),
             ("Mini-player resizing preserves display aspect, native anchors, DPI borders and size limits at all edges", MiniAspectResizeAsync),
-            ("Fullscreen controls ignore pointer jitter while deliberate movement reveals them", PointerRevealAsync)
+            ("Fullscreen controls ignore pointer jitter while deliberate movement reveals them", PointerRevealAsync),
+            ("Fullscreen description and controls stay open during interaction and hide one second after leaving", FullscreenChromeAsync)
         ];
         var failed = 0;
         foreach (var (name, test) in cases)
@@ -67,6 +68,24 @@ internal static class Program
         }
         Console.WriteLine($"{cases.Length - failed}/{cases.Length} App regressions passed; {failed} failed.");
         return failed == 0 ? 0 : 1;
+    }
+
+    private static Task FullscreenChromeAsync()
+    {
+        var chrome = new FullscreenChromeVisibility();
+        var now = DateTime.UtcNow;
+        chrome.Reveal(now);
+        Assert(chrome.Remaining(now.AddMilliseconds(999), false) == TimeSpan.FromMilliseconds(1), "Chrome must remain visible until a full second has elapsed.");
+        Assert(chrome.Remaining(now.AddSeconds(1), false) == TimeSpan.Zero, "Chrome must hide after one second, independent of the player refresh tick.");
+        Assert(chrome.Remaining(now.AddMinutes(1), true) is null, "A stationary pointer over either panel must keep both panels visible.");
+        var leave = now.AddMinutes(5);
+        Assert(chrome.Remaining(leave, false) == TimeSpan.FromSeconds(1), "Leaving after reading for minutes must start a fresh full interval even without a large pointer movement.");
+        Assert(chrome.Remaining(leave.AddMilliseconds(999), false) > TimeSpan.Zero && chrome.Remaining(leave.AddSeconds(1), false) == TimeSpan.Zero, "Both panels must share the same one-second deadline after leaving.");
+        chrome.Reveal(leave.AddSeconds(2));
+        Assert(chrome.Remaining(leave.AddMilliseconds(2800), false) == TimeSpan.FromMilliseconds(200), "Deliberate pointer movement must reveal controls again.");
+        Assert(chrome.Remaining(leave.AddMilliseconds(2900), true) is null && chrome.Remaining(leave.AddMinutes(10), true) is null, "Re-entering a panel, seeking or using menus must cancel pending hiding.");
+        Assert(chrome.Remaining(leave.AddMinutes(11), false) == TimeSpan.FromSeconds(1), "Finishing an interaction must start a fresh interval.");
+        return Task.CompletedTask;
     }
 
     private static Task GuidePanningAsync()

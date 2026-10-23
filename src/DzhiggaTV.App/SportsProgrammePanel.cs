@@ -111,14 +111,14 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
         {
             _nextRead = DateTimeOffset.UtcNow.AddSeconds(30);
             _query?.Cancel(); _query?.Dispose(); _query = new();
-            _ = LoadUpcomingAsync(epgId, channel?.Current?.End ?? DateTimeOffset.UtcNow, ++_generation, _query.Token);
+            _ = LoadUpcomingAsync(_model.EpgFor(channel!.Id)!, channel.Current?.End ?? DateTimeOffset.UtcNow, ++_generation, _query.Token);
         }
     }
-    private async Task LoadUpcomingAsync(string epgId, DateTimeOffset from, int generation, CancellationToken token)
+    private async Task LoadUpcomingAsync(ChannelEpg epg, DateTimeOffset from, int generation, CancellationToken token)
     {
         try
         {
-            var rows = await _model.Store.GetUpcomingProgrammesAsync(epgId, from, 24, token);
+            var rows = await _model.Guide.GetUpcomingProgrammesAsync(epg, from, 24, token);
             if (!_disposed && generation == _generation) SetUpcoming(rows);
         }
         catch (OperationCanceledException) { }

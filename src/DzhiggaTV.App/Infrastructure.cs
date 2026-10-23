@@ -23,7 +23,7 @@ public sealed class ChannelItem(Channel channel) : Observable
     public Channel Channel { get; } = channel;
     public CatchupSource? Archive { get; } = Catchup.From(channel);
     public string ArchiveLabel => Archive is { } archive ? $"↶ {archive.Days} дн." : "";
-    public string ArchiveHint => Archive is { } archive ? $"Архив канала: до {archive.Days} дн. Откройте телепрограмму, чтобы выбрать прошедшую передачу." : "";
+    public string ArchiveHint => Archive is { } archive ? $"В плейлисте заявлен архив до {archive.Days} дн. Наличие конкретной записи зависит от провайдера. Откройте телепрограмму, чтобы выбрать передачу." : "";
     public string Id => Channel.Id;
     public int Number { get; init; } = channel.Order + 1;
     private string _name = channel.Name;

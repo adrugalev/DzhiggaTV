@@ -18,7 +18,7 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
             var channels = M.AllChannels.Where(M.IsAllowed).ToArray();
             var favorites = M.State.Favorites.ToArray();
             var collections = M.State.Collections.ToDictionary(p => p.Key, p => p.Value.ToArray());
-            return (Channels: channels.Select(c => new Row(c.Id, c.Name, c.Group, c.Channel.PlaylistId, c.Number, M.Mappings.GetValueOrDefault(c.Id)?.EpgId, c.Channel)).ToArray(), Favorites: favorites, Collections: collections, Revision: M.RemoteRevision);
+            return (Channels: channels.Select(c => new Row(c.Id, c.Name, c.Group, c.Channel.PlaylistId, c.Number, M.Mappings.GetValueOrDefault(c.Id)?.EpgId, c.Channel, M.EpgOffset(c.Id))).ToArray(), Favorites: favorites, Collections: collections, Revision: M.RemoteRevision);
         }, token);
         var rows = snapshot.Channels.AsEnumerable();
         if (query.Ids.Length > 0)
@@ -36,26 +36,26 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
         {
             var terms = query.Search.Trim(); var before = rows.ToArray();
             var time = DateTimeOffset.UtcNow;
-            var scopes = before.Where(c => c.EpgId is not null).Select(c => ProgrammeSearchScope.From(c.Channel, c.EpgId!, time)).ToArray();
+            var scopes = before.Where(c => c.EpgId is not null).Select(c => ProgrammeSearchScope.From(c.Channel, c.EpgId!, time, c.OffsetMinutes)).ToArray();
             var matches = await Task.Run(() => M.Store.SearchPlayableProgrammesAsync(terms, scopes, time, token), token);
             programmeMatches = matches;
             rows = before.Where(c => c.Name.Contains(terms, StringComparison.CurrentCultureIgnoreCase) || matches.ContainsKey(c.Id));
         }
         if (query.Sort == "name") rows = rows.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase);
         var filtered = rows.ToArray(); var page = filtered.Skip(query.Offset).Take(query.Limit).ToArray();
-        var now = await Task.Run(() => M.Store.GetNowNextBatchAsync(page.Select(c => c.EpgId).OfType<string>(), cancellationToken: token), token);
+        var now = await Task.Run(() => M.Guide.GetNowNextBatchAsync(page.Where(c => c.EpgId is not null).Select(c => new ChannelEpg(c.Id, c.EpgId!, c.OffsetMinutes)), token: token), token);
         var sources = await M.Store.GetPlaylistSourcesAsync(token);
         return new(page.Select(c => new RemoteChannel(c.Id, c.Name, c.Group, snapshot.Favorites.Contains(c.Id), c.Number,
-            RemoteProgramme.From(c.EpgId is { } id ? now.GetValueOrDefault(id)?.Current : null), RemoteProgramme.From(c.EpgId is { } nextId ? now.GetValueOrDefault(nextId)?.Next : null),
+            RemoteProgramme.From(now.GetValueOrDefault(c.Id)?.Current), RemoteProgramme.From(now.GetValueOrDefault(c.Id)?.Next),
             RemoteProgramme.From(programmeMatches.GetValueOrDefault(c.Id)))).ToArray(),
             filtered.Length, snapshot.Channels.Select(c => c.Group).Distinct().Order().ToArray(),
             sources.Where(s => snapshot.Channels.Any(c => c.Playlist == s.Id)).Select(s => new RemoteChoice(s.Id, s.Name)).ToArray(), snapshot.Collections.Keys.ToArray(), snapshot.Revision);
     }
     public async Task<IReadOnlyList<RemoteProgramme>> GuideAsync(string channelId, DateTimeOffset from, CancellationToken token)
     {
-        var epg = await Ui(() => M.Mappings.GetValueOrDefault(Allowed(channelId).Id)?.EpgId, token);
+        var epg = await Ui(() => M.EpgFor(Allowed(channelId).Id), token);
         if (epg is null) return [];
-        return (await Task.Run(() => M.Store.GetProgrammesAsync(epg, from, from.AddHours(24), token), token)).Select(p => RemoteProgramme.From(p)!).ToArray();
+        return (await Task.Run(() => M.Guide.GetProgrammesAsync(epg, from, from.AddHours(24), token), token)).Select(p => RemoteProgramme.From(p)!).ToArray();
     }
     public async Task<string?> LogoAsync(string channelId, CancellationToken token)
     {
@@ -66,10 +66,10 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
     }
     private async Task<Programme> PlayableProgrammeAsync(string channelId, DateTimeOffset start, CancellationToken token)
     {
-        var row = await Ui(() => { var c = Allowed(channelId); return (c.Channel, Epg: M.Mappings.GetValueOrDefault(c.Id)?.EpgId); }, token);
+        var row = await Ui(() => { var c = Allowed(channelId); return (c.Channel, Epg: M.EpgFor(c.Id)); }, token);
         var now = DateTimeOffset.UtcNow;
         if (row.Epg is null || start > now) throw new RemoteException("Передача ещё не началась или отсутствует в телепрограмме.", 404);
-        var programme = (await Task.Run(() => M.Store.GetNowNextAsync(row.Epg, start, token), token)).Current;
+        var programme = (await Task.Run(() => M.Guide.GetNowNextAsync(row.Epg, start, token), token)).Current;
         if (programme is null || programme.Start != start || programme.End <= now && !Catchup.CanPlay(row.Channel, programme, now))
             throw new RemoteException("Выбранная передача недоступна в архиве этого канала.", 404);
         return programme;
@@ -113,7 +113,11 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
             case "play" when command.ProgrammeStart is { } start:
                 var programme = await PlayableProgrammeAsync(command.ChannelId ?? "", start, token);
                 var selected = Allowed(command.ChannelId!);
-                if (programme.End <= DateTimeOffset.UtcNow) await main.PlayArchiveAsync(selected, programme);
+                if (programme.End <= DateTimeOffset.UtcNow)
+                {
+                    try { await main.PlayArchiveAsync(selected, programme); }
+                    catch (ArchiveUnavailableException error) { throw new RemoteException(error.Message, 409); }
+                }
                 else await main.PlayAsync(selected);
                 break;
             case "favorite":
@@ -126,5 +130,5 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
             default: await main.RemoteCommandAsync(command, token); break;
         }
     }, token);
-    private sealed record Row(string Id, string Name, string Group, string Playlist, int Number, string? EpgId, Channel Channel);
+    private sealed record Row(string Id, string Name, string Group, string Playlist, int Number, string? EpgId, Channel Channel, int OffsetMinutes);
 }

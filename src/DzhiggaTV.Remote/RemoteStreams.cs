@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using DzhiggaTV.Core;
 using Microsoft.AspNetCore.Http;
 
 namespace DzhiggaTV.Remote;
@@ -32,6 +33,22 @@ public sealed class RemoteStreams : IDisposable
         long generation, epoch;
         lock (_gate) { generation = _starts.GetValueOrDefault(deviceId) + 1; _starts[deviceId] = generation; epoch = _epoch; }
         var source = await _library.SourceAsync(channelId, programmeStart, token); _policy.Validate(source.Uri); token.ThrowIfCancellationRequested();
+        if (programmeStart is not null)
+        {
+            using var probe = new Viewing(deviceId, source, "probe", _policy);
+            using var budget = CancellationTokenSource.CreateLinkedTokenSource(token); budget.CancelAfter(TimeSpan.FromSeconds(5));
+            try
+            {
+                var availability = await ArchiveProbe.CheckAsync(source.Uri, async (uri, cancellation) =>
+                {
+                    using var response = await OpenAsync(probe, uri, null, cancellation);
+                    return await ArchiveProbe.ReadResponseAsync(response, uri, cancellation);
+                }, budget.Token);
+                if (availability.Unavailable) throw new RemoteException(availability.Message, 409);
+            }
+            catch (OperationCanceledException) when (!token.IsCancellationRequested) { }
+            catch (Exception error) when (error is HttpRequestException or IOException) { }
+        }
         Viewing viewing;
         lock (_gate)
         {

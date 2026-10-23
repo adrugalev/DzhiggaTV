@@ -52,7 +52,7 @@ public sealed class ProgrammeBrowser : Observable, IDisposable
 
     private void ModelChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(MainViewModel.Active) or nameof(MainViewModel.IsArchive))
+        if (e.PropertyName is nameof(MainViewModel.Active) or nameof(MainViewModel.IsArchive) or nameof(MainViewModel.EpgTimeRevision))
         {
             ResetSelection();
             _ = RefreshSafelyAsync();
@@ -77,6 +77,7 @@ public sealed class ProgrammeBrowser : Observable, IDisposable
     {
         if (_disposed) return;
         var channel = _model.Active;
+        var assignment = channel is null ? null : _model.EpgFor(channel.Id);
         string? epg = channel is null ? null : _model.Mappings.GetValueOrDefault(channel.Id)?.EpgId;
         if (IsBrowsing && _selectionEpg != epg) ResetSelection();
         var context = (channel, epg, Current?.Start);
@@ -88,7 +89,7 @@ public sealed class ProgrammeBrowser : Observable, IDisposable
             var now = _clock();
             var before = Current?.Start ?? now;
             var previous = channel?.Archive is { } source && epg is not null
-                ? await Task.Run(() => _model.Store.GetPreviousProgrammeAsync(epg, before, source.Earliest(now), token), token)
+                ? await Task.Run(() => _model.Guide.GetPreviousProgrammeAsync(assignment!, before, source.Earliest(now), token), token)
                 : null;
             if (IsCurrent(generation, channel, epg)) _previous = previous;
         }
@@ -111,12 +112,13 @@ public sealed class ProgrammeBrowser : Observable, IDisposable
         if (_disposed || _model.Active is not { Archive: { } source } channel ||
             !_model.Mappings.TryGetValue(channel.Id, out var mapping) || !source.Contains(programme.Start, _clock())) return;
         var (generation, token) = BeginRequest();
+        var assignment = _model.EpgFor(channel.Id)!;
         try
         {
             var snapshot = await Task.Run(async () =>
             {
-                var schedule = await _model.Store.GetNowNextAsync(mapping.EpgId, programme.Start, token).ConfigureAwait(false);
-                var previous = await _model.Store.GetPreviousProgrammeAsync(mapping.EpgId, programme.Start, source.Earliest(_clock()), token).ConfigureAwait(false);
+                var schedule = await _model.Guide.GetNowNextAsync(assignment, programme.Start, token).ConfigureAwait(false);
+                var previous = await _model.Guide.GetPreviousProgrammeAsync(assignment, programme.Start, source.Earliest(_clock()), token).ConfigureAwait(false);
                 return (schedule, previous);
             }, token);
             if (!IsCurrent(generation, channel, mapping.EpgId)) return;

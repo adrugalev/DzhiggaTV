@@ -39,7 +39,8 @@ public sealed class GuideWindow : Window
     private readonly RowDefinition _detailsRow = new() { Height = new(0) };
     private readonly TextBlock _empty = new() { FontSize = 13, TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Margin = new(24), IsHitTestVisible = false };
     private readonly TextBlock _count = new() { FontSize = 11 };
-    private readonly TextBlock _badge = new() { FontSize = 10, Margin = new(0, 0, 0, 12) };
+    private readonly TextBlock _badge = new() { FontSize = 10, TextWrapping = TextWrapping.Wrap, Margin = new(0, 0, 0, 12) };
+    private string? _playError;
     private readonly TextBlock _title = new() { FontSize = 21, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, LineHeight = 27 };
     private readonly TextBlock _channel = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new(0, 12, 0, 0) };
     private readonly TextBlock _time = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new(0, 6, 0, 0) };
@@ -309,15 +310,15 @@ public sealed class GuideWindow : Window
         _viewport.Range = GuideRange.ForDay(day, TimeZoneInfo.Local); _viewport.Now = _clock(); _followNow = _viewport.Range.Contains(_viewport.Now);
         _allRows = []; _rows.ItemsSource = null; _viewport.Selection.Clear(); _empty.Text = "Загружаем телепрограмму…"; _empty.Visibility = Visibility.Visible; _count.Text = "";
         UpdateScrollMetrics(); FocusTime(ReferenceTime());
-        var channels = _main.Model.AllChannels.Where(_main.Model.IsAllowed).Select(c => (Channel: c, EpgId: _main.Model.Mappings.GetValueOrDefault(c.Id)?.EpgId)).ToArray();
+        var channels = _main.Model.AllChannels.Where(_main.Model.IsAllowed).Select(c => (Channel: c, Epg: _main.Model.EpgFor(c.Id))).ToArray();
         var range = _viewport.Range;
         try
         {
-            var programmes = await Task.Run(() => _main.Model.Store.GetGuideAsync(channels.Where(c => c.EpgId is not null).Select(c => c.EpgId!), range.Start, range.End, token), token);
+            var programmes = await Task.Run(() => _main.Model.Guide.GetGuideAsync(channels.Select(c => c.Epg).OfType<ChannelEpg>(), range.Start, range.End, token), token);
             var sources = await _main.Model.Store.GetPlaylistSourcesAsync(token);
             if (_closed || generation != _generation) return;
             _playlistSources = sources;
-            _allRows = channels.Select(c => new GuideRow(c.Channel, c.EpgId is not null && programmes.TryGetValue(c.EpgId, out var entries) ? entries : [])).ToList();
+            _allRows = channels.Select(c => new GuideRow(c.Channel, programmes.GetValueOrDefault(c.Channel.Id, []))).ToList();
             UpdateFilters();
             bool filtered = SelectedPlaylist is not null || SelectedCategory is not null;
             ApplyFilter(_search.Text.Trim().Length > 0 || filtered, startAtTop: filtered);
@@ -365,6 +366,7 @@ public sealed class GuideWindow : Window
     }
     private void Select(GuideRow row, Programme? programme)
     {
+        _playError = null;
         _changingSelection = true; _rows.SelectedItem = row; _changingSelection = false;
         _viewport.Selection.Select(row, programme); _rows.ScrollIntoView(row);
     }
@@ -416,6 +418,7 @@ public sealed class GuideWindow : Window
         _watch.ToolTip = archive ? $"Архив канала · {channel.Archive!.Days} дн." : past ? channel.Archive is null ? "У этого канала нет архива" : "Передача за пределами доступного архива" : "Смотреть прямой эфир";
         _badge.Text = archive ? $"АРХИВ · {channel.Archive!.Days} ДН." : programme is null ? "ТЕЛЕПРОГРАММА" : programme.Start <= _viewport.Now && programme.End > _viewport.Now ? "СЕЙЧАС В ЭФИРЕ" : future ? "ПРЕДСТОЯЩИЙ ЭФИР" : "ЭФИР ЗАВЕРШЁН";
         _badge.SetResourceReference(TextBlock.ForegroundProperty, programme is not null && programme.Start <= _viewport.Now && programme.End > _viewport.Now ? "AccentBrush" : "MutedBrush");
+        if (_playError is not null) _badge.Text = _playError;
     }
     private async Task PlayChannelAsync(ChannelItem channel)
         => await ActivateAsync(() => _play(channel));
@@ -428,8 +431,9 @@ public sealed class GuideWindow : Window
     private async Task ActivateAsync(Func<Task> action)
     {
         if (_activating || _closed) return;
-        _activating = true; _watch.IsEnabled = false;
+        _activating = true; _watch.IsEnabled = false; _playError = null;
         try { await action(); if (!_closed) Close(); }
+        catch (ArchiveUnavailableException error) { if (!_closed) _badge.Text = _playError = error.Message; }
         catch { if (!_closed) _badge.Text = "Не удалось открыть канал. Попробуйте ещё раз."; }
         finally { _activating = false; if (!_closed) _watch.IsEnabled = true; }
     }

@@ -27,6 +27,7 @@ public sealed class UserState
     public Dictionary<string, string> Renames { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> CustomCategories { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, string> UserLogos { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, int> EpgOffsets { get; set; } = new(StringComparer.Ordinal);
     public List<string> History { get; set; } = [];
     public Dictionary<string, string> Settings { get; set; } = new(StringComparer.Ordinal);
 

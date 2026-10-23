@@ -67,6 +67,12 @@ internal static partial class Program
         var host = Descendants<NativeVideoHost>(main).Single(); var handle = host.VideoHandle;
         Check(main.GetArchiveTimeline() is { IsArchive: false }, "An archive-capable live channel exposes its rewind range");
         var overlay = Application.Current.Windows.OfType<OverlayWindow>().Single();
+        if (args.Contains("--fullscreen-chrome"))
+        {
+            await FullscreenChromeChecks(main, overlay, args);
+            Console.WriteLine(JsonSerializer.Serialize(new { passed = Passed, count = Passed.Count }));
+            return;
+        }
         if (args.Contains("--remote-preview"))
         {
             var preview = new RemoteSettingsWindow(main, main); preview.Show();
@@ -509,6 +515,7 @@ internal static partial class Program
         private int _archives;
         private long _lastArchiveStart;
         public volatile bool HoldRequests;
+        public volatile bool EmptyArchive;
         public bool LivePlaylist { get; init; }
         public int ArchiveRequests => Volatile.Read(ref _archives);
         public long LastArchiveStart => Interlocked.Read(ref _lastArchiveStart);
@@ -533,6 +540,7 @@ internal static partial class Program
                 if (!File.Exists(file)) { context.Response.StatusCode = 404; return; }
                 context.Response.ContentType = name.EndsWith(".m3u8") ? "application/vnd.apple.mpegurl" : "video/mp2t";
                 var bytes = await File.ReadAllBytesAsync(file, _stop.Token);
+                if (EmptyArchive && context.Request.QueryString["utc"] is not null && name.EndsWith(".m3u8")) bytes = System.Text.Encoding.UTF8.GetBytes("#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXT-X-MEDIA-SEQUENCE:0\n");
                 if (LivePlaylist && name.EndsWith(".m3u8")) bytes = System.Text.Encoding.UTF8.GetBytes(System.Text.Encoding.UTF8.GetString(bytes)
                     .Replace("#EXT-X-ENDLIST", "").Replace("#EXT-X-PLAYLIST-TYPE:VOD", ""));
                 context.Response.ContentLength64 = bytes.Length;

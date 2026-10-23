@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using DzhiggaTV.Core;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -107,6 +108,7 @@ public sealed class SettingsWindow : Window
         Note(p,"Телепрограмма и логотипы EPG.ONE подключаются автоматически, включая публичное HTTP-зеркало самого сервиса. Адреса трансляций сервису не передаются. Дополнительное разрешение для EPG.ONE не требуется.");
         var http=Check(p,"Разрешить HTTP также для других источников логотипов","epg.http"); http.Click+=async(_,_)=> { M.Epg.AllowInsecureHttp=M.Logos.AllowInsecureHttp=http.IsChecked==true; await M.RefreshLogosAsync(); };
         Button(p,"Обновить сейчас",async()=> { await M.RefreshEpgAsync(); _notice.Text=M.Status; });
+        Button(p,"Поправка времени для канала…",()=> { new EpgTimingWindow(_main, this, M.Active).ShowDialog(); return Task.CompletedTask; });
         Button(p,"Диагностика и ручное сопоставление",()=> { _tabs.SelectedIndex=10; return Task.CompletedTask; });
     }
     private void Logos()
@@ -150,9 +152,9 @@ public sealed class SettingsWindow : Window
         var list=new ListBox { Height=230,ItemsSource=M.AllChannels.Where(M.IsAllowed).ToArray(),DisplayMemberPath="Name" }; p.Children.Add(list);
         async Task Update()
         {
-            await M.RefreshEpgViewAsync(); var channels=M.AllChannels.Where(M.IsAllowed).ToArray(); var epgIds=M.Mappings.Values.Select(x=>x.EpgId).Distinct().ToArray(); var current=new HashSet<string>();
-            foreach(var id in epgIds) if((await M.Store.GetNowNextAsync(id)).Current is not null) current.Add(id);
-            var covered=channels.Count(c=>M.Mappings.TryGetValue(c.Id,out var map)&&current.Contains(map.EpgId));
+            await M.RefreshEpgViewAsync(); var channels=M.AllChannels.Where(M.IsAllowed).ToArray();
+            var schedules=await M.Guide.GetNowNextBatchAsync(channels.Select(c=>M.EpgFor(c.Id)).OfType<ChannelEpg>());
+            var covered=channels.Count(c=>schedules.GetValueOrDefault(c.Id)?.Current is not null);
             var logos=channels.Count(c=>M.State.UserLogos.ContainsKey(c.Id)||c.Channel.Logo is not null||M.Mappings.TryGetValue(c.Id,out var map)&&M.EpgChannels.GetValueOrDefault(map.EpgId)?.Logo is not null);
             text.Text=$"Всего каналов: {M.AllChannels.Count:N0}; видимых: {channels.Length:N0}\nС текущей программой: {covered:N0} ({(channels.Length>0?(double)covered/channels.Length:0):P1})\nС доступным логотипом: {logos:N0}\nСпорных: {M.Epg.Diagnostics.Ambiguous:N0}; без назначения: {channels.Count(c=>!M.Mappings.ContainsKey(c.Id)):N0}\nПоследнее обновление: {M.Epg.LastUpdated?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")??"ещё не выполнялось"}";
         }

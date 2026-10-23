@@ -123,20 +123,21 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
     const generation=++switchGeneration.current;switching.current?.abort();const abort=new AbortController();switching.current=abort;
     if(!transcode&&!compatible){compatibilityAttempted.current=false;setFiltersOpen(false);}
     const archive=channel.match&&Date.parse(channel.match.end)<=Date.now()?channel.match:undefined;
-    setMode('watch');setTab('tv');setWatching({...channel,match:archive});setVideoError('');setVideoLoading(true);setVideoUrl('');setVideoMode('');
+    const preserve=!!archive&&activeStream.current&&!!videoUrl;
+    setMode('watch');setTab('tv');if(!preserve)setWatching({...channel,match:archive});setVideoError('');setVideoLoading(true);if(!preserve){setVideoUrl('');setVideoMode('');}
     // Start sound playback before the first await, while this is still the user's tap.
     // Wait until that play request settles before replacing its source. React never
     // owns src or remounts the element while switching channels or retrying codecs.
     const element=video.current;
     let priming:Promise<void>=Promise.resolve();
-    if(fromGesture&&element){element.muted=false;prepareVideo(element);priming=element.play().catch(()=>{});}
+    if(fromGesture&&element){element.muted=false;if(!preserve)prepareVideo(element);priming=element.play().catch(()=>{});}
     try{
       const result=await api<{url:string;mode:string}>('/api/stream',{channelId:channel.id,transcode,compatible,programmeStart:archive?.start},abort.signal);
       if(generation!==switchGeneration.current||abort.signal.aborted||element!==video.current)return;
       activeStream.current=true;
       await priming;
       if(generation!==switchGeneration.current||abort.signal.aborted||element!==video.current)return;
-      setVideoMode(result.mode);setVideoUrl(result.url);setRecent(remember(channel.id));
+      setWatching({...channel,match:archive});setVideoMode(result.mode);setVideoUrl(result.url);setRecent(remember(channel.id));
       if(element){element.loop=false;element.src=result.url;element.load();void element.play().catch(async e=>{
         if(generation!==switchGeneration.current||element.getAttribute('src')!==result.url||e?.name!=='NotAllowedError')return;
         setVideoLoading(false);
@@ -145,7 +146,7 @@ export function Television({session,onLogout}:{session:Session;onLogout:()=>void
           try{await element.play();}catch{if(generation===switchGeneration.current)setPlaybackAction('play');}
         }else{setPlaybackAction('play');notify('Нажмите ▶ на видео, чтобы начать просмотр со звуком.');}
       });}
-    }catch(e){if(generation===switchGeneration.current&&!abort.signal.aborted){if(element?.getAttribute('src')===playbackPrimer)element.pause();setVideoLoading(false);setVideoError(message(e));}}
+    }catch(e){if(generation===switchGeneration.current&&!abort.signal.aborted){if(element?.getAttribute('src')===playbackPrimer)element.pause();setVideoLoading(false);if(preserve&&e instanceof ApiError&&e.status===409){setVideoError('');notify(message(e));}else setVideoError(message(e));}}
   };
   useEffect(()=>{
     if(!permission.viewing||initialComplete.current||switchGeneration.current!==0)return;

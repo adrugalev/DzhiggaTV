@@ -8,9 +8,10 @@ using DzhiggaTV.Services;
 
 namespace DzhiggaTV.App;
 
-public sealed class MainViewModel : Observable, IDisposable
+public sealed partial class MainViewModel : Observable, IDisposable
 {
     public SqliteStore Store { get; }
+    public ChannelGuide Guide { get; }
     public EpgOneService Epg { get; }
     public LogoService Logos { get; }
     public UserState State { get; private set; } = new();
@@ -96,6 +97,7 @@ public sealed class MainViewModel : Observable, IDisposable
         DataDirectory = directory;
         Directory.CreateDirectory(directory);
         Store = new(Path.Combine(directory, "library.db"));
+        Guide = new(Store);
         Epg = new(Store);
         Logos = new(Path.Combine(directory, "logos"));
     }
@@ -151,7 +153,7 @@ public sealed class MainViewModel : Observable, IDisposable
             if (query.Length == 0) return;
             var mappings = Mappings; int generation = _catalogGeneration;
             var now = DateTimeOffset.UtcNow;
-            var scopes = AllChannels.Where(IsAllowed).Where(c => mappings.ContainsKey(c.Id)).Select(c => ProgrammeSearchScope.From(c.Channel, mappings[c.Id].EpgId, now)).ToArray();
+            var scopes = AllChannels.Where(IsAllowed).Where(c => mappings.ContainsKey(c.Id)).Select(c => ProgrammeSearchScope.From(c.Channel, mappings[c.Id].EpgId, now, EpgOffset(c.Id))).ToArray();
             var matches = await Task.Run(() => Store.SearchPlayableProgrammesAsync(query, scopes, now, token), token);
             if (token.IsCancellationRequested || !ReferenceEquals(_searchCancellation, cancellation) || generation != _catalogGeneration || !ReferenceEquals(mappings, Mappings)) return;
             _programmeSearchQuery = query; _programmeMatches = matches;
@@ -277,12 +279,14 @@ public sealed class MainViewModel : Observable, IDisposable
     {
         // At most the visible viewport and active channel: no thousands of queries every tick.
         var relevant = channels.Where(IsAllowed).DistinctBy(c => c.Id).ToArray();
-        var guides = await Store.GetNowNextBatchAsync(relevant.Where(c => Mappings.ContainsKey(c.Id)).Select(c => Mappings[c.Id].EpgId), cancellationToken: _lifetime.Token);
+        int revision = EpgTimeRevision;
+        var guides = await Guide.GetNowNextBatchAsync(relevant.Select(c => EpgFor(c.Id)).OfType<ChannelEpg>(), token: _lifetime.Token);
+        if (revision != EpgTimeRevision) return;
         foreach (var c in relevant)
         {
             if (Mappings.TryGetValue(c.Id, out var match))
             {
-                var now = guides[match.EpgId];
+                var now = guides[c.Id];
                 c.Current = now.Current; c.Next = now.Next; c.AfterNext = now.AfterNext;
                 c.NowTitle = now.Current?.Title ?? "Нет программы на это время";
                 c.EndTime = now.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
@@ -301,12 +305,14 @@ public sealed class MainViewModel : Observable, IDisposable
         var snapshot = items.ToArray();
         bool activeGuideLoaded = false;
         if (updateViewport) { _viewportIds.Clear(); foreach (var c in snapshot) _viewportIds.Add(c.Id); }
-        var guides = await Store.GetNowNextBatchAsync(snapshot.Where(c => c.Current is null && Mappings.ContainsKey(c.Id)).Select(c => Mappings[c.Id].EpgId), cancellationToken: _lifetime.Token);
+        int revision = EpgTimeRevision;
+        var guides = await Guide.GetNowNextBatchAsync(snapshot.Where(c => c.Current is null).Select(c => EpgFor(c.Id)).OfType<ChannelEpg>(), token: _lifetime.Token);
+        if (revision != EpgTimeRevision) return;
         foreach (var item in snapshot)
         {
             if (Mappings.TryGetValue(item.Id, out var mapping) && item.Current is null)
             {
-                var guide = guides[mapping.EpgId]; item.Current = guide.Current; item.Next = guide.Next; item.AfterNext = guide.AfterNext;
+                var guide = guides[item.Id]; item.Current = guide.Current; item.Next = guide.Next; item.AfterNext = guide.AfterNext;
                 item.NowTitle = guide.Current?.Title ?? "Нет программы на это время";
                 item.EndTime = guide.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
                 item.Progress = guide.Current is { } p ? Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : 0;

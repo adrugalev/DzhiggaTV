@@ -22,6 +22,9 @@
   </Style>
  </Window.Resources>
  <Grid Background="#01000000" x:Name="OverlayRoot">
+  <Border x:Name="ArchiveNotice" Panel.ZIndex="5" HorizontalAlignment="Center" VerticalAlignment="Top" MaxWidth="530" Margin="14" Padding="14" CornerRadius="10" Background="#F21D272E" BorderBrush="#6EAAA4" BorderThickness="1" Visibility="Collapsed" AutomationProperties.Name="Сообщение о доступности архива">
+   <DockPanel><Button DockPanel.Dock="Right" Content="×" Click="ArchiveNotice_Close" Width="25" Height="25" Padding="0" Margin="10,0,0,0" VerticalAlignment="Top" ToolTip="Закрыть сообщение"/><TextBlock x:Name="ArchiveNoticeText" TextWrapping="Wrap" Foreground="#EEF3F5" FontSize="13" LineHeight="20"/></DockPanel>
+  </Border>
   <local:PlaybackStatusView x:Name="PlaybackStatus" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="14"/>
   <StackPanel x:Name="Welcome" VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="430" Margin="30"><TextBlock Text="▶" Foreground="{DynamicResource AccentBrush}" FontSize="52" HorizontalAlignment="Center"/><TextBlock Text="Ваш эфир. Ваш ритм." FontSize="27" FontWeight="Light" HorizontalAlignment="Center" Margin="0,22,0,12"/><TextBlock Text="Импортируйте плейлист и выберите канал.&#10;Телепрограмма и логотипы — из EPG.ONE." TextAlignment="Center" Foreground="#91A0AC" LineHeight="23"/><Button Content="Открыть плейлист" Click="Import_Click" Background="#19413F" Margin="0,24,0,0" HorizontalAlignment="Center"/></StackPanel>
   <Border x:Name="StatisticsPanel" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,12,12,48" Background="#DD10181F" CornerRadius="8" Padding="15" Visibility="Collapsed" MaxWidth="550"><DockPanel><TextBlock DockPanel.Dock="Top" Text="Информация о потоке" FontWeight="SemiBold" Margin="0,0,0,12"/><ScrollViewer VerticalScrollBarVisibility="Auto"><TextBlock x:Name="StatisticsText" FontFamily="Cascadia Mono, Consolas" FontSize="11" Foreground="#DDE8ED" TextWrapping="Wrap"/></ScrollViewer></DockPanel></Border>
@@ -34,7 +37,7 @@
    </Button>
   </StackPanel>
   <Border x:Name="Drawer" Width="340" HorizontalAlignment="Left" Background="#F0161E25" Margin="8,12,0,48" CornerRadius="9" Visibility="Collapsed" Padding="10"><DockPanel><TextBlock DockPanel.Dock="Top" Text="КАНАЛЫ" Foreground="#63D9CD" FontSize="11" Margin="8,8,0,8"/><ListBox ItemsSource="{Binding VisibleChannels}" ItemTemplate="{StaticResource ChannelNameTemplate}" SelectionChanged="Drawer_Selected"/></DockPanel></Border>
-  <Border x:Name="FullscreenProgrammeInfo" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16,0,0,48" Padding="14" Background="#E611191F" CornerRadius="10" Visibility="Collapsed" AutomationProperties.Name="Сейчас в эфире"><StackPanel>
+  <Border x:Name="FullscreenProgrammeInfo" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="16,0,0,48" Padding="14" Background="#E611191F" CornerRadius="10" Visibility="Collapsed" MouseEnter="Chrome_HoverChanged" MouseLeave="Chrome_HoverChanged" AutomationProperties.Name="Сейчас в эфире"><StackPanel>
      <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
       <TextBlock Text="{Binding ActiveName}" FontSize="12" Foreground="#63D9CD" TextTrimming="CharacterEllipsis" Margin="0,0,16,0"/>
       <TextBlock Grid.Column="1" Text="{Binding CurrentTime}" FontSize="12" Foreground="#A9BAC4"/>
@@ -62,7 +65,7 @@
      </Grid>
      <ProgressBar Value="{Binding CurrentProgress, Mode=OneWay}" Height="3" Background="#35414A" Foreground="#63D9CD"/>
     </StackPanel></Border>
-  <Border x:Name="ControlsPanel" VerticalAlignment="Bottom" Background="#D911191F" CornerRadius="7" Margin="3" Padding="6,4" Visibility="Collapsed" KeyboardNavigation.TabNavigation="Cycle">
+  <Border x:Name="ControlsPanel" VerticalAlignment="Bottom" Background="#D911191F" CornerRadius="7" Margin="3" Padding="6,4" Visibility="Collapsed" MouseEnter="Chrome_HoverChanged" MouseLeave="Chrome_HoverChanged" KeyboardNavigation.TabNavigation="Cycle">
    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
     <StackPanel x:Name="ArchiveTimelinePanel" Grid.ColumnSpan="3" Margin="6,3,6,7" Visibility="Collapsed">
      <Grid Margin="0,0,0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

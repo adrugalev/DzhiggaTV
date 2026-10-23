@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Threading;
 using DzhiggaTV.Player;
 using DzhiggaTV.Core;
 
@@ -12,7 +13,13 @@ public partial class OverlayWindow : Window
 {
     private readonly MainWindow _main;
     private readonly RemoteQuickConnectView _remoteQuick;
+    private DateTimeOffset _archiveNoticeUntil;
+    public void ShowArchiveNotice(string message) { ArchiveNoticeText.Text = message; _archiveNoticeUntil = DateTimeOffset.UtcNow.AddSeconds(12); ArchiveNotice.Visibility = Visibility.Visible; }
+    public void HideArchiveNotice() => ArchiveNotice.Visibility = Visibility.Collapsed;
+    private void ArchiveNotice_Close(object sender, RoutedEventArgs e) => HideArchiveNotice();
     private DateTime _lastMove = DateTime.UtcNow;
+    private readonly FullscreenChromeVisibility _fullscreenChrome = new();
+    private readonly DispatcherTimer _fullscreenHideTimer = new(DispatcherPriority.Input);
     private readonly PointerRevealGate _pointerReveal = new();
     private bool _pointerInside, _menuOpen, _keyboardNavigation;
     private ContextMenu? _playerMenu;
@@ -27,6 +34,7 @@ public partial class OverlayWindow : Window
         _main = main;
         var volume = main.Player.Volume;
         InitializeComponent();
+        _fullscreenHideTimer.Tick += (_, _) => { _fullscreenHideTimer.Stop(); RefreshHoverState(); UpdateVisibility(); };
         _remoteQuick = new(main); OverlayRoot.Children.Add(_remoteQuick); Panel.SetZIndex(_remoteQuick, 10);
         _remoteQuick.Dismissed += () => { if (IsVisible) Reveal(); };
         PlaybackStatus.RetryRequested += async (_, _) => await _main.GuardAsync(async () =>
@@ -41,7 +49,7 @@ public partial class OverlayWindow : Window
         Loaded += (_, _) => { RefreshHoverState(); UpdateVisibility(); };
         SizeChanged += (_, _) => { UpdateCompactLayout(); RefreshHoverState(); UpdateVisibility(); };
         IsVisibleChanged += (_, _) => { if (!IsVisible) { CancelSeek(); ClosePlayerMenu(); _remoteQuick.Dismiss(); } RefreshHoverState(); UpdateVisibility(); };
-        Closed += (_, _) => { _remoteQuick.Dismiss(); ClosePlayerMenu(); };
+        Closed += (_, _) => { _fullscreenHideTimer.Stop(); _remoteQuick.Dismiss(); ClosePlayerMenu(); };
         ControlsPanel.SizeChanged += (_, _) => FullscreenProgrammeInfo.Margin = new(16, 0, 0, Math.Max(48, ControlsPanel.ActualHeight + 12));
     }
     public void Reveal()
@@ -50,7 +58,7 @@ public partial class OverlayWindow : Window
         // controls while the pointer is over the channel list or another window.
         RefreshHoverState();
         _pointerReveal.Reset(Mouse.GetPosition(OverlayRoot));
-        if (_pointerInside) _lastMove = DateTime.UtcNow;
+        if (_pointerInside) { _lastMove = DateTime.UtcNow; _fullscreenChrome.Reveal(_lastMove); }
         UpdateVisibility();
     }
     public void PointerMoved()
@@ -61,6 +69,7 @@ public partial class OverlayWindow : Window
     }
     public void RefreshState()
     {
+        if (DateTimeOffset.UtcNow >= _archiveNoticeUntil) HideArchiveNotice();
         if (_descriptionProgramme != _main.Model.PlayingProgramme)
         {
             _descriptionProgramme = _main.Model.PlayingProgramme;
@@ -102,13 +111,24 @@ public partial class OverlayWindow : Window
     private void UpdateVisibility()
     {
         if (ControlsPanel is null) return;
+        _fullscreenHideTimer.Stop();
         var quickOpen = _remoteQuick.Visibility == Visibility.Visible;
         var keyboardControls = _seeking || _keyboardNavigation && (ControlsPanel.IsKeyboardFocusWithin || FullscreenProgrammeInfo.IsKeyboardFocusWithin);
-        var readingDescription = _pointerInside && FullscreenProgrammeReadingArea.IsMouseOver;
-        var idle = (_main.IsFullscreen || _main.IsMini) && _main.HasPlayback &&
-            Drawer.Visibility != Visibility.Visible && !_menuOpen && !quickOpen && !keyboardControls && !readingDescription &&
-            DateTime.UtcNow - _lastMove > TimeSpan.FromSeconds(3.5);
-        ControlsPanel.Visibility = quickOpen || _menuOpen || keyboardControls || (_pointerInside && !idle) ? Visibility.Visible : Visibility.Collapsed;
+        var fullscreen = _main.IsFullscreen && _main.HasPlayback;
+        var held = Drawer.Visibility == Visibility.Visible || _menuOpen || quickOpen || keyboardControls ||
+            ControlsPanel.IsMouseCaptureWithin || FullscreenProgrammeInfo.IsMouseCaptureWithin ||
+            _pointerInside && (ControlsPanel.IsMouseOver || FullscreenProgrammeInfo.IsMouseOver);
+        var remaining = _fullscreenChrome.Remaining(DateTime.UtcNow, held);
+        var idle = fullscreen ? remaining == TimeSpan.Zero : _main.IsMini && _main.HasPlayback && !held &&
+            DateTime.UtcNow - _lastMove >= TimeSpan.FromSeconds(3.5);
+        var visible = quickOpen || _menuOpen || keyboardControls ||
+            !idle && (_pointerInside || fullscreen && ControlsPanel.IsVisible);
+        ControlsPanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (IsVisible && fullscreen && visible && remaining is { } delay && delay > TimeSpan.Zero)
+        {
+            _fullscreenHideTimer.Interval = delay;
+            _fullscreenHideTimer.Start();
+        }
         RemoteButton.SetResourceReference(ForegroundProperty, _main.Remote.Running || quickOpen ? "AccentBrush" : "TextBrush");
         if (ControlsPanel.Visibility != Visibility.Visible) HideSeekPreview();
         MiniWindowActions.Visibility = _main.IsMini ? ControlsPanel.Visibility : Visibility.Collapsed;
@@ -153,7 +173,12 @@ public partial class OverlayWindow : Window
     }
     private void Overlay_MouseLeave(object sender, MouseEventArgs e)
     {
+        if (_main.IsFullscreen && ControlsPanel.IsVisible) _fullscreenChrome.Reveal(DateTime.UtcNow);
         _pointerInside = false; UpdateVisibility();
+    }
+    private void Chrome_HoverChanged(object sender, MouseEventArgs e)
+    {
+        RefreshHoverState(); UpdateVisibility();
     }
     private void Overlay_MouseMove(object sender, MouseEventArgs e)
     {

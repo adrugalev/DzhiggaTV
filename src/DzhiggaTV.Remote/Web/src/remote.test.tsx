@@ -273,6 +273,23 @@ describe('programme search playback',()=>{
     await waitFor(()=>expect(requests.some(r=>r.path==='/api/command'&&r.body?.programmeStart===archive.start)).toBe(true));
     expect(requests.filter(r=>r.path==='/api/stream')).toHaveLength(0);
   });
+  it('keeps current playback when the provider refuses the selected archive',async()=>{
+    searched();const fallback=vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async(input,init)=>{
+      if(String(input)==='/api/stream'&&init?.body&&JSON.parse(String(init.body)).programmeStart)return new Response(JSON.stringify({error:'Провайдер вернул пустой архив'}),{status:409});
+      return fallback(input,init);
+    });
+    const result=render(<Television session={session} onLogout={()=>{}}/>);
+    fireEvent.click(await screen.findByText(channel.name));
+    const video=result.container.querySelector('video')!;await waitFor(()=>expect(video.getAttribute('src')).toBe('/media/stream/root'));
+    const loads=vi.mocked(HTMLMediaElement.prototype.load).mock.calls.length;
+    fireEvent.change(screen.getByLabelText('Поиск канала или передачи'),{target:{value:archive.title}});
+    fireEvent.click(await screen.findByText(archive.title));
+    await screen.findByText('Провайдер вернул пустой архив');
+    expect(video.getAttribute('src')).toBe('/media/stream/root');expect(result.container.querySelector('video')).toBe(video);
+    expect(vi.mocked(HTMLMediaElement.prototype.load).mock.calls).toHaveLength(loads);
+    expect(screen.queryByText('СМОТРЮ АРХИВ')).toBeNull();
+  });
   it('opens live TV for a search match that is still on air',async()=>{
     searched({...programme,title:'Текущий матч'});render(<Television session={session} onLogout={()=>{}}/>);
     fireEvent.change(screen.getByLabelText('Поиск канала или передачи'),{target:{value:'Текущий матч'}});

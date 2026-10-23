@@ -463,15 +463,16 @@ public sealed class SqliteStore : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             await using var command = connection.CreateCommand(); command.Transaction = transaction;
-            command.CommandText = "WITH allowed(channel_id,epg_id,archive_from) AS (VALUES " +
-                string.Join(',', batch.Select((_, i) => $"($channel{i},$epg{i},$archive{i})")) + ") " +
-                "SELECT p.channel_id,p.title,p.start,p.end,NULL,NULL,a.channel_id FROM programme_titles f JOIN programmes p ON p.id=f.rowid JOIN allowed a ON a.epg_id=p.channel_id " +
-                "WHERE programme_titles MATCH $query AND p.start<=$now AND p.end>p.start AND (p.end>$now OR (a.archive_from IS NOT NULL AND p.start>=a.archive_from)) " +
-                "ORDER BY CASE WHEN p.end>$now THEN 0 ELSE 1 END,p.start DESC,p.id DESC";
+            command.CommandText = "WITH allowed(channel_id,epg_id,archive_from,shift) AS (VALUES " +
+                string.Join(',', batch.Select((_, i) => $"($channel{i},$epg{i},$archive{i},$shift{i})")) + ") " +
+                "SELECT p.channel_id,p.title,p.start+a.shift,p.end+a.shift,NULL,NULL,a.channel_id FROM programme_titles f JOIN programmes p ON p.id=f.rowid JOIN allowed a ON a.epg_id=p.channel_id " +
+                "WHERE programme_titles MATCH $query AND p.start<=$now-a.shift AND p.end>p.start AND (p.end>$now-a.shift OR (a.archive_from IS NOT NULL AND p.start>=a.archive_from-a.shift)) " +
+                "ORDER BY CASE WHEN p.end>$now-a.shift THEN 0 ELSE 1 END,p.start+a.shift DESC,p.id DESC";
             command.Parameters.AddWithValue("$query", expression); command.Parameters.AddWithValue("$now", now.ToUnixTimeSeconds());
             for (int i = 0; i < batch.Length; i++)
             {
                 command.Parameters.AddWithValue("$channel" + i, batch[i].ChannelId); command.Parameters.AddWithValue("$epg" + i, batch[i].EpgChannelId);
+                command.Parameters.AddWithValue("$shift" + i, Math.Clamp(batch[i].OffsetMinutes, -ChannelEpg.MaximumOffsetMinutes, ChannelEpg.MaximumOffsetMinutes) * 60);
                 command.Parameters.AddWithValue("$archive" + i, batch[i].ArchiveFrom is { } at ? (object)(at.ToUnixTimeSeconds() + (at.Ticks % TimeSpan.TicksPerSecond == 0 ? 0 : 1)) : DBNull.Value);
             }
             await using var reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
@@ -498,16 +499,16 @@ public sealed class SqliteStore : IDisposable
         var state = await LoadUserStateAsync(cancellationToken).ConfigureAwait(false);
         // Private source URLs, logos, playlist contents, and arbitrary settings are deliberately absent.
         var safeSettingNames = new HashSet<string>(["theme", "volume", "mute", "bufferMode", "resumeLastChannel", "preferredAudioLanguage", "showAdult", "reducedMotion"], StringComparer.OrdinalIgnoreCase);
-        var backup = new SettingsBackup(1, state.Favorites, state.Collections, state.Hidden, state.Renames, state.CustomCategories,
+        var backup = new SettingsBackup(2, state.Favorites, state.Collections, state.Hidden, state.Renames, state.CustomCategories,
             state.Settings.Where(pair => safeSettingNames.Contains(pair.Key) && !pair.Value.Contains("://", StringComparison.Ordinal)).ToDictionary(),
-            await GetMappingsAsync(cancellationToken).ConfigureAwait(false));
+            await GetMappingsAsync(cancellationToken).ConfigureAwait(false), state.EpgOffsets);
         await using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 8192, FileOptions.Asynchronous);
         await JsonSerializer.SerializeAsync(stream, backup, new JsonSerializerOptions(Json) { WriteIndented = true }, cancellationToken).ConfigureAwait(false);
     }
 
     private sealed record SettingsBackup(int Version, List<string> Favorites, Dictionary<string, List<string>> Collections,
         HashSet<string> Hidden, Dictionary<string, string> Renames, Dictionary<string, string> CustomCategories,
-        Dictionary<string, string> Settings, IReadOnlyList<ChannelMapping> Mappings);
+        Dictionary<string, string> Settings, IReadOnlyList<ChannelMapping> Mappings, Dictionary<string, int> EpgOffsets);
 
     private async Task<IReadOnlyList<Programme>> QueryProgrammesAsync(string sql, (string Key, object Value)[] parameters, CancellationToken cancellationToken)
     {

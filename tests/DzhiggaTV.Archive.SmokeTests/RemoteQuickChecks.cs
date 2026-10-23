@@ -98,6 +98,7 @@ internal static partial class Program
         response = await client.PostAsJsonAsync("/api/command", new RemoteCommand("play", "archive", ProgrammeStart: Past.Start)); response.EnsureSuccessStatusCode();
         await Wait(() => main.IsArchivePlayback && main.Model.PlayingProgramme?.Start == Past.Start);
         Check(main.IsArchivePlayback, "The web PC-control command also selects the exact archived broadcast");
+        await EpgTimingAndArchiveChecks(main, fixture, overlay, remote, client, args);
         card.Dismiss(); root.Children.Remove(card); await remote.StopAsync();
         // A close immediately after opening cannot start the server after asynchronous preparation.
         var cancelled = new RemoteQuickConnectView(main, remote); root.Children.Add(cancelled);
