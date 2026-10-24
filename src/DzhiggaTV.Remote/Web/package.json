@@ -1,9 +1,11 @@
 {
   "name": "dzhiggatv-remote",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "node scripts/locales.mjs",
+    "pretest": "node scripts/locales.mjs",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run"
   },

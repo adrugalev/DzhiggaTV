@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -16,7 +17,7 @@ public sealed class RemoteQuickConnectView : Border
     private readonly TextBlock _status = new() { TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, FontSize = 13, LineHeight = 19 };
     private readonly TextBlock _address = new() { TextAlignment = TextAlignment.Center, FontSize = 11, Margin = new(0, 8, 0, 0) };
     private readonly ProgressBar _progress = new() { Height = 4, Margin = new(0, 14, 0, 0) };
-    private readonly Button _refresh = new() { Content = "Обновить QR-код", FontSize = 12, Padding = new(12, 7, 12, 7), Margin = new(0, 14, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly Button _refresh = new() { Content = L.T("Обновить QR-код"), FontSize = 12, Padding = new(12, 7, 12, 7), Margin = new(0, 14, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(1) };
     private CancellationTokenSource? _opening;
     private DateTimeOffset _expires;
@@ -34,14 +35,14 @@ public sealed class RemoteQuickConnectView : Border
         var body = new StackPanel();
         Child = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         var heading = new DockPanel { Margin = new(0, 0, 0, 10) };
-        var close = new Button { Content = "×", Width = 26, Height = 26, Padding = new(0), FontSize = 19, Background = Brushes.Transparent, BorderThickness = new(0), ToolTip = "Закрыть (Esc)" };
-        System.Windows.Automation.AutomationProperties.SetName(close, "Закрыть быстрое подключение Remote");
+        var close = new Button { Content = "×", Width = 26, Height = 26, Padding = new(0), FontSize = 19, Background = Brushes.Transparent, BorderThickness = new(0), ToolTip = L.T("Закрыть (Esc)") };
+        System.Windows.Automation.AutomationProperties.SetName(close, L.T("Закрыть быстрое подключение Remote"));
         DockPanel.SetDock(close, Dock.Right); close.Click += (_, _) => Dismiss(); heading.Children.Add(close);
         heading.Children.Add(new TextBlock { Text = "Dzhigga Remote", Foreground = Brushes.White, FontSize = 20, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center }); body.Children.Add(heading);
-        body.Children.Add(new TextBlock { Text = "Смотрите на iPhone", FontSize = 13, Foreground = new SolidColorBrush(Color.FromRgb(99, 217, 205)), Margin = new(0, 0, 0, 15) });
+        body.Children.Add(new TextBlock { Text = L.T("Смотрите на iPhone"), FontSize = 13, Foreground = new SolidColorBrush(Color.FromRgb(99, 217, 205)), Margin = new(0, 0, 0, 15) });
         _qrFrame = new Border { Child = _qr, Background = Brushes.White, CornerRadius = new(10), Padding = new(8), HorizontalAlignment = HorizontalAlignment.Center, Margin = new(0, 0, 0, 14), Visibility = Visibility.Collapsed };
         RenderOptions.SetBitmapScalingMode(_qr, BitmapScalingMode.NearestNeighbor);
-        System.Windows.Automation.AutomationProperties.SetName(_qr, "QR-код быстрого подключения телефона");
+        System.Windows.Automation.AutomationProperties.SetName(_qr, L.T("QR-код быстрого подключения телефона"));
         body.Children.Add(_qrFrame); body.Children.Add(_status); body.Children.Add(_address); body.Children.Add(_progress); body.Children.Add(_refresh);
         _status.Foreground = new SolidColorBrush(Color.FromRgb(224, 232, 237)); _address.Foreground = new SolidColorBrush(Color.FromRgb(142, 165, 180));
         _progress.Foreground = new SolidColorBrush(Color.FromRgb(99, 217, 205));
@@ -73,7 +74,7 @@ public sealed class RemoteQuickConnectView : Border
         using var opening = new CancellationTokenSource(); _opening = opening;
         _busy = true; _prepared = _scanned = _connected = false; _timer.Stop();
         _qr.Source = null; _qrFrame.Visibility = _refresh.Visibility = Visibility.Collapsed;
-        _address.Text = ""; _status.Text = "Включаем Remote и совместимость с iPhone…";
+        _address.Text = ""; _status.Text = L.T("Включаем Remote и совместимость с iPhone…");
         _progress.Visibility = Visibility.Visible; _progress.IsIndeterminate = true;
         var progress = new Progress<RemotePreparation>(p =>
         {
@@ -92,9 +93,9 @@ public sealed class RemoteQuickConnectView : Border
         {
             if (!opening.IsCancellationRequested)
             {
-                _status.Text = error is RemoteException ? error.Message : "Не удалось включить Remote. Проверьте сеть и повторите попытку.";
-                _address.Text = "Параметры подключения — в Remote слева.";
-                _refresh.Content = "Повторить"; _refresh.Visibility = Visibility.Visible;
+                _status.Text = error is RemoteException ? error.Message : L.T("Не удалось включить Remote. Проверьте сеть и повторите попытку.");
+                _address.Text = L.T("Параметры подключения — в Remote слева.");
+                _refresh.Content = L.T("Повторить"); _refresh.Visibility = Visibility.Visible;
             }
         }
         finally
@@ -108,9 +109,9 @@ public sealed class RemoteQuickConnectView : Border
         _scanned = _connected = false;
         _qr.Source = RemoteQrCode.Create(_server.PairingUrl()); _qrFrame.Visibility = Visibility.Visible;
         _expires = DateTimeOffset.UtcNow.AddMinutes(3);
-        _status.Text = "Наведите камеру iPhone на QR-код.\nЗатем подтвердите подключение на компьютере.";
-        _address.Text = "Одна домашняя сеть · " + _server.Url;
-        _refresh.Content = "Обновить QR-код"; _refresh.Visibility = Visibility.Collapsed;
+        _status.Text = L.T("Наведите камеру iPhone на QR-код.\nЗатем подтвердите подключение на компьютере.");
+        _address.Text = L.T("Одна домашняя сеть · ") + _server.Url;
+        _refresh.Content = L.T("Обновить QR-код"); _refresh.Visibility = Visibility.Collapsed;
         _timer.Start();
     }
     private void RefreshPairing()
@@ -119,25 +120,25 @@ public sealed class RemoteQuickConnectView : Border
         if (!_server.Running)
         {
             _qr.Source = null; _qrFrame.Visibility = Visibility.Collapsed;
-            _status.Text = "Remote выключен. Нажмите, чтобы подключить телефон снова.";
-            _refresh.Content = "Включить Remote"; _refresh.Visibility = Visibility.Visible; _timer.Stop(); return;
+            _status.Text = L.T("Remote выключен. Нажмите, чтобы подключить телефон снова.");
+            _refresh.Content = L.T("Включить Remote"); _refresh.Visibility = Visibility.Visible; _timer.Stop(); return;
         }
         if (_server.Devices.Devices.FirstOrDefault(d => !_knownDevices.Contains(d.Id)) is { } device)
         {
             _connected = true; _qr.Source = null; _qrFrame.Visibility = Visibility.Collapsed;
-            _status.Text = "✓ " + device.Name + " подключён\nПриятного просмотра!";
-            _refresh.Content = "Подключить ещё телефон"; _refresh.Visibility = Visibility.Visible;
+            _status.Text = "✓ " + device.Name + L.T(" подключён\nПриятного просмотра!");
+            _refresh.Content = L.T("Подключить ещё телефон"); _refresh.Visibility = Visibility.Visible;
         }
         else if (_server.Devices.PendingRequests.Count > 0)
         {
             _scanned = true; _qr.Source = null; _qrFrame.Visibility = Visibility.Collapsed;
-            _status.Text = "QR-код считан.\nПодтвердите подключение в окне на компьютере.";
+            _status.Text = L.T("QR-код считан.\nПодтвердите подключение в окне на компьютере.");
         }
         else if (!_connected && (_scanned || DateTimeOffset.UtcNow >= _expires))
         {
             _qr.Source = null; _qrFrame.Visibility = Visibility.Collapsed;
-            _status.Text = _scanned ? "Подключение не подтверждено.\nМожно получить новый QR-код." : "Время действия QR-кода истекло.";
-            _refresh.Content = "Обновить QR-код"; _refresh.Visibility = Visibility.Visible;
+            _status.Text = _scanned ? L.T("Подключение не подтверждено.\nМожно получить новый QR-код.") : L.T("Время действия QR-кода истекло.");
+            _refresh.Content = L.T("Обновить QR-код"); _refresh.Visibility = Visibility.Visible;
         }
     }
 }

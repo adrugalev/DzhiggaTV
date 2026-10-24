@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 namespace DzhiggaTV.Services;
 
 /// <summary>Limits the bytes actually consumed, including decompressed data and chunked HTTP bodies.</summary>
@@ -10,7 +11,7 @@ public sealed class BoundedReadStream(Stream inner, long maximumBytes, bool leav
     public override bool CanWrite => false;
     public override long Length => throw new NotSupportedException();
     public override long Position { get => BytesRead; set => throw new NotSupportedException(); }
-    private int Count(int count) { BytesRead += count; if (BytesRead > maximumBytes) throw new InvalidDataException("Превышен допустимый размер данных."); progress?.Invoke(BytesRead); return count; }
+    private int Count(int count) { BytesRead += count; if (BytesRead > maximumBytes) throw new InvalidDataException(L.T("Превышен допустимый размер данных.")); progress?.Invoke(BytesRead); return count; }
     public override int Read(byte[] buffer, int offset, int count) { readCancellationToken.ThrowIfCancellationRequested(); return Count(inner.Read(buffer, offset, count)); }
     public override int Read(Span<byte> buffer) { readCancellationToken.ThrowIfCancellationRequested(); return Count(inner.Read(buffer)); }
     public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)

@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Globalization;
 using System.IO.Compression;
 using System.Text;
@@ -80,7 +81,7 @@ public static partial class XmlTvParser
                 else rejected++;
             }
         }
-        if (!tv || channels == 0 || programmes == 0) throw new InvalidDataException("XMLTV не содержит каналов и корректных передач; сохранена предыдущая программа.");
+        if (!tv || channels == 0 || programmes == 0) throw new InvalidDataException(L.T("XMLTV не содержит каналов и корректных передач; сохранена предыдущая программа."));
         return new(channels, programmes, rejected);
     }
 
@@ -97,14 +98,14 @@ public static partial class XmlTvParser
             int read;
             while ((read = await reader.ReadValueChunkAsync(buffer, 0, buffer.Length).ConfigureAwait(false)) > 0)
             {
-                if (builder.Length + read > 65536) throw new InvalidDataException("Слишком большое текстовое поле XMLTV.");
+                if (builder.Length + read > 65536) throw new InvalidDataException(L.T("Слишком большое текстовое поле XMLTV."));
                 builder.Append(buffer, 0, read);
             }
         }
         return builder.ToString().Trim();
     }
 
-    public static DateTimeOffset ParseDate(string value) => TryParseDate(value, out var result) ? result : throw new FormatException("Некорректная дата XMLTV или неизвестный часовой пояс.");
+    public static DateTimeOffset ParseDate(string value) => TryParseDate(value, out var result) ? result : throw new FormatException(L.T("Некорректная дата XMLTV или неизвестный часовой пояс."));
 
     /// <summary>XMLTV partial dates default omitted month/day to 1 and time to 00; absent timezone means UTC per XMLTV.</summary>
     public static bool TryParseDate(string? value, out DateTimeOffset result)

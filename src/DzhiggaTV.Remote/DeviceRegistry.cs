@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -31,11 +32,11 @@ public sealed class DeviceRegistry
         {
             Prune();
             if (_code.Length == 0 || _codeExpires < DateTimeOffset.UtcNow || !Equal(code, _code))
-                throw new RemoteException("Код истёк или уже использован. Обновите QR-код на компьютере.", 403);
-            if (_pending.Count >= 4 || _devices.Count >= 12) throw new RemoteException("Слишком много устройств. Проверьте список подключений на ПК.", 429);
+                throw new RemoteException(L.T("Код истёк или уже использован. Обновите QR-код на компьютере."), 403);
+            if (_pending.Count >= 4 || _devices.Count >= 12) throw new RemoteException(L.T("Слишком много устройств. Проверьте список подключений на ПК."), 429);
             _code = ""; // Consume before asking the desktop user; requests cannot replace a pending device.
             name = new string(name.Where(c => !char.IsControl(c)).Take(64).ToArray()).Trim();
-            request = new(Token(), name.Length > 0 ? name : "Телефон", RandomNumberGenerator.GetInt32(100000, 1000000).ToString(), DateTimeOffset.UtcNow.AddMinutes(2));
+            request = new(Token(), name.Length > 0 ? name : L.T("Телефон"), RandomNumberGenerator.GetInt32(100000, 1000000).ToString(), DateTimeOffset.UtcNow.AddMinutes(2));
             _pending.Add(request.Id, new(request));
         }
         Changed?.Invoke(); return request;

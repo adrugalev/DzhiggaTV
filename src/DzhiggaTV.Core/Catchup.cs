@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Globalization;
 
 namespace DzhiggaTV.Core;
@@ -28,8 +29,8 @@ public static class Catchup
 
     public static string BuildUrl(Channel channel, DateTimeOffset start, DateTimeOffset end, DateTimeOffset now)
     {
-        var source = From(channel) ?? throw new InvalidOperationException("У канала нет поддерживаемого архива.");
-        if (!source.Contains(start, now) || end <= start || end > now.AddSeconds(1)) throw new ArgumentOutOfRangeException(nameof(start), "Выбранное время недоступно в архиве.");
+        var source = From(channel) ?? throw new InvalidOperationException(L.T("У канала нет поддерживаемого архива."));
+        if (!source.Contains(start, now) || end <= start || end > now.AddSeconds(1)) throw new ArgumentOutOfRangeException(nameof(start), L.T("Выбранное время недоступно в архиве."));
         static string Number(long n) => n.ToString(CultureInfo.InvariantCulture);
         string utc = Number(start.ToUnixTimeSeconds()), current = Number(now.ToUnixTimeSeconds()), duration = Number(Math.Max(1, (long)(end - start).TotalSeconds));
         string url = channel.Url.Trim();
@@ -45,7 +46,7 @@ public static class Catchup
         if (source.Mode == "flussonic")
         {
             int query = url.IndexOfAny(['?', '#']); string suffix = query >= 0 ? url[query..] : ""; string path = query >= 0 ? url[..query] : url;
-            if (!path.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Формат архива канала не поддерживается.");
+            if (!path.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException(L.T("Формат архива канала не поддерживается."));
             return path[..(path.LastIndexOf('/') + 1)] + $"index-{utc}-{duration}.m3u8" + suffix;
         }
         string formatted = source.Template!;
@@ -53,9 +54,9 @@ public static class Catchup
             ("{utc}", utc), ("{lutc}", current), ("{utcend}", Number(end.ToUnixTimeSeconds())), ("{duration}", duration),
             ("{Y}", start.UtcDateTime.ToString("yyyy", CultureInfo.InvariantCulture)), ("{m}", start.UtcDateTime.ToString("MM", CultureInfo.InvariantCulture)), ("{d}", start.UtcDateTime.ToString("dd", CultureInfo.InvariantCulture)),
             ("{H}", start.UtcDateTime.ToString("HH", CultureInfo.InvariantCulture)), ("{M}", start.UtcDateTime.ToString("mm", CultureInfo.InvariantCulture)), ("{S}", start.UtcDateTime.ToString("ss", CultureInfo.InvariantCulture)) }) formatted = formatted.Replace(token, value, StringComparison.Ordinal);
-        if (formatted.Contains('{') || formatted.Contains('}')) throw new InvalidOperationException("Шаблон архива содержит неподдерживаемые параметры.");
+        if (formatted.Contains('{') || formatted.Contains('}')) throw new InvalidOperationException(L.T("Шаблон архива содержит неподдерживаемые параметры."));
         string result = source.Mode == "append" ? url + formatted : formatted;
-        if (!Uri.TryCreate(result, UriKind.Absolute, out var target) || target.Scheme is not ("http" or "https")) throw new InvalidOperationException("Некорректный адрес архива.");
+        if (!Uri.TryCreate(result, UriKind.Absolute, out var target) || target.Scheme is not ("http" or "https")) throw new InvalidOperationException(L.T("Некорректный адрес архива."));
         return result;
     }
 }

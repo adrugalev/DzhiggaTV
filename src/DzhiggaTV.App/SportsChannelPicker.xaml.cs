@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -42,7 +43,7 @@ public partial class SportsChannelPicker : Window
         foreach (var choice in _choices) choice.PropertyChanged += (_, _) => SelectionChanged(choice);
         _view = new ListCollectionView(_choices); Channels.ItemsSource = _view;
         ScreenCount.ItemsSource = Enumerable.Range(1, SportsSelection.MaximumChannels);
-        Category.ItemsSource = new[] { "Все категории", "Избранное" }.Concat(_choices.Select(c => c.Channel.Group).Distinct().OrderBy(g => g)).ToArray();
+        Category.ItemsSource = new[] { L.T("Все категории"), L.T("Избранное") }.Concat(_choices.Select(c => c.Channel.Group).Distinct().OrderBy(g => g)).ToArray();
         Category.SelectedIndex = 0; RefreshSelection();
         Loaded += (_, _) => { Search.Focus(); QueueVisibleLogos(); };
         // ListBox captures the mouse on press. Observe movement on the window so
@@ -61,7 +62,7 @@ public partial class SportsChannelPicker : Window
         Limit.Visibility = Visibility.Collapsed;
         if (choice.IsSelected)
         {
-            if (!_layout.Select(choice.Channel.Id)) ShowHint($"Можно выбрать до {SportsSelection.MaximumChannels} каналов. Снимите одну галочку или замените канал на схеме.");
+            if (!_layout.Select(choice.Channel.Id)) ShowHint(L.F("Можно выбрать до {0} каналов. Снимите одну галочку или замените канал на схеме.", SportsSelection.MaximumChannels));
         }
         else _layout.Remove(choice.Channel.Id);
         RefreshSelection();
@@ -73,7 +74,7 @@ public partial class SportsChannelPicker : Window
         foreach (var choice in _choices) choice.IsSelected = _layout.Slots.Contains(choice.Channel.Id);
         ScreenCount.SelectedItem = _layout.Slots.Count;
         _changing = false;
-        Count.Text = $"Выбрано: {_layout.Count} из {SportsSelection.MaximumChannels}";
+        Count.Text = L.F("Выбрано: {0} из {1}", _layout.Count, SportsSelection.MaximumChannels);
         Watch.IsEnabled = Reset.IsEnabled = _layout.Count > 0;
         RenderScheme();
         // Request selected picons only, rather than the entire library.
@@ -93,7 +94,7 @@ public partial class SportsChannelPicker : Window
             var slot = new Border { Margin = new(4), Padding = new(8), CornerRadius = new(8), BorderThickness = new(1), Tag = i,
                 Background = new SolidColorBrush(Colors.Transparent), RenderTransform = new ScaleTransform(1, 1), RenderTransformOrigin = new(.5, .5) };
             slot.SetResourceReference(BorderBrushProperty, channel is not null ? "AccentBrush" : "BorderBrush");
-            System.Windows.Automation.AutomationProperties.SetName(slot, $"Экран {i + 1}: {channel?.Name ?? "пусто"}");
+            System.Windows.Automation.AutomationProperties.SetName(slot, L.F("Экран {0}: {1}", i + 1, channel?.Name ?? L.T("пусто")));
             var content = new Grid(); slot.Child = content;
             content.RowDefinitions.Add(new() { Height = GridLength.Auto }); content.RowDefinitions.Add(new());
             var number = new TextBlock { Text = $"{i + 1}", FontSize = 12, Margin = new(2, 0, 0, 0) }; number.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); content.Children.Add(number);
@@ -103,8 +104,8 @@ public partial class SportsChannelPicker : Window
             {
                 var logo = new ChannelLogo { Width = 80, Height = 64, Stretch = Stretch.Uniform, Margin = new(0, 0, 0, 10) };
                 logo.SetBinding(ChannelLogo.PathProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }); details.Children.Add(logo);
-                var remove = new Button { Content = "×", Padding = new(0), Margin = new(0), Width = 22, Height = 22, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, ToolTip = "Убрать канал с этого экрана" };
-                System.Windows.Automation.AutomationProperties.SetName(remove, $"Очистить экран {i + 1}");
+                var remove = new Button { Content = "×", Padding = new(0), Margin = new(0), Width = 22, Height = 22, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, ToolTip = L.T("Убрать канал с этого экрана") };
+                System.Windows.Automation.AutomationProperties.SetName(remove, L.F("Очистить экран {0}", i + 1));
                 remove.Click += (_, _) => { _layout.Remove(channel.Id); Limit.Visibility = Visibility.Collapsed; RefreshSelection(); }; content.Children.Add(remove);
                 details.Tag = channel.Id; details.Cursor = Cursors.Hand; details.Background = Brushes.Transparent;
                 details.PreviewMouseLeftButtonDown += Drag_Down; details.PreviewMouseMove += Drag_Move;
@@ -114,7 +115,7 @@ public partial class SportsChannelPicker : Window
                 var plus = new TextBlock { Text = "+", FontSize = 26, HorizontalAlignment = HorizontalAlignment.Center };
                 plus.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); details.Children.Add(plus);
             }
-            var name = new TextBlock { Text = channel?.Name ?? "Перетащите канал", FontSize = channel is not null ? 15 : 12, FontWeight = channel is not null ? FontWeights.SemiBold : FontWeights.Normal,
+            var name = new TextBlock { Text = channel?.Name ?? L.T("Перетащите канал"), FontSize = channel is not null ? 15 : 12, FontWeight = channel is not null ? FontWeights.SemiBold : FontWeights.Normal,
                 TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, MaxHeight = 60, TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = channel?.Name };
             name.SetResourceReference(TextBlock.ForegroundProperty, channel is not null ? "TextBrush" : "MutedBrush"); details.Children.Add(name);
             Grid.SetRow(slot, i / columns); Grid.SetColumn(slot, i % columns); Scheme.Children.Add(slot);
@@ -259,7 +260,7 @@ public partial class SportsChannelPicker : Window
     {
         if (_changing || _layout is null || ScreenCount.SelectedItem is not int size) return;
         Limit.Visibility = Visibility.Collapsed;
-        if (!_layout.Resize(size)) ShowHint("Сначала освободите последние экраны или перетащите их каналы в начало схемы.");
+        if (!_layout.Resize(size)) ShowHint(L.T("Сначала освободите последние экраны или перетащите их каналы в начало схемы."));
         RefreshSelection();
     }
     private void Reset_Click(object sender, RoutedEventArgs e) { _layout.Reset(); Limit.Visibility = Visibility.Collapsed; RefreshSelection(); }
@@ -271,7 +272,7 @@ public partial class SportsChannelPicker : Window
         if (_view is null) return;
         var query = Search.Text.Trim(); var group = Category.SelectedItem as string;
         _view.Filter = item => item is SportsChannelChoice choice &&
-            (group is null or "Все категории" || (group == "Избранное" ? choice.Channel.IsFavorite : choice.Channel.Group == group)) &&
+            (Category.SelectedIndex <= 0 || (Category.SelectedIndex == 1 ? choice.Channel.IsFavorite : choice.Channel.Group == group)) &&
             (query.Length == 0 || choice.Channel.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase));
         Empty.Visibility = _view.IsEmpty ? Visibility.Visible : Visibility.Collapsed;
         ChannelListScroll.ResetToTop(Channels);

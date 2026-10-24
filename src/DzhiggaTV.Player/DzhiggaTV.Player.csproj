@@ -10,4 +10,5 @@
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
   <ItemGroup><Compile Remove="SmokeTests/**/*.cs" /></ItemGroup>
+<ItemGroup><ProjectReference Include="../DzhiggaTV.Localization/DzhiggaTV.Localization.csproj" /></ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Net;
 
 namespace DzhiggaTV.Services;
@@ -19,15 +20,15 @@ internal sealed class RemoteFiles : IDisposable
         for (int redirects = 0; redirects < 8; redirects++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (uri.Scheme is not ("http" or "https")) throw new InvalidDataException("Поддерживаются только HTTP и HTTPS.");
+            if (uri.Scheme is not ("http" or "https")) throw new InvalidDataException(L.T("Поддерживаются только HTTP и HTTPS."));
             // EPG.ONE publishes public metadata and icons over HTTP, and its HTTPS entry point
             // redirects to that mirror. The exception is exact-host/default-port only: a redirect
             // must never grant a third party the mirror's HTTP permission.
             if (usedPublicHttp && !allowInsecureHttp && !IsPublicEpgOneServer(uri))
-                throw new RemoteFileException("Сервер EPG.ONE перенаправил запрос за пределы разрешённых публичных серверов.");
+                throw new RemoteFileException(L.T("Сервер EPG.ONE перенаправил запрос за пределы разрешённых публичных серверов."));
             if (uri.Scheme == "http" && !allowInsecureHttp && !IsPublicEpgOneServer(uri))
             {
-                if (redirects != 0) throw new RemoteFileException("Сторонний сервер требует незащищённый HTTP. Разрешите HTTP для сторонних источников EPG в настройках.");
+                if (redirects != 0) throw new RemoteFileException(L.T("Сторонний сервер требует незащищённый HTTP. Разрешите HTTP для сторонних источников EPG в настройках."));
                 uri = new UriBuilder(uri) { Scheme = "https", Port = -1 }.Uri;
             }
             usedPublicHttp |= uri.Scheme == "http" && !allowInsecureHttp;
@@ -38,27 +39,27 @@ internal sealed class RemoteFiles : IDisposable
             HttpResponseMessage response;
             try { response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, headerDeadline.Token).ConfigureAwait(false); }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            { throw new RemoteFileException($"Сервер EPG или логотипов ({uri.IdnHost}) не ответил за 30 секунд."); }
+            { throw new RemoteFileException(L.F("Сервер EPG или логотипов ({0}) не ответил за 30 секунд.", uri.IdnHost)); }
             catch (HttpRequestException exception)
-            { throw new RemoteFileException($"Не удалось подключиться к серверу EPG или логотипов ({uri.IdnHost}).", exception); }
+            { throw new RemoteFileException(L.F("Не удалось подключиться к серверу EPG или логотипов ({0}).", uri.IdnHost), exception); }
 
             // Injected clients should disable automatic redirects, as the owned client does.
             // Still check their final address so a rejected HTTP result cannot enter the cache.
             var finalUri = response.RequestMessage?.RequestUri ?? uri;
             if ((!allowInsecureHttp && finalUri.Scheme == "http" && !IsPublicEpgOneServer(finalUri))
                 || (usedPublicHttp && !allowInsecureHttp && !IsPublicEpgOneServer(finalUri)))
-            { response.Dispose(); throw new RemoteFileException("Сервер перенаправил запрос на неразрешённый адрес EPG или логотипов."); }
+            { response.Dispose(); throw new RemoteFileException(L.T("Сервер перенаправил запрос на неразрешённый адрес EPG или логотипов.")); }
             if (response.StatusCode is HttpStatusCode.MovedPermanently or HttpStatusCode.Redirect or HttpStatusCode.TemporaryRedirect or HttpStatusCode.PermanentRedirect or HttpStatusCode.SeeOther)
             {
                 var location = response.Headers.Location; response.Dispose();
-                if (location is null) throw new RemoteFileException("Сервер EPG или логотипов не указал адрес переадресации.");
+                if (location is null) throw new RemoteFileException(L.T("Сервер EPG или логотипов не указал адрес переадресации."));
                 uri = location.IsAbsoluteUri ? location : new Uri(uri, location);
                 continue;
             }
-            if (!response.IsSuccessStatusCode) { var code = (int)response.StatusCode; response.Dispose(); throw new RemoteFileException($"Сервер EPG или логотипов вернул HTTP {code}."); }
+            if (!response.IsSuccessStatusCode) { var code = (int)response.StatusCode; response.Dispose(); throw new RemoteFileException(L.F("Сервер EPG или логотипов вернул HTTP {0}.", code)); }
             return response;
         }
-        throw new RemoteFileException("Слишком много переадресаций EPG или логотипов.");
+        throw new RemoteFileException(L.T("Слишком много переадресаций EPG или логотипов."));
     }
 
     private static bool IsPublicEpgOneServer(Uri uri) => uri.Scheme is "http" or "https"

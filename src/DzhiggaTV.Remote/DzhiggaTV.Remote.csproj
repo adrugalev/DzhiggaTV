@@ -8,4 +8,5 @@
   <ItemGroup>
     <PackageReference Include="SharpCompress" Version="1.0.0" />
   </ItemGroup>
+<ItemGroup><ProjectReference Include="../DzhiggaTV.Localization/DzhiggaTV.Localization.csproj" /></ItemGroup>
 </Project>

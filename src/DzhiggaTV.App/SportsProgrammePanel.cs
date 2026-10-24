@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -32,15 +33,15 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
         _model = model;
         Margin = new(4); Padding = new(16); CornerRadius = new(8); BorderThickness = new(1);
         SetResourceReference(BackgroundProperty, "PanelBrush"); SetResourceReference(BorderBrushProperty, "BorderBrush");
-        System.Windows.Automation.AutomationProperties.SetName(this, "Телепрограмма канала со звуком");
+        System.Windows.Automation.AutomationProperties.SetName(this, L.T("Телепрограмма канала со звуком"));
         var root = new DockPanel(); Child = root;
         var header = new DockPanel { Margin = new(0, 0, 0, 14) }; DockPanel.SetDock(header, Dock.Top); root.Children.Add(header);
         DockPanel.SetDock(_logo, Dock.Left); header.Children.Add(_logo);
-        var heading = new StackPanel(); heading.Children.Add(Label("КАНАЛ СО ЗВУКОМ")); heading.Children.Add(_channel); header.Children.Add(heading);
-        _now.Children.Add(Label("СЕЙЧАС В ЭФИРЕ")); _now.Children.Add(_title); _time.Margin = new(0, 7, 0, 0); _now.Children.Add(_time); _now.Children.Add(_progress);
+        var heading = new StackPanel(); heading.Children.Add(Label(L.T("КАНАЛ СО ЗВУКОМ"))); heading.Children.Add(_channel); header.Children.Add(heading);
+        _now.Children.Add(Label(L.T("СЕЙЧАС В ЭФИРЕ"))); _now.Children.Add(_title); _time.Margin = new(0, 7, 0, 0); _now.Children.Add(_time); _now.Children.Add(_progress);
         _time.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         _nowScroll = Scroll(_now); _descriptionScroll = Scroll(_description);
-        var upcoming = new DockPanel(); var label = Label("ДАЛЕЕ"); DockPanel.SetDock(label, Dock.Top); upcoming.Children.Add(label);
+        var upcoming = new DockPanel(); var label = Label(L.T("ДАЛЕЕ")); DockPanel.SetDock(label, Dock.Top); upcoming.Children.Add(label);
         _upcomingScroll = Scroll(_upcoming); upcoming.Children.Add(_upcomingScroll);
         _reading.Children.Add(_nowScroll); _reading.Children.Add(_descriptionScroll); _reading.Children.Add(upcoming);
         for (int i = 0; i < 3; i++)
@@ -48,9 +49,9 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
             _reading.RowDefinitions.Add(new() { Height = i == 2 ? new GridLength(1, GridUnitType.Star) : GridLength.Auto });
             var section = (FrameworkElement)_reading.Children[i]; Grid.SetRow(section, i); section.Margin = new(0, i == 0 ? 0 : 14, 0, 0);
         }
-        _cards = [new("СЕЙЧАС В ЭФИРЕ", "MultiscreenCurrentCard", "Нет телепрограммы на это время", true),
-            new("ДАЛЕЕ", "MultiscreenNextCard", "Нет данных о следующей передаче"),
-            new("ЗАТЕМ", "MultiscreenAfterNextCard", "Дальнейшая программа пока недоступна")];
+        _cards = [new(L.T("СЕЙЧАС В ЭФИРЕ"), "MultiscreenCurrentCard", L.T("Нет телепрограммы на это время"), true),
+            new(L.T("ДАЛЕЕ"), "MultiscreenNextCard", L.T("Нет данных о следующей передаче")),
+            new(L.T("ЗАТЕМ"), "MultiscreenAfterNextCard", L.T("Дальнейшая программа пока недоступна"))];
         for (int i = 0; i < _cards.Length; i++)
         {
             _compact.ColumnDefinitions.Add(new()); Grid.SetColumn(_cards[i], i); _cards[i].Margin = new(i == 0 ? 0 : 8, 0, 0, 0); _compact.Children.Add(_cards[i]);
@@ -93,8 +94,8 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
             if (channel is not null) _logo.SetBinding(ChannelLogo.PathProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }); else _logo.Path = null;
             _channelId = channel?.Id; _epgId = epgId; _upcomingScroll.ScrollToTop();
         }
-        _channel.Text = channel?.Name ?? "Канал не выбран";
-        _title.Text = channel?.Current?.Title ?? "Нет телепрограммы на это время";
+        _channel.Text = channel?.Name ?? L.T("Канал не выбран");
+        _title.Text = channel?.Current?.Title ?? L.T("Нет телепрограммы на это время");
         _time.Text = Time(channel?.Current);
         _progress.Value = channel?.Current is { } current && current.End > current.Start
             ? Math.Clamp((DateTimeOffset.Now - current.Start).TotalSeconds / (current.End - current.Start).TotalSeconds * 100, 0, 100) : 0;
@@ -141,7 +142,7 @@ internal sealed class SportsProgrammePanel : Border, IDisposable
         }
         if (rows.Length == 0)
         {
-            var empty = Text(12); empty.Text = "Нет данных о следующих передачах"; empty.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); _upcoming.Children.Add(empty);
+            var empty = Text(12); empty.Text = L.T("Нет данных о следующих передачах"); empty.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); _upcoming.Children.Add(empty);
         }
     }
     public void Dispose() { _disposed = true; _preview.Hide(); _generation++; _query?.Cancel(); _query?.Dispose(); }

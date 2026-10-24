@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Text;
 
 namespace DzhiggaTV.Core;
@@ -9,9 +10,9 @@ public sealed record ArchiveProbeResult(ArchiveAvailability Availability)
     public bool Unavailable => Availability is ArchiveAvailability.Empty or ArchiveAvailability.Missing or ArchiveAvailability.Denied;
     public string Message => Availability switch
     {
-        ArchiveAvailability.Empty => "Провайдер вернул пустой архив за выбранное время. Запись могла ещё не появиться или отсутствовать. Попробуйте более раннее время.",
-        ArchiveAvailability.Missing => "Провайдер не нашёл запись за выбранное время. Заявленная глубина архива не гарантирует наличие каждой передачи.",
-        ArchiveAvailability.Denied => "Провайдер отклонил запрос архива. Проверьте доступность записи и лимит подключений.",
+        ArchiveAvailability.Empty => L.T("Провайдер вернул пустой архив за выбранное время. Запись могла ещё не появиться или отсутствовать. Попробуйте более раннее время."),
+        ArchiveAvailability.Missing => L.T("Провайдер не нашёл запись за выбранное время. Заявленная глубина архива не гарантирует наличие каждой передачи."),
+        ArchiveAvailability.Denied => L.T("Провайдер отклонил запрос архива. Проверьте доступность записи и лимит подключений."),
         _ => ""
     };
 }

@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Text.RegularExpressions;
 
 namespace DzhiggaTV.Services;
@@ -11,7 +12,7 @@ public static partial class ReferencePlaylistParser
         var result = new List<ReferenceChannel>();
         while (await reader.ReadLineAsync(cancellationToken).ConfigureAwait(false) is { } line)
         {
-            if (line.Length > 1024 * 1024) throw new InvalidDataException("Слишком длинная строка каталога EPG.");
+            if (line.Length > 1024 * 1024) throw new InvalidDataException(L.T("Слишком длинная строка каталога EPG."));
             if (!line.StartsWith("#EXTINF:", StringComparison.OrdinalIgnoreCase)) continue;
             bool quoted = false; char quote = '\0'; int comma = -1;
             for (int i = 8; i < line.Length; i++) { if (line[i] is '\'' or '"') { if (!quoted) { quoted = true; quote = line[i]; } else if (line[i] == quote) quoted = false; } else if (line[i] == ',' && !quoted) { comma = i; break; } }

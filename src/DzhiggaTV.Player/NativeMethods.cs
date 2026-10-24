@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Reflection;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -21,7 +22,7 @@ internal static class NativeMethods
                 if (NativeLibrary.TryLoad(candidate, assembly, DllImportSearchPath.UseDllDirectoryForDependencies | DllImportSearchPath.SafeDirectories, out var handle))
                     return handle;
             }
-        throw new DllNotFoundException("Не найдена 64-разрядная библиотека libmpv. Поместите mpv-2.dll в папку native рядом с DzhiggaTV.exe.");
+        throw new DllNotFoundException(L.T("Не найдена 64-разрядная библиотека libmpv. Поместите mpv-2.dll в папку native рядом с DzhiggaTV.exe."));
     }
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern IntPtr mpv_create();

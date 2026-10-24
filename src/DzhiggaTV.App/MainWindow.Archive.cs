@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using DzhiggaTV.Core;
 using DzhiggaTV.Player;
 using DzhiggaTV.Services;
@@ -76,7 +77,7 @@ public partial class MainWindow
     {
         if (!_engineReady || !Model.IsAllowed(channel)) return;
         if (!Catchup.CanPlay(channel.Channel, programme, DateTimeOffset.Now))
-            throw new InvalidOperationException("Эта передача недоступна в архиве канала.");
+            throw new InvalidOperationException(L.T("Эта передача недоступна в архиве канала."));
         await StartArchiveAsync(channel, programme, programme.Start);
     }
 
@@ -86,7 +87,7 @@ public partial class MainWindow
     {
         if (!_engineReady || !Model.IsAllowed(channel)) return;
         var now = DateTimeOffset.Now;
-        if (channel.Archive is not { } source || !source.Contains(time, now)) throw new InvalidOperationException("Выбранное время недоступно в архиве канала.");
+        if (channel.Archive is not { } source || !source.Contains(time, now)) throw new InvalidOperationException(L.T("Выбранное время недоступно в архиве канала."));
         var lookupGeneration = ++_playGeneration;
         Programme? programme = null;
         var mapping = Model.EpgFor(channel.Id);
@@ -125,7 +126,7 @@ public partial class MainWindow
         if (start < programme.Start || start >= programme.End) programme = ArchivePlaceholder(mapping?.EpgId ?? channel.Id, start, now, schedule?.Next);
         _archivePlayback = new(channel, programme, start, end, mapping?.EpgId) { EpgRevision = Model.EpgTimeRevision };
         Model.SetArchiveProgramme(programme, schedule?.Next, schedule?.AfterNext, continuing);
-        HasPlayback = true; Model.PlaybackStatus = "Открываем архив…"; _overlay?.RefreshState();
+        HasPlayback = true; Model.PlaybackStatus = L.T("Открываем архив…"); _overlay?.RefreshState();
         await Player.PlayArchiveAsync(url, (end - start).TotalSeconds, token, position =>
         {
             var resume = start.AddSeconds(position);
@@ -142,7 +143,7 @@ public partial class MainWindow
         if (next is not null && next.Start > time && next.Start < end) end = next.Start;
         if (end > now) end = now;
         if (end <= time) end = time.AddSeconds(1);
-        return new(epgId, "Архив · " + time.ToLocalTime().ToString("dd.MM HH:mm"), time, end);
+        return new(epgId, L.T("Архив · ") + time.ToLocalTime().ToString("dd.MM HH:mm"), time, end);
     }
 
     private void RefreshArchiveProgramme(ArchivePlayback archive, DateTimeOffset position)

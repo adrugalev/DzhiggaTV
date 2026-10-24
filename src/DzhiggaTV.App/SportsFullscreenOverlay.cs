@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -26,7 +27,7 @@ internal sealed class SportsFullscreenOverlay : Window
         _owner = owner; _channel = channel; Owner = owner;
         WindowStyle = WindowStyle.None; AllowsTransparency = true; Background = System.Windows.Media.Brushes.Transparent;
         ResizeMode = ResizeMode.NoResize; ShowInTaskbar = false; ShowActivated = false; SizeToContent = SizeToContent.Height;
-        Title = "DzhiggaTV · Описание передачи"; FontFamily = owner.FontFamily; SetResourceReference(ForegroundProperty, "TextBrush");
+        Title = L.T("DzhiggaTV · Описание передачи"); FontFamily = owner.FontFamily; SetResourceReference(ForegroundProperty, "TextBrush");
         var content = new Grid(); content.RowDefinitions.Add(new() { Height = GridLength.Auto }); content.RowDefinitions.Add(new()); content.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var heading = new StackPanel(); var channelName = new TextBlock { Text = channel.Name, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis };
         channelName.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); heading.Children.Add(channelName); heading.Children.Add(_title); heading.Children.Add(_time);

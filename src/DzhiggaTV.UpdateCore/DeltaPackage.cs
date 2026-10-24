@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -23,7 +24,7 @@ public static class DeltaPackage
     public static Version VersionOf(string value)
     {
         if (!System.Text.RegularExpressions.Regex.IsMatch(value ?? "", @"^\d+\.\d+\.\d+(?:\.\d+)?$") || !Version.TryParse(value, out var version))
-            throw new InstallException("Неверная версия пакета обновления.");
+            throw new InstallException(L.T("Неверная версия пакета обновления."));
         return new(version.Major, version.Minor, Math.Max(0, version.Build), Math.Max(0, version.Revision));
     }
 
@@ -56,7 +57,7 @@ public static class DeltaPackage
 
     public static async Task<ReleaseManifest> ReadManifestAsync(string path, CancellationToken token = default)
     {
-        if (new FileInfo(path).Length > MaximumManifest) throw new InstallException("Слишком большой манифест обновления.");
+        if (new FileInfo(path).Length > MaximumManifest) throw new InstallException(L.T("Слишком большой манифест обновления."));
         var manifest = JsonSerializer.Deserialize<ReleaseManifest>(await File.ReadAllTextAsync(path, token), Json);
         Validate(manifest); return manifest!;
     }
@@ -76,7 +77,7 @@ public static class DeltaPackage
     {
         targetDirectory = Path.GetFullPath(targetDirectory);
         Validate(baseline); Validate(target);
-        if (VersionOf(baseline.Version) >= VersionOf(target.Version)) throw new InstallException("База дельта-пакета должна быть старше нового выпуска.");
+        if (VersionOf(baseline.Version) >= VersionOf(target.Version)) throw new InstallException(L.T("База дельта-пакета должна быть старше нового выпуска."));
         var old = baseline.Files.ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
         var included = target.Files.Where(f => !old.TryGetValue(f.Path, out var previous) || previous.Length != f.Length || previous.Sha256 != f.Sha256).ToList();
         string partial = output + ".part";
@@ -109,15 +110,15 @@ public static class DeltaPackage
         try
         {
             using var archive = ZipFile.OpenRead(package);
-            if (archive.Entries.Count is 0 or > 5001) throw new InstallException("Неверное число файлов в дельта-пакете.");
+            if (archive.Entries.Count is 0 or > 5001) throw new InstallException(L.T("Неверное число файлов в дельта-пакете."));
             var entries = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
             foreach (var entry in archive.Entries)
             {
                 if (entry.FullName.Contains('\\') || InstallEngine.ValidateRelative(entry.FullName) != entry.FullName ||
                     !entries.TryAdd(entry.FullName, entry) || (entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0 || ((entry.ExternalAttributes >> 16) & 0xf000) == 0xa000)
-                    throw new InstallException("Дельта-пакет содержит недопустимый путь или ссылку.");
+                    throw new InstallException(L.T("Дельта-пакет содержит недопустимый путь или ссылку."));
             }
-            if (!entries.TryGetValue("manifest.json", out var metadata) || metadata.Length > MaximumManifest) throw new InstallException("В дельта-пакете отсутствует манифест.");
+            if (!entries.TryGetValue("manifest.json", out var metadata) || metadata.Length > MaximumManifest) throw new InstallException(L.T("В дельта-пакете отсутствует манифест."));
             DeltaManifest? delta;
             await using (var input = metadata.Open())
             {
@@ -126,14 +127,14 @@ public static class DeltaPackage
                 delta = JsonSerializer.Deserialize<DeltaManifest>(bounded.ToArray(), Json);
             }
             Validate(delta?.Target);
-            if (delta!.IncludedFiles is null || VersionOf(delta.Target.Version) != expectedVersion) throw new InstallException("Дельта-пакет относится к другому выпуску.");
+            if (delta!.IncludedFiles is null || VersionOf(delta.Target.Version) != expectedVersion) throw new InstallException(L.T("Дельта-пакет относится к другому выпуску."));
             var included = new HashSet<string>(delta.IncludedFiles, StringComparer.OrdinalIgnoreCase);
             var all = delta.Target.Files.ToDictionary(f => f.Path, StringComparer.OrdinalIgnoreCase);
             if (included.Count != delta.IncludedFiles.Count || included.Any(p => !all.ContainsKey(p)) || entries.Count != included.Count + 1)
-                throw new InstallException("Состав дельта-пакета не совпадает с манифестом.");
+                throw new InstallException(L.T("Состав дельта-пакета не совпадает с манифестом."));
             foreach (string path in included)
                 if (!entries.TryGetValue("files/" + path, out var entry) || entry.Length != all[path].Length)
-                    throw new InstallException("Неверный размер файла в дельта-пакете.");
+                    throw new InstallException(L.T("Неверный размер файла в дельта-пакете."));
             long total = delta.Target.Files.Sum(f => f.Length), completed = 0;
             await using (var stream = new FileStream(partial, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None))
             using (var result = new ZipArchive(stream, ZipArchiveMode.Create, true))
@@ -152,7 +153,7 @@ public static class DeltaPackage
                     await using (var entry = result.CreateEntry(file.Path, CompressionLevel.NoCompression).Open())
                         await CopyVerifiedAsync(input, entry, file, token);
                     completed += file.Length;
-                    progress?.Report(new(total == 0 ? 100 : completed * 100d / total, "Подготовка обновления…"));
+                    progress?.Report(new(total == 0 ? 100 : completed * 100d / total, L.T("Подготовка обновления…")));
                 }
             }
             await using var finished = File.OpenRead(partial);
@@ -167,7 +168,7 @@ public static class DeltaPackage
     private static void Validate(ReleaseManifest? manifest)
     {
         if (manifest is null || manifest.FormatVersion != 1 || manifest.ProductId != Product || manifest.Files is null || manifest.Files.Count is 0 or > 5000)
-            throw new InstallException("Неверный манифест обновления.");
+            throw new InstallException(L.T("Неверный манифест обновления."));
         _ = VersionOf(manifest.Version);
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase); long total = 0;
         foreach (var file in manifest.Files)
@@ -176,12 +177,12 @@ public static class DeltaPackage
                 file.Path.Equals(".dzhiggatv-install.json", StringComparison.OrdinalIgnoreCase) || file.Path.Equals("Удаление DzhiggaTV.txt", StringComparison.OrdinalIgnoreCase) ||
                 !names.Add(file.Path) || file.Length is < 0 or > 512L * 1024 * 1024 ||
                 file.Sha256 is not { Length: 64 } || file.Sha256.Any(c => !Uri.IsHexDigit(c)) || (total += file.Length) > MaximumBytes)
-                throw new InstallException("Недопустимый файл в манифесте обновления.");
+                throw new InstallException(L.T("Недопустимый файл в манифесте обновления."));
         }
         foreach (string name in names)
             for (int slash = name.LastIndexOf('/'); slash >= 0; slash = name.LastIndexOf('/', slash - 1))
-                if (names.Contains(name[..slash])) throw new InstallException("Конфликт файла и папки в обновлении.");
-        if (!manifest.Files.Any(f => f.Path == "DzhiggaTV.exe" && f.Length > 0)) throw new InstallException("В обновлении отсутствует DzhiggaTV.exe.");
+                if (names.Contains(name[..slash])) throw new InstallException(L.T("Конфликт файла и папки в обновлении."));
+        if (!manifest.Files.Any(f => f.Path == "DzhiggaTV.exe" && f.Length > 0)) throw new InstallException(L.T("В обновлении отсутствует DzhiggaTV.exe."));
     }
 
     private static async Task CopyVerifiedAsync(Stream input, Stream output, ReleaseFile file, CancellationToken token)
@@ -191,16 +192,16 @@ public static class DeltaPackage
         while ((count = await input.ReadAsync(buffer, token)) != 0)
         {
             length += count;
-            if (length > file.Length) throw new InstallException("Размер файла обновления не совпадает с манифестом.");
+            if (length > file.Length) throw new InstallException(L.T("Размер файла обновления не совпадает с манифестом."));
             hash.AppendData(buffer, 0, count); await output.WriteAsync(buffer.AsMemory(0, count), token);
         }
         if (length != file.Length || !Convert.ToHexStringLower(hash.GetHashAndReset()).Equals(file.Sha256, StringComparison.OrdinalIgnoreCase))
-            throw new InstallException("Файл обновления или установленная копия не прошли проверку. Нужен полный установщик.");
+            throw new InstallException(L.T("Файл обновления или установленная копия не прошли проверку. Нужен полный установщик."));
     }
     private static async Task CopyBoundedAsync(Stream input, Stream output, int maximum, CancellationToken token)
     {
         byte[] buffer = new byte[8192]; int count;
         while ((count = await input.ReadAsync(buffer, token)) != 0)
-        { if (output.Length + count > maximum) throw new InstallException("Слишком большой манифест обновления."); await output.WriteAsync(buffer.AsMemory(0, count), token); }
+        { if (output.Length + count > maximum) throw new InstallException(L.T("Слишком большой манифест обновления.")); await output.WriteAsync(buffer.AsMemory(0, count), token); }
     }
 }

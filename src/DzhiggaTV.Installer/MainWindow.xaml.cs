@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -17,12 +18,12 @@ public partial class MainWindow : Window
         WindowAppearance.Attach(this);
         DestinationText.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "DzhiggaTV");
         using var archive = App.OpenArchive();
-        if (archive == null) { InstallButton.IsEnabled = false; StatusText.Text = "В этой сборке отсутствует установочный архив."; }
-        Closing += (_, e) => { if (_working) { _cancellation?.Cancel(); StatusText.Text = "Завершение текущей операции…"; e.Cancel = true; } };
+        if (archive == null) { InstallButton.IsEnabled = false; StatusText.Text = L.T("В этой сборке отсутствует установочный архив."); }
+        Closing += (_, e) => { if (_working) { _cancellation?.Cancel(); StatusText.Text = L.T("Завершение текущей операции…"); e.Cancel = true; } };
     }
     private void Browse_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Папка установки DzhiggaTV" };
+        var dialog = new OpenFolderDialog { Title = L.T("Папка установки DzhiggaTV") };
         if (dialog.ShowDialog(this) == true) DestinationText.Text = string.Equals(Path.GetFileName(dialog.FolderName.TrimEnd(Path.DirectorySeparatorChar)), "DzhiggaTV", StringComparison.OrdinalIgnoreCase) ? dialog.FolderName : Path.Combine(dialog.FolderName, "DzhiggaTV");
     }
     private void Cancel_Click(object sender, RoutedEventArgs e) { if (_working) _cancellation?.Cancel(); else Close(); }
@@ -31,29 +32,29 @@ public partial class MainWindow : Window
         if (_installed)
         {
             try { Process.Start(new ProcessStartInfo(Path.Combine(_installedPath!, "DzhiggaTV.exe")) { UseShellExecute = true, WorkingDirectory = _installedPath }); Close(); }
-            catch { StatusText.Text = "Не удалось запустить плеер. Откройте DzhiggaTV.exe из папки установки."; }
+            catch { StatusText.Text = L.T("Не удалось запустить плеер. Откройте DzhiggaTV.exe из папки установки."); }
             return;
         }
-        _working = true; SetEnabled(false); CancelButton.Content = "Отмена";
+        _working = true; SetEnabled(false); CancelButton.Content = L.T("Отмена");
         _cancellation = new();
         try
         {
-            using var archive = App.OpenArchive() ?? throw new InstallException("В этой сборке отсутствует установочный архив.");
+            using var archive = App.OpenArchive() ?? throw new InstallException(L.T("В этой сборке отсутствует установочный архив."));
             var progress = new Progress<InstallProgress>(p => { Progress.Value = p.Percent; StatusText.Text = p.Message; });
             var result = await InstallEngine.InstallAsync(archive, DestinationText.Text, progress, _cancellation.Token);
             var warnings = new List<string>();
             if (StartMenuCheck.IsChecked == true) TryShortcut(Environment.SpecialFolder.Programs, result.Directory, warnings);
             if (DesktopCheck.IsChecked == true) TryShortcut(Environment.SpecialFolder.DesktopDirectory, result.Directory, warnings);
             _installed = true; _installedPath = result.Directory; Progress.Value = 100;
-            StatusText.Text = "DzhiggaTV установлен. Инструкция по удалению находится в папке приложения.";
-            if (warnings.Count > 0) StatusText.Text += " Ярлык создать не удалось; запустите DzhiggaTV.exe из папки установки.";
-            if (result.PreviousVersionBackup != null) StatusText.Text += " Предыдущая версия сохранена рядом с папкой приложения.";
-            InstallButton.Content = "Запустить";
+            StatusText.Text = L.T("DzhiggaTV установлен. Инструкция по удалению находится в папке приложения.");
+            if (warnings.Count > 0) StatusText.Text += L.T(" Ярлык создать не удалось; запустите DzhiggaTV.exe из папки установки.");
+            if (result.PreviousVersionBackup != null) StatusText.Text += L.T(" Предыдущая версия сохранена рядом с папкой приложения.");
+            InstallButton.Content = L.T("Запустить");
         }
-        catch (OperationCanceledException) { StatusText.Text = "Установка отменена."; Progress.Value = 0; }
+        catch (OperationCanceledException) { StatusText.Text = L.T("Установка отменена."); Progress.Value = 0; }
         catch (InstallException ex) { StatusText.Text = ex.Message; }
-        catch { StatusText.Text = "Не удалось завершить установку. Закройте DzhiggaTV и выберите доступную папку."; }
-        finally { _working = false; _cancellation.Dispose(); _cancellation = null; SetEnabled(true); CancelButton.Content = "Закрыть"; }
+        catch { StatusText.Text = L.T("Не удалось завершить установку. Закройте DzhiggaTV и выберите доступную папку."); }
+        finally { _working = false; _cancellation.Dispose(); _cancellation = null; SetEnabled(true); CancelButton.Content = L.T("Закрыть"); }
     }
     private void SetEnabled(bool enabled)
     {

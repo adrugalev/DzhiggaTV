@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -48,7 +49,7 @@ public sealed class GitHubUpdateService : IDisposable
 
     public async Task<AppRelease?> CheckAsync(CancellationToken cancellationToken = default)
     {
-        if (DateTimeOffset.UtcNow < _retryAfter) throw new UpdateException("GitHub временно ограничил проверки. Попробуйте позже.");
+        if (DateTimeOffset.UtcNow < _retryAfter) throw new UpdateException(L.T("GitHub временно ограничил проверки. Попробуйте позже."));
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(20));
         using var request = new HttpRequestMessage(HttpMethod.Get, Latest);
@@ -59,9 +60,9 @@ public sealed class GitHubUpdateService : IDisposable
         if (response.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.TooManyRequests)
         {
             _retryAfter = DateTimeOffset.UtcNow.AddHours(1);
-            throw new UpdateException("GitHub временно ограничил проверки. Попробуйте позже.");
+            throw new UpdateException(L.T("GitHub временно ограничил проверки. Попробуйте позже."));
         }
-        if (!response.IsSuccessStatusCode) throw new UpdateException("Не удалось проверить обновления. Попробуйте позже.");
+        if (!response.IsSuccessStatusCode) throw new UpdateException(L.T("Не удалось проверить обновления. Попробуйте позже."));
         var json = Encoding.UTF8.GetString(await ReadLimitedAsync(response.Content, 1024 * 1024, timeout.Token).ConfigureAwait(false));
         var release = ParseRelease(json);
         _cached = release; _etag = response.Headers.ETag?.ToString();
@@ -84,7 +85,7 @@ public sealed class GitHubUpdateService : IDisposable
         if (asset.ValueKind == JsonValueKind.Undefined) return null;
         string name = Text(asset, "name")!;
         if (!asset.TryGetProperty("size", out var sizeValue) || !sizeValue.TryGetInt64(out var size) || size is <= 0 or > MaximumInstallerSize)
-            throw new UpdateException("Установщик в выпуске имеет недопустимый размер.");
+            throw new UpdateException(L.T("Установщик в выпуске имеет недопустимый размер."));
         var download = AssetUri(Text(asset, "browser_download_url"), tag, name);
         var digest = Text(asset, "digest");
         string? hash = digest is not null && Regex.IsMatch(digest, "^sha256:[0-9a-fA-F]{64}$") ? digest[7..].ToLowerInvariant() : null;
@@ -92,8 +93,8 @@ public sealed class GitHubUpdateService : IDisposable
         foreach (var candidate in assets.EnumerateArray())
             if (Text(candidate, "name") == name + ".sha256" && Text(candidate, "state") == "uploaded")
             { checksum = AssetUri(Text(candidate, "browser_download_url"), tag, name + ".sha256"); break; }
-        if (hash is null && checksum is null) throw new UpdateException("Для обновления нужна контрольная сумма установщика. Она ещё не опубликована.");
-        string notes = Text(root, "body") ?? "Описание изменений пока не добавлено.";
+        if (hash is null && checksum is null) throw new UpdateException(L.T("Для обновления нужна контрольная сумма установщика. Она ещё не опубликована."));
+        string notes = Text(root, "body") ?? L.T("Описание изменений пока не добавлено.");
         if (notes.Length > 64000) notes = notes[..64000] + "\n…";
         UpdateAsset? delta = null;
         // Optional optimization: a malformed delta must never hide a valid full installer.
@@ -117,7 +118,7 @@ public sealed class GitHubUpdateService : IDisposable
 
     public Task<string> DownloadDeltaAsync(AppRelease release, string cacheDirectory, IProgress<UpdateDownloadProgress>? progress, CancellationToken token)
     {
-        var delta = release.Delta ?? throw new UpdateException("Пакет изменений отсутствует.");
+        var delta = release.Delta ?? throw new UpdateException(L.T("Пакет изменений отсутствует."));
         return DownloadAsync(release with { AssetName = delta.Name, Download = delta.Download, Size = delta.Size, Sha256 = delta.Sha256, ChecksumDownload = delta.ChecksumDownload, Delta = null }, cacheDirectory, progress, token);
     }
 
@@ -125,8 +126,8 @@ public sealed class GitHubUpdateService : IDisposable
     {
         _ = AssetUri(release.Download.AbsoluteUri, release.Tag, release.AssetName);
         if (release.AssetName != InstallerName && release.AssetName != DeltaName && release.AssetName != $"DzhiggaTV-{release.Tag.TrimStart('v', 'V')}-Setup-x64.exe")
-            throw new UpdateException("Недопустимое имя пакета обновления.");
-        if (release.Size is <= 0 or > MaximumInstallerSize) throw new UpdateException("Недопустимый размер обновления.");
+            throw new UpdateException(L.T("Недопустимое имя пакета обновления."));
+        if (release.Size is <= 0 or > MaximumInstallerSize) throw new UpdateException(L.T("Недопустимый размер обновления."));
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(20));
         var token = timeout.Token;
@@ -139,7 +140,7 @@ public sealed class GitHubUpdateService : IDisposable
             var match = Regex.Match(checksumText.Trim(), @"^([a-fA-F0-9]{64})\s+\*?" + Regex.Escape(release.AssetName) + @"$");
             if (match.Success) expected = match.Groups[1].Value;
         }
-        if (expected is null || !Regex.IsMatch(expected, "^[0-9a-fA-F]{64}$")) throw new UpdateException("Не удалось проверить контрольную сумму обновления.");
+        if (expected is null || !Regex.IsMatch(expected, "^[0-9a-fA-F]{64}$")) throw new UpdateException(L.T("Не удалось проверить контрольную сумму обновления."));
         string directory = Path.Combine(Path.GetFullPath(cacheDirectory), release.Version.ToString(4));
         Directory.CreateDirectory(directory);
         string final = Path.Combine(directory, release.AssetName), partial = final + ".part";
@@ -148,7 +149,7 @@ public sealed class GitHubUpdateService : IDisposable
         try
         {
             using var response = await GetAssetAsync(release.Download, token).ConfigureAwait(false);
-            if (response.Content.Headers.ContentLength is { } length && length != release.Size) throw new UpdateException("Размер обновления не совпадает с опубликованным.");
+            if (response.Content.Headers.ContentLength is { } length && length != release.Size) throw new UpdateException(L.T("Размер обновления не совпадает с опубликованным."));
             await using var input = await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             long received = 0, reported = -1024 * 1024;
@@ -158,13 +159,13 @@ public sealed class GitHubUpdateService : IDisposable
                 while ((count = await input.ReadAsync(buffer, token).ConfigureAwait(false)) > 0)
                 {
                     received += count;
-                    if (received > release.Size) throw new UpdateException("Размер обновления превышает опубликованный.");
+                    if (received > release.Size) throw new UpdateException(L.T("Размер обновления превышает опубликованный."));
                     await output.WriteAsync(buffer.AsMemory(0, count), token).ConfigureAwait(false); hash.AppendData(buffer, 0, count);
                     if (received - reported >= 1024 * 1024) { progress?.Report(new(received, release.Size)); reported = received; }
                 }
             }
             if (received != release.Size || !Convert.ToHexString(hash.GetHashAndReset()).Equals(expected, StringComparison.OrdinalIgnoreCase))
-                throw new UpdateException("Файл обновления повреждён. Повторите загрузку.");
+                throw new UpdateException(L.T("Файл обновления повреждён. Повторите загрузку."));
             File.Move(partial, final, true); progress?.Report(new(received, release.Size)); return final;
         }
         finally { if (File.Exists(partial)) File.Delete(partial); }
@@ -174,22 +175,22 @@ public sealed class GitHubUpdateService : IDisposable
     {
         for (int redirects = 0; redirects <= 5; redirects++)
         {
-            if (!IsDownloadHost(uri)) throw new UpdateException("GitHub вернул недопустимый адрес обновления.");
+            if (!IsDownloadHost(uri)) throw new UpdateException(L.T("GitHub вернул недопустимый адрес обновления."));
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Accept.Clear(); request.Headers.Accept.Add(new("application/octet-stream"));
             var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
             // Also validate injected handlers' final URI, without relying on automatic redirects.
-            if (response.RequestMessage?.RequestUri is { } actual && !IsDownloadHost(actual)) { response.Dispose(); throw new UpdateException("Недопустимое перенаправление обновления."); }
+            if (response.RequestMessage?.RequestUri is { } actual && !IsDownloadHost(actual)) { response.Dispose(); throw new UpdateException(L.T("Недопустимое перенаправление обновления.")); }
             if ((int)response.StatusCode is 301 or 302 or 303 or 307 or 308)
             {
                 var location = response.Headers.Location; response.Dispose();
-                if (location is null) throw new UpdateException("GitHub не вернул адрес загрузки.");
+                if (location is null) throw new UpdateException(L.T("GitHub не вернул адрес загрузки."));
                 uri = location.IsAbsoluteUri ? location : new Uri(uri, location); continue;
             }
-            if (!response.IsSuccessStatusCode) { response.Dispose(); throw new UpdateException("Не удалось скачать обновление. Попробуйте ещё раз."); }
+            if (!response.IsSuccessStatusCode) { response.Dispose(); throw new UpdateException(L.T("Не удалось скачать обновление. Попробуйте ещё раз.")); }
             return response;
         }
-        throw new UpdateException("Слишком много перенаправлений при загрузке обновления.");
+        throw new UpdateException(L.T("Слишком много перенаправлений при загрузке обновления."));
     }
 
     private static bool IsDownloadHost(Uri uri) => uri.IsAbsoluteUri && uri.Scheme == "https" && uri.Port == 443 && string.IsNullOrEmpty(uri.UserInfo) &&
@@ -198,17 +199,17 @@ public sealed class GitHubUpdateService : IDisposable
     {
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || !IsDownloadHost(uri) || uri.Host != "github.com" ||
             !uri.AbsolutePath.Equals($"/{Repository}/releases/download/{Uri.EscapeDataString(tag)}/{Uri.EscapeDataString(name)}", StringComparison.Ordinal) || !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
-            throw new UpdateException("Адрес установщика не принадлежит выпуску DzhiggaTV.");
+            throw new UpdateException(L.T("Адрес установщика не принадлежит выпуску DzhiggaTV."));
         return uri;
     }
     private static string? Text(JsonElement element, string name) => element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
     private static async Task<byte[]> ReadLimitedAsync(HttpContent content, int maximum, CancellationToken token)
     {
-        if (content.Headers.ContentLength > maximum) throw new UpdateException("Ответ сервера обновлений слишком большой.");
+        if (content.Headers.ContentLength > maximum) throw new UpdateException(L.T("Ответ сервера обновлений слишком большой."));
         using var output = new MemoryStream(); await using var input = await content.ReadAsStreamAsync(token).ConfigureAwait(false);
         byte[] buffer = new byte[8192]; int count;
         while ((count = await input.ReadAsync(buffer, token).ConfigureAwait(false)) > 0)
-        { if (output.Length + count > maximum) throw new UpdateException("Ответ сервера обновлений слишком большой."); await output.WriteAsync(buffer.AsMemory(0, count), token).ConfigureAwait(false); }
+        { if (output.Length + count > maximum) throw new UpdateException(L.T("Ответ сервера обновлений слишком большой.")); await output.WriteAsync(buffer.AsMemory(0, count), token).ConfigureAwait(false); }
         return output.ToArray();
     }
     private static async Task<bool> HasHashAsync(string path, string expected, CancellationToken token)

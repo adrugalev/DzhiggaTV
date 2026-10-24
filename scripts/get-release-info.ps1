@@ -5,7 +5,7 @@ $releaseInfoVersion = [string]$releaseInfoXml.Project.PropertyGroup.Version
 if ($releaseInfoVersion -notmatch '^\d+\.\d+\.\d+(?:\.\d+)?$') { throw 'Нужна числовая версия вида 1.0.14 в Directory.Build.props.' }
 $null = [version]$releaseInfoVersion
 $releaseInfoNotes = Get-Content -LiteralPath (Join-Path $releaseInfoRoot 'src\DzhiggaTV.App\ReleaseNotesWindow.cs') -Raw
-$releaseInfoPattern = '(?m)^\s*\("' + [regex]::Escape($releaseInfoVersion) + '",\s*("(?:[^"\\]|\\.)*")\),?\s*$'
+$releaseInfoPattern = '(?m)^\s*\("' + [regex]::Escape($releaseInfoVersion) + '",\s*(?:L\.T\()?\s*("(?:[^"\\]|\\.)*")\)?\),?\s*$'
 $releaseInfoMatch = [regex]::Match($releaseInfoNotes, $releaseInfoPattern)
 if (!$releaseInfoMatch.Success) { throw "Добавьте описание версии $releaseInfoVersion в ReleaseNotesWindow.cs перед выпуском." }
 $releaseInfoSummary = ConvertFrom-Json -InputObject $releaseInfoMatch.Groups[1].Value

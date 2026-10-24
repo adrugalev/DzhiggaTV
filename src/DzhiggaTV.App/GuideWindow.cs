@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,10 +23,10 @@ public sealed class GuideWindow : Window
     private readonly ListBox _rows = new() { Padding = new(0), BorderThickness = new(0) };
     private readonly DatePicker _date = new() { Width = 132, Height = 34, FontSize = 12, SelectedDateFormat = DatePickerFormat.Short, Margin = new(4, 0, 4, 0) };
     private readonly TextBox _search = new() { Height = 34, FontSize = 12, Padding = new(30, 7, 29, 6), MaxLength = 128 };
-    private readonly TextBlock _searchHint = new() { Text = "Канал или передача", FontSize = 12, Margin = new(30, 0, 26, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
+    private readonly TextBlock _searchHint = new() { Text = L.T("Канал или передача"), FontSize = 12, Margin = new(30, 0, 26, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
     private readonly Button _clearSearch;
-    private readonly ComboBox _playlist = new() { Width = 220, Height = 32, FontSize = 12, Margin = new(0), DisplayMemberPath = "Name", ToolTip = "Плейлист" };
-    private readonly ComboBox _categoryFilter = new() { Width = 220, Height = 32, FontSize = 12, Margin = new(0), ToolTip = "Категория" };
+    private readonly ComboBox _playlist = new() { Width = 220, Height = 32, FontSize = 12, Margin = new(0), DisplayMemberPath = "Name", ToolTip = L.T("Плейлист") };
+    private readonly ComboBox _categoryFilter = new() { Width = 220, Height = 32, FontSize = 12, Margin = new(0), ToolTip = L.T("Категория") };
     private readonly Button _resetFilters;
     private bool _changingFilters;
     private IReadOnlyList<PlaylistSource> _playlistSources = [];
@@ -62,7 +63,7 @@ public sealed class GuideWindow : Window
         _main = main; _play = play ?? main.PlayAsync; _clock = clock ?? (() => DateTimeOffset.Now);
         _playArchive = playArchive ?? main.PlayArchiveAsync;
         _viewport.RequestLogo = channel => _main.Model.LoadLogos([channel]);
-        Theme.Window(this); Owner = main; Title = "DzhiggaTV · Телепрограмма";
+        Theme.Window(this); Owner = main; Title = L.T("DzhiggaTV · Телепрограмма");
         Width = Math.Min(1280, SystemParameters.WorkArea.Width - 32); Height = Math.Min(800, SystemParameters.WorkArea.Height - 40);
         MinWidth = 900; MinHeight = Math.Min(560, Height); WindowStartupLocation = WindowStartupLocation.CenterOwner;
         _date.SelectedDate = main.IsArchivePlayback ? main.Model.PlayingProgramme?.Start.LocalDateTime.Date ?? _clock().LocalDateTime.Date : _clock().LocalDateTime.Date; _date.DisplayDate = _date.SelectedDate.Value;
@@ -73,32 +74,32 @@ public sealed class GuideWindow : Window
         root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var toolbar = new Grid();
         foreach (var width in new[] { GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto, new GridLength(16), new GridLength(235) }) toolbar.ColumnDefinitions.Add(new() { Width = width });
-        toolbar.Children.Add(new TextBlock { Text = "Телепрограмма", FontSize = 22, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 16, 0) });
+        toolbar.Children.Add(new TextBlock { Text = L.T("Телепрограмма"), FontSize = 22, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center, Margin = new(0, 0, 16, 0) });
         var navigation = new StackPanel { Orientation = Orientation.Horizontal };
-        var previous = CompactButton("‹", "Предыдущий день", 32); previous.FontSize = 21;
-        var next = CompactButton("›", "Следующий день", 32); next.FontSize = 21;
-        var now = CompactButton("Сейчас", "Вернуться к текущему эфиру (Ctrl+Home)", 82); now.Margin = new(10, 0, 0, 0); now.SetResourceReference(BorderBrushProperty, "AccentBrush");
+        var previous = CompactButton("‹", L.T("Предыдущий день"), 32); previous.FontSize = 21;
+        var next = CompactButton("›", L.T("Следующий день"), 32); next.FontSize = 21;
+        var now = CompactButton(L.T("Сейчас"), L.T("Вернуться к текущему эфиру (Ctrl+Home)"), 82); now.Margin = new(10, 0, 0, 0); now.SetResourceReference(BorderBrushProperty, "AccentBrush");
         navigation.Children.Add(previous); navigation.Children.Add(_date); navigation.Children.Add(next); navigation.Children.Add(now);
         Grid.SetColumn(navigation, 2); toolbar.Children.Add(navigation);
         var searchBox = new Grid(); Grid.SetColumn(searchBox, 4); toolbar.Children.Add(searchBox);
         searchBox.Children.Add(_search); searchBox.Children.Add(_searchHint);
         searchBox.Children.Add(new TextBlock { Text = "⌕", FontSize = 19, Margin = new(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false });
-        _clearSearch = CompactButton("×", "Очистить поиск", 25); _clearSearch.Height = 28; _clearSearch.FontSize = 17;
+        _clearSearch = CompactButton("×", L.T("Очистить поиск"), 25); _clearSearch.Height = 28; _clearSearch.FontSize = 17;
         _clearSearch.HorizontalAlignment = HorizontalAlignment.Right; _clearSearch.Margin = new(0, 0, 3, 0); _clearSearch.BorderThickness = new(0); _clearSearch.Background = Brushes.Transparent;
         searchBox.Children.Add(_clearSearch);
         var controls = new StackPanel(); controls.Children.Add(toolbar); root.Children.Add(controls);
         var filters = new StackPanel { Orientation = Orientation.Horizontal, Margin = new(0, 10, 0, 0) };
-        filters.Children.Add(FilterLabel("Плейлист")); filters.Children.Add(_playlist);
-        var categoryLabel = FilterLabel("Категория"); categoryLabel.Margin = new(20, 0, 9, 0); filters.Children.Add(categoryLabel); filters.Children.Add(_categoryFilter);
-        _resetFilters = CompactButton("Сбросить", "Показать все плейлисты и категории", 82); _resetFilters.Height = 32; _resetFilters.Margin = new(12, 0, 0, 0);
+        filters.Children.Add(FilterLabel(L.T("Плейлист"))); filters.Children.Add(_playlist);
+        var categoryLabel = FilterLabel(L.T("Категория")); categoryLabel.Margin = new(20, 0, 9, 0); filters.Children.Add(categoryLabel); filters.Children.Add(_categoryFilter);
+        _resetFilters = CompactButton(L.T("Сбросить"), L.T("Показать все плейлисты и категории"), 82); _resetFilters.Height = 32; _resetFilters.Margin = new(12, 0, 0, 0);
         filters.Children.Add(_resetFilters); controls.Children.Add(filters);
-        System.Windows.Automation.AutomationProperties.SetName(_playlist, "Плейлист телепрограммы");
-        System.Windows.Automation.AutomationProperties.SetName(_categoryFilter, "Категория телепрограммы");
+        System.Windows.Automation.AutomationProperties.SetName(_playlist, L.T("Плейлист телепрограммы"));
+        System.Windows.Automation.AutomationProperties.SetName(_categoryFilter, L.T("Категория телепрограммы"));
         _playlist.SelectionChanged += (_, _) => { if (!_changingFilters) { UpdateCategories(); ApplyFilter(true, startAtTop: true); } };
         _categoryFilter.SelectionChanged += (_, _) => { if (!_changingFilters) ApplyFilter(true, startAtTop: true); };
         _resetFilters.Click += (_, _) => { _changingFilters = true; _playlist.SelectedIndex = 0; _changingFilters = false; UpdateCategories(false); ApplyFilter(true, startAtTop: true); };
-        System.Windows.Automation.AutomationProperties.SetName(_search, "Поиск по каналам и передачам");
-        _search.ToolTip = "Поиск по каналам и передачам выбранного дня (Ctrl+F)";
+        System.Windows.Automation.AutomationProperties.SetName(_search, L.T("Поиск по каналам и передачам"));
+        _search.ToolTip = L.T("Поиск по каналам и передачам выбранного дня (Ctrl+F)");
         Grid.SetRow(_body, 1); _body.Margin = new(0, 14, 0, 0); _body.ColumnDefinitions.Add(new()); _body.ColumnDefinitions.Add(_detailsColumn);
         _body.RowDefinitions.Add(new()); _body.RowDefinitions.Add(_detailsRow); root.Children.Add(_body);
         _timeline.RowDefinitions.Add(new() { Height = new(GuideLayout.HeaderHeight) }); _timeline.RowDefinitions.Add(new()); _timeline.RowDefinitions.Add(new() { Height = GridLength.Auto });
@@ -110,9 +111,9 @@ public sealed class GuideWindow : Window
         Grid.SetRowSpan(_nowLine, 2); _timeline.Children.Add(_nowLine);
         ConfigureRows();
         var detailsDock = new DockPanel { Margin = new(18) };
-        _watch = CompactButton("Смотреть канал", "Переключиться на этот канал", double.NaN); _watch.Height = 38; _watch.Margin = new(0, 16, 0, 0);
+        _watch = CompactButton(L.T("Смотреть канал"), L.T("Переключиться на этот канал"), double.NaN); _watch.Height = 38; _watch.Margin = new(0, 16, 0, 0);
         _watch.SetResourceReference(BorderBrushProperty, "AccentBrush");
-        _live = CompactButton("Прямой эфир", "Открыть канал в прямом эфире", double.NaN); _live.Height = 30; _live.Margin = new(0, 7, 0, 0);
+        _live = CompactButton(L.T("Прямой эфир"), L.T("Открыть канал в прямом эфире"), double.NaN); _live.Height = 30; _live.Margin = new(0, 7, 0, 0);
         var playback = new StackPanel(); playback.Children.Add(_watch); playback.Children.Add(_live); DockPanel.SetDock(playback, Dock.Bottom); detailsDock.Children.Add(playback);
         var heading = new StackPanel(); heading.Children.Add(_badge); heading.Children.Add(_title); heading.Children.Add(_channel); heading.Children.Add(_time);
         _detailContent.ColumnDefinitions.Add(new()); _detailContent.ColumnDefinitions.Add(new() { Width = new(0) });
@@ -124,7 +125,7 @@ public sealed class GuideWindow : Window
         _details.SetResourceReference(BackgroundProperty, "PanelBrush"); Grid.SetColumn(_details, 1); _body.Children.Add(_details);
         var footer = new Grid { Margin = new(2, 9, 0, 0) }; footer.ColumnDefinitions.Add(new()); footer.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         footer.Children.Add(_count);
-        var hint = new TextBlock { Text = "Зажмите и тяните — листать · щелчок — описание · двойной — смотреть", FontSize = 10, VerticalAlignment = VerticalAlignment.Center };
+        var hint = new TextBlock { Text = L.T("Зажмите и тяните — листать · щелчок — описание · двойной — смотреть"), FontSize = 10, VerticalAlignment = VerticalAlignment.Center };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(hint, 1); footer.Children.Add(hint); Grid.SetRow(footer, 2); root.Children.Add(footer);
         foreach (var block in new[] { _searchHint, _count, _empty, _time, _badge }) block.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         _channel.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
@@ -173,15 +174,15 @@ public sealed class GuideWindow : Window
     {
         var selected = SelectedPlaylist;
         var ids = _allRows.Select(row => row.Channel.Channel.PlaylistId).Distinct().ToArray();
-        var choices = new List<GuidePlaylistChoice> { new(null, "Все плейлисты") };
-        choices.AddRange(ids.Select((id, index) => new GuidePlaylistChoice(id, _playlistSources.FirstOrDefault(source => source.Id == id)?.Name ?? $"Плейлист {index + 1}")));
+        var choices = new List<GuidePlaylistChoice> { new(null, L.T("Все плейлисты")) };
+        choices.AddRange(ids.Select((id, index) => new GuidePlaylistChoice(id, _playlistSources.FirstOrDefault(source => source.Id == id)?.Name ?? L.F("Плейлист {0}", index + 1))));
         _changingFilters = true; _playlist.ItemsSource = choices; _playlist.SelectedItem = choices.FirstOrDefault(choice => choice.Id == selected) ?? choices[0]; _changingFilters = false;
         UpdateCategories();
     }
     private void UpdateCategories(bool preserve = true)
     {
         var selected = preserve ? SelectedCategory : null;
-        var categories = new[] { "Все категории" }.Concat(GuideFiltering.Categories(_allRows, SelectedPlaylist)).ToArray();
+        var categories = new[] { L.T("Все категории") }.Concat(GuideFiltering.Categories(_allRows, SelectedPlaylist)).ToArray();
         _changingFilters = true; _categoryFilter.ItemsSource = categories; _categoryFilter.SelectedItem = categories.Contains(selected) ? selected : categories[0]; _changingFilters = false;
     }
 
@@ -308,7 +309,7 @@ public sealed class GuideWindow : Window
         int generation = ++_generation;
         var day = _date.SelectedDate ?? _clock().LocalDateTime.Date;
         _viewport.Range = GuideRange.ForDay(day, TimeZoneInfo.Local); _viewport.Now = _clock(); _followNow = _viewport.Range.Contains(_viewport.Now);
-        _allRows = []; _rows.ItemsSource = null; _viewport.Selection.Clear(); _empty.Text = "Загружаем телепрограмму…"; _empty.Visibility = Visibility.Visible; _count.Text = "";
+        _allRows = []; _rows.ItemsSource = null; _viewport.Selection.Clear(); _empty.Text = L.T("Загружаем телепрограмму…"); _empty.Visibility = Visibility.Visible; _count.Text = "";
         UpdateScrollMetrics(); FocusTime(ReferenceTime());
         var channels = _main.Model.AllChannels.Where(_main.Model.IsAllowed).Select(c => (Channel: c, Epg: _main.Model.EpgFor(c.Id))).ToArray();
         var range = _viewport.Range;
@@ -328,7 +329,7 @@ public sealed class GuideWindow : Window
         catch
         {
             if (_closed || generation != _generation) return;
-            _empty.Text = "Не удалось загрузить программу. Нажмите «Сейчас», чтобы повторить."; _empty.Visibility = Visibility.Visible;
+            _empty.Text = L.T("Не удалось загрузить программу. Нажмите «Сейчас», чтобы повторить."); _empty.Visibility = Visibility.Visible;
         }
     }
 
@@ -339,8 +340,8 @@ public sealed class GuideWindow : Window
         var visible = GuideFiltering.Filter(_allRows, SelectedPlaylist, SelectedCategory, query, _clock());
         _resetFilters.Visibility = SelectedPlaylist is not null || SelectedCategory is not null ? Visibility.Visible : Visibility.Collapsed;
         _changingSelection = true; _rows.ItemsSource = visible; _changingSelection = false;
-        _count.Text = visible.Count == _allRows.Count ? $"{visible.Count:N0} каналов" : $"{visible.Count:N0} из {_allRows.Count:N0} каналов";
-        _empty.Text = _allRows.Count == 0 ? "В библиотеке пока нет каналов" : "Ничего не найдено";
+        _count.Text = visible.Count == _allRows.Count ? L.F("{0:N0} каналов", visible.Count) : L.F("{0:N0} из {1:N0} каналов", visible.Count, _allRows.Count);
+        _empty.Text = _allRows.Count == 0 ? L.T("В библиотеке пока нет каналов") : L.T("Ничего не найдено");
         _empty.Visibility = visible.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         if (focusMatch && query.Length == 0 && visible.Count > 0)
         {
@@ -385,7 +386,7 @@ public sealed class GuideWindow : Window
     }
     private void ShowEmptySelection()
     {
-        _title.Text = "Выберите передачу"; _description.Show(null, "Нажмите на ячейку, чтобы прочитать полное описание.");
+        _title.Text = L.T("Выберите передачу"); _description.Show(null, L.T("Нажмите на ячейку, чтобы прочитать полное описание."));
         _channel.Text = _time.Text = _badge.Text = ""; _watch.Visibility = _live.Visibility = Visibility.Collapsed;
     }
     public bool SelectProgramme(string channelId, DateTimeOffset start)
@@ -401,9 +402,9 @@ public sealed class GuideWindow : Window
         if (_viewport.Selection.Row is not { } row) { ShowEmptySelection(); return; }
         _preferredChannelId = row.Channel.Id;
         var programme = _viewport.Selection.Programme;
-        _title.Text = programme?.Title ?? "Нет данных о передаче"; _channel.Text = row.Channel.Name;
+        _title.Text = programme?.Title ?? L.T("Нет данных о передаче"); _channel.Text = row.Channel.Name;
         _time.Text = programme is null ? "" : $"{programme.Start.ToLocalTime():dd.MM} · {programme.Start.ToLocalTime():HH:mm} — {programme.End.ToLocalTime():HH:mm}";
-        _description.Show(programme, "Подробного описания в телепрограмме нет.");
+        _description.Show(programme, L.T("Подробного описания в телепрограмме нет."));
         _watch.Visibility = _live.Visibility = Visibility.Visible; _descriptionScroll.ScrollToHome(); UpdateBadge(); RefreshTimeline();
     }
     private void UpdateBadge()
@@ -414,9 +415,9 @@ public sealed class GuideWindow : Window
         bool archive = programme is not null && Catchup.CanPlay(channel.Channel, programme, _clock());
         bool past = programme is not null && programme.End <= _clock(), future = programme is not null && programme.Start > _clock();
         _watch.IsEnabled = !_activating && (!past && !future || archive);
-        _watch.Content = archive ? past ? "Смотреть в архиве" : "Смотреть с начала" : past ? "Архив недоступен" : future ? "Передача ещё не началась" : "Смотреть канал";
-        _watch.ToolTip = archive ? $"Архив канала · {channel.Archive!.Days} дн." : past ? channel.Archive is null ? "У этого канала нет архива" : "Передача за пределами доступного архива" : "Смотреть прямой эфир";
-        _badge.Text = archive ? $"АРХИВ · {channel.Archive!.Days} ДН." : programme is null ? "ТЕЛЕПРОГРАММА" : programme.Start <= _viewport.Now && programme.End > _viewport.Now ? "СЕЙЧАС В ЭФИРЕ" : future ? "ПРЕДСТОЯЩИЙ ЭФИР" : "ЭФИР ЗАВЕРШЁН";
+        _watch.Content = archive ? past ? L.T("Смотреть в архиве") : L.T("Смотреть с начала") : past ? L.T("Архив недоступен") : future ? L.T("Передача ещё не началась") : L.T("Смотреть канал");
+        _watch.ToolTip = archive ? L.F("Архив канала · {0} дн.", channel.Archive!.Days) : past ? channel.Archive is null ? L.T("У этого канала нет архива") : L.T("Передача за пределами доступного архива") : L.T("Смотреть прямой эфир");
+        _badge.Text = archive ? L.F("АРХИВ · {0} ДН.", channel.Archive!.Days) : programme is null ? L.T("ТЕЛЕПРОГРАММА") : programme.Start <= _viewport.Now && programme.End > _viewport.Now ? L.T("СЕЙЧАС В ЭФИРЕ") : future ? L.T("ПРЕДСТОЯЩИЙ ЭФИР") : L.T("ЭФИР ЗАВЕРШЁН");
         _badge.SetResourceReference(TextBlock.ForegroundProperty, programme is not null && programme.Start <= _viewport.Now && programme.End > _viewport.Now ? "AccentBrush" : "MutedBrush");
         if (_playError is not null) _badge.Text = _playError;
     }
@@ -434,7 +435,7 @@ public sealed class GuideWindow : Window
         _activating = true; _watch.IsEnabled = false; _playError = null;
         try { await action(); if (!_closed) Close(); }
         catch (ArchiveUnavailableException error) { if (!_closed) _badge.Text = _playError = error.Message; }
-        catch { if (!_closed) _badge.Text = "Не удалось открыть канал. Попробуйте ещё раз."; }
+        catch { if (!_closed) _badge.Text = L.T("Не удалось открыть канал. Попробуйте ещё раз."); }
         finally { _activating = false; if (!_closed) _watch.IsEnabled = true; }
     }
     private async Task GoNowAsync()

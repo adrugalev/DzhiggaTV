@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using DzhiggaTV.Core;
@@ -22,11 +23,11 @@ internal sealed class ProgrammeDescriptionView : StackPanel
         Children.Add(_metadataSection);
 
         _synopsisSection = new();
-        _synopsisSection.Children.Add(Heading("ОПИСАНИЕ", "AccentBrush")); _synopsisSection.Children.Add(_synopsis);
+        _synopsisSection.Children.Add(Heading(L.T("ОПИСАНИЕ"), "AccentBrush")); _synopsisSection.Children.Add(_synopsis);
         _synopsis.SetResourceReference(TextBlock.ForegroundProperty, "TextBrush"); Children.Add(_synopsisSection);
 
         var creditsContent = new StackPanel();
-        creditsContent.Children.Add(Heading("СОЗДАТЕЛИ И ДЕТАЛИ", "MutedBrush")); creditsContent.Children.Add(_credits);
+        creditsContent.Children.Add(Heading(L.T("СОЗДАТЕЛИ И ДЕТАЛИ"), "MutedBrush")); creditsContent.Children.Add(_credits);
         _creditsSection = new() { Child = creditsContent, BorderThickness = new(0, 1, 0, 0), Padding = new(0, 10, 0, 0) };
         _creditsSection.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
         _credits.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Children.Add(_creditsSection);

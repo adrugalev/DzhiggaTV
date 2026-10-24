@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.IO.Compression;
 using System.Net.Http;
 using DzhiggaTV.Core;
@@ -54,7 +55,7 @@ public sealed class EpgOneService : IDisposable
         {
             var lastAttempt = await _store.GetSettingAsync<DateTimeOffset?>("epg.lastAttempt", null, cancellationToken).ConfigureAwait(false);
             if (lastAttempt is { } attempt && DateTimeOffset.UtcNow - attempt < TimeSpan.FromSeconds(60))
-                return Result(false, "Подождите минуту перед повторным обновлением.", 0, 0);
+                return Result(false, L.T("Подождите минуту перед повторным обновлением."), 0, 0);
             await _store.SetSettingAsync("epg.lastAttempt", DateTimeOffset.UtcNow, cancellationToken).ConfigureAwait(false);
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(DownloadTimeout);
@@ -62,16 +63,16 @@ public sealed class EpgOneService : IDisposable
             XmlTvParseResult? parsed = null;
             try
             {
-                progress?.Report(new("Загрузка EPG.ONE", 0));
+                progress?.Report(new(L.T("Загрузка EPG.ONE"), 0));
                 using var response = await _remote.OpenAsync(source ?? EpgOneSources.FullTransparent, AllowInsecureHttp, token).ConfigureAwait(false);
                 var total = response.Content.Headers.ContentLength;
-                if (total > MaximumCompressedBytes) throw new InvalidDataException("Архив EPG превышает допустимый размер.");
+                if (total > MaximumCompressedBytes) throw new InvalidDataException(L.T("Архив EPG превышает допустимый размер."));
                 await using var body = await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
                 long previousProgress = 0;
                 await using var compressed = new BoundedReadStream(body, MaximumCompressedBytes, true, read =>
                 {
                     if (read - previousProgress < 128 * 1024 && read != total) return;
-                    previousProgress = read; progress?.Report(new("Загрузка и импорт EPG.ONE", read, total));
+                    previousProgress = read; progress?.Report(new(L.T("Загрузка и импорт EPG.ONE"), read, total));
                 }, token);
                 // Detect gzip by its signature, not MIME: EPG.ONE serves gzip as application/octet-stream.
                 var prefix = new byte[2]; await compressed.ReadExactlyAsync(prefix, token).ConfigureAwait(false);
@@ -85,7 +86,7 @@ public sealed class EpgOneService : IDisposable
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 await RegisterFailureAsync(cancellationToken).ConfigureAwait(false);
-                return Result(false, "Истекло время загрузки EPG. Последняя рабочая программа сохранена. Проверьте подключение и повторите обновление.", 0, 0);
+                return Result(false, L.T("Истекло время загрузки EPG. Последняя рабочая программа сохранена. Проверьте подключение и повторите обновление."), 0, 0);
             }
             catch (Exception exception) when (exception is HttpRequestException or IOException or System.Xml.XmlException or InvalidDataException)
             {
@@ -94,10 +95,10 @@ public sealed class EpgOneService : IDisposable
                 {
                     RemoteFileException transport => transport.Message,
                     InvalidDataException invalid => invalid.Message,
-                    System.Xml.XmlException => "Источник вернул повреждённый файл XMLTV.",
-                    _ => "Не удалось загрузить или записать файл EPG. Проверьте сеть и свободное место."
+                    System.Xml.XmlException => L.T("Источник вернул повреждённый файл XMLTV."),
+                    _ => L.T("Не удалось загрузить или записать файл EPG. Проверьте сеть и свободное место.")
                 };
-                return Result(false, $"Не удалось обновить EPG. {reason} Последняя рабочая программа сохранена.", 0, 0);
+                return Result(false, L.F("Не удалось обновить EPG. {0} Последняя рабочая программа сохранена.", reason), 0, 0);
             }
             // Once the import commits, catalogue decoration cannot turn a successful programme update into a failed update.
             LastUpdated = DateTimeOffset.UtcNow;
@@ -105,9 +106,9 @@ public sealed class EpgOneService : IDisposable
             await RefreshReferenceMetadataAsync(cancellationToken).ConfigureAwait(false);
             await InitializeAsync(cancellationToken).ConfigureAwait(false);
             await MatchChannelsAsync(channels, cancellationToken).ConfigureAwait(false);
-            var completed = parsed ?? throw new InvalidOperationException("Импорт XMLTV не завершен.");
-            progress?.Report(new("Готово", 0, null, completed.Programmes));
-            return Result(true, $"EPG обновлена: {completed.Programmes:N0} передач.", completed.Programmes, completed.RejectedProgrammes);
+            var completed = parsed ?? throw new InvalidOperationException(L.T("Импорт XMLTV не завершен."));
+            progress?.Report(new(L.T("Готово"), 0, null, completed.Programmes));
+            return Result(true, L.F("EPG обновлена: {0:N0} передач.", completed.Programmes), completed.Programmes, completed.RejectedProgrammes);
         }
         finally { _refreshLock.Release(); }
     }
@@ -141,8 +142,8 @@ public sealed class EpgOneService : IDisposable
 
     public async Task SetManualMappingAsync(Channel channel, string epgId, CancellationToken cancellationToken = default)
     {
-        var match = _channels.FirstOrDefault(x => x.Id == epgId) ?? throw new ArgumentException("Канал EPG не найден.", nameof(epgId));
-        await _store.SaveMappingsAsync([new(channel.Id, match.Id, match.Name, "Ручной выбор", 1, true)], cancellationToken).ConfigureAwait(false);
+        var match = _channels.FirstOrDefault(x => x.Id == epgId) ?? throw new ArgumentException(L.T("Канал EPG не найден."), nameof(epgId));
+        await _store.SaveMappingsAsync([new(channel.Id, match.Id, match.Name, L.T("Ручной выбор"), 1, true)], cancellationToken).ConfigureAwait(false);
     }
 
     public string? GetReferenceLogo(string epgId) => _references.FirstOrDefault(x => x.EpgId == epgId && !string.IsNullOrWhiteSpace(x.Logo))?.Logo;

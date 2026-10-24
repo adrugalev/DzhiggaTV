@@ -5,6 +5,7 @@ import {Television} from './main';
 import {api, setSession} from './api';
 import {progress, remember, readRecent} from './types';
 import type {Session, PlayerState} from './types';
+import {getLanguage, t} from './i18n';
 
 const session:Session={name:'iPhone',csrf:'csrf-test',serverTime:new Date().toISOString(),policy:{viewing:true,control:true,volume:true,multiscreen:true,favorites:true,directUrls:false,transcoding:false,maximumStreams:2}};
 const now=Date.now(), programme={title:'Новости',start:new Date(now-600000).toISOString(),end:new Date(now+600000).toISOString()};
@@ -40,6 +41,38 @@ function initialPc(snapshot:PlayerState=pcState, remoteChannel:typeof channel|nu
     return fallback(input,init);
   });
 }
+
+describe('interface languages',()=>{
+  it('defaults to Russian and switches both translations without restarting the video',async()=>{
+    expect(getLanguage()).toBe('ru');
+    initialPc();const view=render(<Television session={session} onLogout={()=>{}}/>);
+    await waitFor(()=>expect(view.container.querySelector('video')?.getAttribute('src')).toBe('/media/stream/root'));
+    const video=view.container.querySelector('video'), loads=vi.mocked(HTMLMediaElement.prototype.load).mock.calls.length;
+    fireEvent.click(screen.getByRole('button',{name:'Настройки'}));
+    fireEvent.click(screen.getByRole('combobox',{name:'Язык интерфейса'}));
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    expect(screen.getByRole('option',{name:'Русский'}).querySelector('svg')).toBeTruthy();
+    fireEvent.click(screen.getByRole('option',{name:'English'}));
+    expect(screen.getByText('MY DEVICE')).toBeTruthy();expect(document.documentElement.lang).toBe('en');
+    expect(localStorage.getItem('dzhigga.language')).toBe('en');
+    await api('/api/status');expect(new Headers(vi.mocked(fetch).mock.calls.at(-1)?.[1]?.headers).get('Accept-Language')).toBe('en');
+    act(()=>setSession({...session,language:'ru'}));expect(getLanguage()).toBe('en');
+    fireEvent.click(screen.getByRole('combobox',{name:'Interface language'}));
+    fireEvent.click(screen.getByRole('option',{name:'简体中文'}));
+    expect(screen.getByText('我的设备')).toBeTruthy();expect(document.documentElement.lang).toBe('zh-CN');
+    expect(localStorage.getItem('dzhigga.language')).toBe('zh-Hans');
+    expect(view.container.querySelector('video')).toBe(video);expect(video?.getAttribute('src')).toBe('/media/stream/root');
+    expect(vi.mocked(HTMLMediaElement.prototype.load).mock.calls.length).toBe(loads);
+    expect(requests.filter(r=>r.path==='/api/stream')).toHaveLength(1);
+    expect(t('Канал для экрана {0}',4)).toBe('画面 4 的频道');
+    expect(t(channel.name)).toBe(channel.name);
+  });
+  it('uses the computer preference only before the phone makes its own choice',()=>{
+    setSession({...session,language:'en'});expect(getLanguage()).toBe('en');expect(localStorage.getItem('dzhigga.language')).toBeNull();
+    setSession({...session,language:'zh-Hans'});expect(getLanguage()).toBe('zh-Hans');
+    setSession(session);expect(getLanguage()).toBe('ru');
+  });
+});
 
 describe('initial PC channel',()=>{
   it('starts the current PC channel beyond the first catalog page instead of mobile history',async()=>{

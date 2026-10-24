@@ -97,6 +97,17 @@ async Task<string> Pair()
 try
 {
     Assert(server.Running, "server starts on exactly the chosen interface");
+    async Task<string> LocalizedError(string language)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/state");
+        request.Headers.AcceptLanguage.ParseAdd(language);
+        using var response = await client.SendAsync(request);
+        if (response.StatusCode != HttpStatusCode.Unauthorized) throw new Exception("Localized request bypassed authorization");
+        return await JsonString(response, "error");
+    }
+    var languageErrors = await Task.WhenAll(LocalizedError("en"), LocalizedError("zh-Hans"), LocalizedError("ru"));
+    Assert(!Regex.IsMatch(languageErrors[0], "[А-Яа-яЁё]") && Regex.IsMatch(languageErrors[1], "[\\u4e00-\\u9fff]") && Regex.IsMatch(languageErrors[2], "[А-Яа-яЁё]"), "concurrent HTTP errors follow each device language");
+    Assert(DzhiggaTV.Localization.Texts.DefaultLanguage == "ru", "HTTP language headers do not change the PC language");
     var html = await client.GetStringAsync("/"); Assert(html.Contains("viewport-fit=cover") && html.Contains("assets/"), "embedded mobile application is served without Node");
     var icon = await client.GetByteArrayAsync("/icon-192.png");
     Assert(icon.Length > 1000 && System.Buffers.Binary.BinaryPrimitives.ReadInt32BigEndian(icon.AsSpan(16, 4)) == 192, "home screen assets include a real 192px PNG icon");

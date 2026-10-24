@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Net;
@@ -45,7 +46,7 @@ public sealed class FfmpegInstaller
         string? staging = null;
         try
         {
-            progress?.Report(new("Проверяем компоненты для просмотра на телефоне…"));
+            progress?.Report(new(L.T("Проверяем компоненты для просмотра на телефоне…")));
             foreach (var path in new[] { preferredPath, InstalledPath, Path.Combine(_tools, "ffmpeg.exe") }.Distinct(StringComparer.OrdinalIgnoreCase))
                 if (path is not null && await UsableAsync(path, token).ConfigureAwait(false)) return Path.GetFullPath(path);
 
@@ -54,16 +55,16 @@ public sealed class FfmpegInstaller
             string executable = Path.Combine(staging, "ffmpeg.exe");
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token); deadline.CancelAfter(TimeSpan.FromMinutes(10));
             string archive = await FfmpegDownload.AcquireAsync(_client, _package, _tools, progress, deadline.Token).ConfigureAwait(false);
-            progress?.Report(new("Проверяем загруженные компоненты…"));
+            progress?.Report(new(L.T("Проверяем загруженные компоненты…")));
             string digest;
             await using (var file = File.OpenRead(archive)) digest = Convert.ToHexString(await SHA256.HashDataAsync(file, token).ConfigureAwait(false));
             if (!digest.Equals(_package.Sha256, StringComparison.OrdinalIgnoreCase))
-            { File.Delete(archive); throw new RemoteException("Проверка FFmpeg не пройдена. Нажмите «Включить Remote», чтобы скачать компоненты заново."); }
-            progress?.Report(new("Распаковываем FFmpeg…"));
+            { File.Delete(archive); throw new RemoteException(L.T("Проверка FFmpeg не пройдена. Нажмите «Включить Remote», чтобы скачать компоненты заново.")); }
+            progress?.Report(new(L.T("Распаковываем FFmpeg…")));
             await Task.Run(() => _package.SevenZip ? ExtractSevenZipAsync(archive, staging, token) : ExtractAsync(archive, staging, token), token).ConfigureAwait(false);
-            progress?.Report(new("Проверяем кодеки FFmpeg…"));
+            progress?.Report(new(L.T("Проверяем кодеки FFmpeg…")));
             if (!await _probe(executable, token).ConfigureAwait(false))
-                throw new RemoteException("FFmpeg не прошёл проверку H.264, AAC и HLS. Попробуйте подготовить Remote ещё раз.");
+                throw new RemoteException(L.T("FFmpeg не прошёл проверку H.264, AAC и HLS. Попробуйте подготовить Remote ещё раз."));
             token.ThrowIfCancellationRequested();
             string destination = Path.GetDirectoryName(InstalledPath)!; Directory.CreateDirectory(destination);
             await File.WriteAllTextAsync(Path.Combine(staging, "SOURCE.txt"),
@@ -74,13 +75,13 @@ public sealed class FfmpegInstaller
             token.ThrowIfCancellationRequested(); File.Move(executable, InstalledPath, true);
             Remember(InstalledPath);
             try { File.Delete(archive); } catch (IOException) { } catch (UnauthorizedAccessException) { }
-            progress?.Report(new("Компоненты Remote готовы", 100));
+            progress?.Report(new(L.T("Компоненты Remote готовы"), 100));
             return InstalledPath;
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
-        catch (OperationCanceledException) { throw new RemoteException("Загрузка компонентов заняла слишком много времени. Проверьте интернет и повторите включение Remote."); }
+        catch (OperationCanceledException) { throw new RemoteException(L.T("Загрузка компонентов заняла слишком много времени. Проверьте интернет и повторите включение Remote.")); }
         catch (Exception error) when (error is HttpRequestException or IOException or UnauthorizedAccessException or InvalidDataException or SharpCompress.Common.SharpCompressException)
-        { throw new RemoteException("Не удалось загрузить или установить компоненты Remote. Проверьте интернет и свободное место, затем повторите включение."); }
+        { throw new RemoteException(L.T("Не удалось загрузить или установить компоненты Remote. Проверьте интернет и свободное место, затем повторите включение.")); }
         finally
         {
             if (staging is not null) { try { Directory.Delete(staging, true); } catch (IOException) { } catch (UnauthorizedAccessException) { } }

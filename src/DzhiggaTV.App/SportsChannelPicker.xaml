@@ -1,6 +1,6 @@
 <Window x:Class="DzhiggaTV.App.SportsChannelPicker"
- xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:DzhiggaTV.App"
- Title="DzhiggaTV · Мультиэкран — выбор каналов" Width="1080" Height="720" MinWidth="860" MinHeight="500" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+ xmlns:i18n="clr-namespace:DzhiggaTV.Localization.Wpf;assembly=DzhiggaTV.Localization.Wpf" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:DzhiggaTV.App"
+ Title="{i18n:Loc m524647af14951501}" Width="1080" Height="720" MinWidth="860" MinHeight="500" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
  <Window.Resources>
   <Style TargetType="CheckBox"><Setter Property="Cursor" Value="Hand"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
@@ -18,22 +18,22 @@
   </Style>
  </Window.Resources>
  <Grid><Grid Margin="22,18"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <StackPanel><TextBlock Text="Каналы мультиэкрана" FontSize="22" FontWeight="SemiBold"/>
-   <TextBlock Text="Зажмите канал и перетащите на схему или отметьте галочкой. До 4 экранов, звук — с одного канала." FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,20"/></StackPanel>
+  <StackPanel><TextBlock Text="{i18n:Loc m9884632522e39d1e}" FontSize="22" FontWeight="SemiBold"/>
+   <TextBlock Text="{i18n:Loc m6f1d7a782bd151a7}" FontSize="12" Foreground="{DynamicResource MutedBrush}" TextWrapping="Wrap" Margin="0,8,0,20"/></StackPanel>
   <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="1.15*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
   <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/></Grid.RowDefinitions>
   <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
-   <Grid Margin="0,0,10,0"><TextBox x:Name="Search" TextChanged="Search_Changed" ToolTip="Поиск по названию канала" AutomationProperties.Name="Поиск каналов мультиэкрана"/>
-    <TextBlock Text="Поиск каналов" IsHitTestVisible="False" Margin="12,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Search}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+   <Grid Margin="0,0,10,0"><TextBox x:Name="Search" TextChanged="Search_Changed" ToolTip="{i18n:Loc m69be73ff0e68bdb4}" AutomationProperties.Name="{i18n:Loc mc047103419fce58f}"/>
+    <TextBlock Text="{i18n:Loc m8381a827f86112e2}" IsHitTestVisible="False" Margin="12,0" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=Search}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
    </Grid>
-   <ComboBox x:Name="Category" Grid.Column="1" SelectionChanged="Category_Changed" ToolTip="Категория" AutomationProperties.Name="Категория каналов мультиэкрана"/>
+   <ComboBox x:Name="Category" Grid.Column="1" SelectionChanged="Category_Changed" ToolTip="{i18n:Loc m41f780fdee89f896}" AutomationProperties.Name="{i18n:Loc m2ec4381f810d6090}"/>
   </Grid>
   <Grid Grid.Row="1"><ListBox x:Name="Channels" BorderThickness="0" ScrollViewer.ScrollChanged="Channels_Scrolled" SizeChanged="Channels_SizeChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
    <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><ContentPresenter/></ControlTemplate></Setter.Value></Setter></Style></ListBox.ItemContainerStyle>
    <ListBox.ItemTemplate><DataTemplate><Border Padding="7,9" Margin="0,1" CornerRadius="7"><Border.Style><Style TargetType="Border"><Setter Property="Background" Value="Transparent"/><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource CardBrush}"/></Trigger></Style.Triggers></Style></Border.Style>
     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="26"/><ColumnDefinition/></Grid.ColumnDefinitions>
      <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center" Padding="0,5" AutomationProperties.Name="{Binding Channel.Name}"/>
-     <Grid Grid.Column="1" Background="Transparent" Cursor="Hand" PreviewMouseLeftButtonDown="Channel_Down" PreviewMouseMove="Channel_Move" ToolTip="Перетащите канал на нужный экран">
+     <Grid Grid.Column="1" Background="Transparent" Cursor="Hand" PreviewMouseLeftButtonDown="Channel_Down" PreviewMouseMove="Channel_Move" ToolTip="{i18n:Loc mca00cc37060c2298}">
       <Grid.ColumnDefinitions><ColumnDefinition Width="28"/><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <TextBlock Text="{Binding Channel.Number}" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
       <local:ChannelLogo Grid.Column="1" Path="{Binding Channel.LogoPath}" Width="30" Height="30" Stretch="Uniform"/>
@@ -41,21 +41,21 @@
      </Grid>
     </Grid>
    </Border></DataTemplate></ListBox.ItemTemplate>
-  </ListBox><TextBlock x:Name="Empty" Text="Каналы не найдены" Visibility="Collapsed" IsHitTestVisible="False" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid>
+  </ListBox><TextBlock x:Name="Empty" Text="{i18n:Loc md28b3812d3fcf0d5}" Visibility="Collapsed" IsHitTestVisible="False" Foreground="{DynamicResource MutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid>
   </Grid>
   <Grid Grid.Column="2"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
    <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <TextBlock Text="Расположение" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-    <TextBlock Grid.Column="1" Text="Экранов" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="8,0"/>
-    <ComboBox x:Name="ScreenCount" Grid.Column="2" Width="84" SelectionChanged="ScreenCount_Changed" AutomationProperties.Name="Количество экранов"/>
+    <TextBlock Text="{i18n:Loc ma70a9ff4fc1e6542}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+    <TextBlock Grid.Column="1" Text="{i18n:Loc mcedf29a21c482f7d}" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Margin="8,0"/>
+    <ComboBox x:Name="ScreenCount" Grid.Column="2" Width="84" SelectionChanged="ScreenCount_Changed" AutomationProperties.Name="{i18n:Loc m39cc1f8e8102c726}"/>
    </Grid>
    <Border Grid.Row="1" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="8"><Grid x:Name="Scheme"/></Border>
-   <TextBlock Grid.Row="2" Text="Перетащите на пустое место, чтобы добавить канал. Занятые экраны можно менять местами или заменять другим каналом." TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,12,0,0"/>
+   <TextBlock Grid.Row="2" Text="{i18n:Loc m50b7309ae70d04fa}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource MutedBrush}" Margin="0,12,0,0"/>
   </Grid>
   </Grid>
   <Grid Grid.Row="2" Margin="0,18,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
    <StackPanel VerticalAlignment="Center"><TextBlock x:Name="Count" FontSize="12"/><TextBlock x:Name="Limit" FontSize="11" Foreground="{DynamicResource AccentBrush}" TextWrapping="Wrap" Visibility="Collapsed"/></StackPanel>
-   <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="Reset" Content="Сброс" Click="Reset_Click" Margin="3,3,16,3" ToolTip="Снять выбор со всех каналов"/><Button Content="Отмена" IsCancel="True"/><Button x:Name="Watch" Content="Смотреть" IsDefault="True" Click="Watch_Click" BorderBrush="{DynamicResource AccentBrush}"/></StackPanel>
+   <StackPanel Grid.Column="1" Orientation="Horizontal"><Button x:Name="Reset" Content="{i18n:Loc m14b4afa6ab38f7e4}" Click="Reset_Click" Margin="3,3,16,3" ToolTip="{i18n:Loc m1ec826a7a626666e}"/><Button Content="{i18n:Loc m8fbe9b75cbdfbfa6}" IsCancel="True"/><Button x:Name="Watch" Content="{i18n:Loc m7ac84107c129a250}" IsDefault="True" Click="Watch_Click" BorderBrush="{DynamicResource AccentBrush}"/></StackPanel>
   </Grid>
  </Grid>
  <Canvas x:Name="DragSurface" IsHitTestVisible="False" ClipToBounds="True"/>

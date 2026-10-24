@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
@@ -32,7 +33,7 @@ public sealed class MpvPlayer : IDisposable
     private HealthProbe? _healthProbe;
     private readonly Dictionary<ulong, (HealthProbe Probe, int Field)> _healthReplies = [];
     private PlaybackState _state = PlaybackState.Idle;
-    private PlaybackStateChangedEventArgs _status = new(PlaybackState.Idle, "Готов к воспроизведению");
+    private PlaybackStateChangedEventArgs _status = new(PlaybackState.Idle, L.T("Готов к воспроизведению"));
     private BufferPreset _bufferPreset = BufferPreset.Balanced;
     private HdrMode _hdrMode = HdrMode.Auto;
     private AspectMode _aspect = AspectMode.Original;
@@ -50,13 +51,13 @@ public sealed class MpvPlayer : IDisposable
 
     public void Initialize(IntPtr hwnd)
     {
-        if (hwnd == IntPtr.Zero) throw new ArgumentException("Требуется HWND видеоповерхности.", nameof(hwnd));
+        if (hwnd == IntPtr.Zero) throw new ArgumentException(L.T("Требуется HWND видеоповерхности."), nameof(hwnd));
         lock (_nativeGate)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_handle != IntPtr.Zero) return;
             _handle = NativeMethods.mpv_create();
-            if (_handle == IntPtr.Zero) throw new InvalidOperationException("Не удалось создать libmpv.");
+            if (_handle == IntPtr.Zero) throw new InvalidOperationException(L.T("Не удалось создать libmpv."));
             try
             {
                 // Never load user scripts/configs, expose URLs in the OSD, or request native log messages.
@@ -86,7 +87,7 @@ public sealed class MpvPlayer : IDisposable
                 Option("alang", _audioLanguage);
                 Option("slang", _subtitleLanguage);
                 ApplyBuffer((name, value) => Option(name, value));
-                Check(NativeMethods.mpv_initialize(_handle), "инициализация");
+                Check(NativeMethods.mpv_initialize(_handle), L.T("инициализация"));
                 NativeMethods.mpv_request_log_messages(_handle, "no");
                 // MPV_FORMAT_NONE asks for invalidation only; the event loop reads the actual value safely.
                 NativeMethods.mpv_observe_property(_handle, 1, "pause", 0);
@@ -114,7 +115,7 @@ public sealed class MpvPlayer : IDisposable
     }
     private async Task StartPlaybackAsync(string url, double? duration, CancellationToken cancellationToken, Func<double, ArchivePlaybackSource>? reconnectSource = null)
     {
-        if (string.IsNullOrWhiteSpace(url) || url.IndexOf('\0') >= 0) throw new ArgumentException("Некорректный адрес потока.", nameof(url));
+        if (string.IsNullOrWhiteSpace(url) || url.IndexOf('\0') >= 0) throw new ArgumentException(L.T("Некорректный адрес потока."), nameof(url));
         cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
         PlaybackRequest request;
@@ -127,7 +128,7 @@ public sealed class MpvPlayer : IDisposable
             _pauseRequested = false;
         }
         previous?.Cancel();
-        SetState(PlaybackState.Loading, "Подключение к трансляции…", request);
+        SetState(PlaybackState.Loading, L.T("Подключение к трансляции…"), request);
         try { await LoadRequestAsync(request).ConfigureAwait(false); }
         catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { throw; }
         catch (Exception ex) when (ex is MpvException or TimeoutException)
@@ -145,7 +146,7 @@ public sealed class MpvPlayer : IDisposable
         lock (_requestGate) { generation = ++_generation; previous = _request; _request = null; }
         previous?.Cancel();
         if (IsInitialized) _ = StopSerializedAsync(generation);
-        SetState(PlaybackState.Idle, "Воспроизведение остановлено", expectedGeneration: generation);
+        SetState(PlaybackState.Idle, L.T("Воспроизведение остановлено"), expectedGeneration: generation);
     }
 
     private async Task StopSerializedAsync(long generation)
@@ -229,7 +230,7 @@ public sealed class MpvPlayer : IDisposable
     public void SetHdrMode(HdrMode mode) { _hdrMode = mode; if (IsInitialized) ApplyHdr(); }
     public void SetAudioDevice(string name)
     {
-        if (string.IsNullOrWhiteSpace(name) || name.IndexOf('\0') >= 0) throw new ArgumentException("Не выбрано устройство.", nameof(name));
+        if (string.IsNullOrWhiteSpace(name) || name.IndexOf('\0') >= 0) throw new ArgumentException(L.T("Не выбрано устройство."), nameof(name));
         WriteProperty("audio-device", name);
     }
     public void SetPreferredLanguages(string audio, string subtitles)
@@ -294,7 +295,7 @@ public sealed class MpvPlayer : IDisposable
             double resumePosition = request.Duration is { } total ? Math.Min(request.ResumePosition, Math.Max(0, total - 1)) : 0;
             var source = request.ReconnectSource is not null && resumePosition > 0 ? request.ReconnectSource(resumePosition) : null;
             if (source is not null && (string.IsNullOrWhiteSpace(source.Url) || source.Url.IndexOf('\0') >= 0 || !double.IsFinite(source.Duration) || source.Duration <= 0))
-                throw new InvalidOperationException("Не удалось восстановить адрес архива.");
+                throw new InvalidOperationException(L.T("Не удалось восстановить адрес архива."));
             lock (_requestGate)
             {
                 ++request.LoadSerial; request.HealthStalled = false;
@@ -334,7 +335,7 @@ public sealed class MpvPlayer : IDisposable
                 if (request != null && !IsCurrent(request)) throw new OperationCanceledException(request.Token);
                 result = NativeMethods.Command(_handle, id, args);
             }
-            Check(result, "команда воспроизведения");
+            Check(result, L.T("команда воспроизведения"));
             using var registration = request?.Token.Register(() => AbortCommand(id));
             // Do not release the load gate when a request becomes stale. Wait for its native acknowledgement,
             // otherwise libmpv is permitted to reorder old and new asynchronous loadfile commands.
@@ -348,12 +349,12 @@ public sealed class MpvPlayer : IDisposable
                     // Releasing the load gate and submitting more commands without an acknowledgement
                     // could let an obsolete channel win later. Stop accepting commands instead.
                     _commandUnresponsive = true;
-                    SetState(PlaybackState.Error, "Видеодвижок не отвечает. Перезапустите приложение.");
+                    SetState(PlaybackState.Error, L.T("Видеодвижок не отвечает. Перезапустите приложение."));
                 }
                 throw;
             }
             if (request?.Token.IsCancellationRequested == true) throw new OperationCanceledException(request.Token);
-            Check(result, "команда воспроизведения");
+            Check(result, L.T("команда воспроизведения"));
         }
         finally { _commands.TryRemove(id, out _); }
     }
@@ -379,7 +380,7 @@ public sealed class MpvPlayer : IDisposable
                 {
                     case 1:
                         if (!_lifetime.IsCancellationRequested)
-                        { _commandUnresponsive = true; SetState(PlaybackState.Error, "Видеодвижок остановился. Перезапустите приложение."); }
+                        { _commandUnresponsive = true; SetState(PlaybackState.Error, L.T("Видеодвижок остановился. Перезапустите приложение.")); }
                         return;
                     case 3: HandleHealthReply(evt); break;
                     case 5: if (_commands.TryGetValue(evt.ReplyUserdata, out var command)) command.TrySetResult(evt.Error); break;
@@ -406,7 +407,7 @@ public sealed class MpvPlayer : IDisposable
         catch (Exception ex) when (ex is not AccessViolationException)
         {
             if (!_lifetime.IsCancellationRequested)
-            { _commandUnresponsive = true; SetState(PlaybackState.Error, "Видеодвижок остановился. Перезапустите приложение."); }
+            { _commandUnresponsive = true; SetState(PlaybackState.Error, L.T("Видеодвижок остановился. Перезапустите приложение.")); }
         }
         finally { foreach (var command in _commands.Values) command.TrySetCanceled(); }
     }
@@ -423,10 +424,10 @@ public sealed class MpvPlayer : IDisposable
 
     private void RefreshLoadedState(PlaybackRequest request)
     {
-        if (_pauseRequested || ReadString("pause") == "yes") SetState(PlaybackState.Paused, "Пауза", request);
-        else if (request.HealthStalled) SetState(PlaybackState.Stalled, "Поток не отвечает. Проверяем подключение…", request);
-        else if (ReadString("paused-for-cache") == "yes") SetState(PlaybackState.Buffering, "Буферизация…", request);
-        else if (_loadedEntryId >= 0) SetState(PlaybackState.Playing, "В эфире", request);
+        if (_pauseRequested || ReadString("pause") == "yes") SetState(PlaybackState.Paused, L.T("Пауза"), request);
+        else if (request.HealthStalled) SetState(PlaybackState.Stalled, L.T("Поток не отвечает. Проверяем подключение…"), request);
+        else if (ReadString("paused-for-cache") == "yes") SetState(PlaybackState.Buffering, L.T("Буферизация…"), request);
+        else if (_loadedEntryId >= 0) SetState(PlaybackState.Playing, L.T("В эфире"), request);
     }
 
     private void MarkPlaying(PlaybackRequest request)
@@ -509,9 +510,9 @@ public sealed class MpvPlayer : IDisposable
         if (_health.IsStable(now)) request.Attempts = 0;
         request.HealthStalled = health is StreamHealth.Stalled or StreamHealth.Reconnect;
         if (health == StreamHealth.Reconnect) ScheduleReconnect(request);
-        else if (health == StreamHealth.Stalled) SetState(PlaybackState.Stalled, "Поток не отвечает. Проверяем подключение…", request);
-        else if (paused) SetState(PlaybackState.Paused, "Пауза", request);
-        else if (loaded) SetState(probe.Flags[1] ? PlaybackState.Buffering : PlaybackState.Playing, probe.Flags[1] ? "Буферизация…" : "В эфире", request);
+        else if (health == StreamHealth.Stalled) SetState(PlaybackState.Stalled, L.T("Поток не отвечает. Проверяем подключение…"), request);
+        else if (paused) SetState(PlaybackState.Paused, L.T("Пауза"), request);
+        else if (loaded) SetState(probe.Flags[1] ? PlaybackState.Buffering : PlaybackState.Playing, probe.Flags[1] ? L.T("Буферизация…") : L.T("В эфире"), request);
     }
 
     private sealed class HealthProbe(PlaybackRequest request, long serial, TimeSpan started)
@@ -540,8 +541,8 @@ public sealed class MpvPlayer : IDisposable
         }
         if (!IsCurrent(request)) return;
         if (request.Duration is { } duration && ended.Error >= 0 && (!request.IsNetwork || request.ResumePosition >= duration - 2))
-        { request.ResumePosition = duration; SetState(PlaybackState.Idle, "Просмотр архива завершён", request); return; }
-        if (!request.IsNetwork) { SetState(ended.Error < 0 ? PlaybackState.Error : PlaybackState.Idle, ended.Error < 0 ? "Не удалось открыть видео." : "Воспроизведение завершено", request); return; }
+        { request.ResumePosition = duration; SetState(PlaybackState.Idle, L.T("Просмотр архива завершён"), request); return; }
+        if (!request.IsNetwork) { SetState(ended.Error < 0 ? PlaybackState.Error : PlaybackState.Idle, ended.Error < 0 ? L.T("Не удалось открыть видео.") : L.T("Воспроизведение завершено"), request); return; }
         ScheduleReconnect(request);
     }
 
@@ -553,10 +554,10 @@ public sealed class MpvPlayer : IDisposable
         if (attempt > 3)
         {
             Interlocked.Exchange(ref request.ReconnectPending, 0);
-            SetState(PlaybackState.Error, "Поток недоступен. Попробуйте подключиться ещё раз.", request);
+            SetState(PlaybackState.Error, L.T("Поток недоступен. Попробуйте подключиться ещё раз."), request);
             return;
         }
-        SetState(PlaybackState.Reconnecting, $"Переподключение {attempt}/3…", request, attempt);
+        SetState(PlaybackState.Reconnecting, L.F("Переподключение {0}/3…", attempt), request, attempt);
         _ = Task.Run(async () =>
         {
             try
@@ -674,7 +675,7 @@ public sealed class MpvPlayer : IDisposable
     private static long? GetLong(Dictionary<string, object?> value, string key) => value.GetValueOrDefault(key) is long number ? number : null;
     private static bool GetBool(Dictionary<string, object?> value, string key) => value.GetValueOrDefault(key) is true;
 
-    private void Option(string name, string value) => Check(NativeMethods.mpv_set_option_string(_handle, name, value), "параметр " + name);
+    private void Option(string name, string value) => Check(NativeMethods.mpv_set_option_string(_handle, name, value), L.T("параметр ") + name);
     private void WriteProperty(string name, string value, bool allowBeforeInitialize = false)
     {
         lock (_nativeGate)
@@ -682,7 +683,7 @@ public sealed class MpvPlayer : IDisposable
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_handle == IntPtr.Zero && allowBeforeInitialize) return;
             EnsureInitializedLocked();
-            Check(NativeMethods.mpv_set_property_string(_handle, name, value), "параметр " + name);
+            Check(NativeMethods.mpv_set_property_string(_handle, name, value), L.T("параметр ") + name);
         }
     }
     private static void Check(int result, string operation) { if (result < 0) throw new MpvException(operation, result); }
@@ -690,14 +691,14 @@ public sealed class MpvPlayer : IDisposable
     private void EnsureInitializedLocked()
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (_handle == IntPtr.Zero) throw new InvalidOperationException("Сначала инициализируйте видеоповерхность.");
-        if (_commandUnresponsive) throw new MpvException("видеодвижок не отвечает", -20);
+        if (_handle == IntPtr.Zero) throw new InvalidOperationException(L.T("Сначала инициализируйте видеоповерхность."));
+        if (_commandUnresponsive) throw new MpvException(L.T("видеодвижок не отвечает"), -20);
     }
     private bool IsCurrent(PlaybackRequest request) { lock (_requestGate) return IsCurrentLocked(request); }
     private bool IsCurrentLocked(PlaybackRequest request) => !_lifetime.IsCancellationRequested && ReferenceEquals(_request, request) && !request.Token.IsCancellationRequested;
     private static string ValidateLanguage(string value)
     {
-        if (value.Length > 100 || value.Any(c => !char.IsAsciiLetter(c) && c is not ',' and not '-')) throw new ArgumentException("Языки задаются кодами через запятую.");
+        if (value.Length > 100 || value.Any(c => !char.IsAsciiLetter(c) && c is not ',' and not '-')) throw new ArgumentException(L.T("Языки задаются кодами через запятую."));
         return value;
     }
     private void SetState(PlaybackState state, string message, PlaybackRequest? request = null, int attempt = 0, long? expectedGeneration = null)
@@ -737,7 +738,7 @@ public sealed class MpvPlayer : IDisposable
                 _handle = IntPtr.Zero;
             }
             foreach (var command in _commands.Values) command.TrySetCanceled();
-            SetState(PlaybackState.Disposed, "Видеодвижок закрыт");
+            SetState(PlaybackState.Disposed, L.T("Видеодвижок закрыт"));
         }
         if (Environment.CurrentManagedThreadId == _eventThreadId) _ = Task.Run(Finish);
         else Finish();

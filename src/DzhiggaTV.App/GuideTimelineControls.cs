@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
@@ -99,7 +100,7 @@ public sealed class TimelineItem : FrameworkElement
                 dc.Pop();
             }
             if (row.Programmes.Count == 0)
-                GuideDrawing.Text(dc, "Нет данных телепрограммы", new(GuideLayout.ChannelWidth + 14, 27), 12, GuideDrawing.Brush("MutedBrush"), width - GuideLayout.ChannelWidth - 28, 20, dpi);
+                GuideDrawing.Text(dc, L.T("Нет данных телепрограммы"), new(GuideLayout.ChannelWidth + 14, 27), 12, GuideDrawing.Brush("MutedBrush"), width - GuideLayout.ChannelWidth - 28, 20, dpi);
             dc.Pop();
         }
         // Channel names stay fixed while only the programme area moves.
@@ -116,7 +117,7 @@ public sealed class TimelineItem : FrameworkElement
         }
         else GuideDrawing.Text(dc, row.Channel.Initials, new(logoRect.X + 5, logoRect.Y + 10), 10, GuideDrawing.Brush("MutedBrush"), 28, 17, dpi, true);
         GuideDrawing.Text(dc, row.Channel.Name, new(58, 15), 12.5, GuideDrawing.Brush(channelSelected ? "AccentBrush" : "TextBrush"), GuideLayout.ChannelWidth - 76, row.Channel.Archive is null ? 43 : 32, dpi, true);
-        if (row.Channel.Archive is { } archive) GuideDrawing.Text(dc, $"↶ АРХИВ {archive.Days} ДН.", new(58, 52), 9, GuideDrawing.Brush("AccentBrush"), GuideLayout.ChannelWidth - 76, 15, dpi);
+        if (row.Channel.Archive is { } archive) GuideDrawing.Text(dc, L.F("↶ АРХИВ {0} ДН.", archive.Days), new(58, 52), 9, GuideDrawing.Brush("AccentBrush"), GuideLayout.ChannelWidth - 76, 15, dpi);
     }
 }
 
@@ -126,7 +127,7 @@ internal sealed class GuideAxis(GuideViewport viewport) : FrameworkElement
     {
         double width = ActualWidth, dpi = VisualTreeHelper.GetDpi(this).PixelsPerDip;
         dc.DrawRectangle(GuideDrawing.Brush("PanelBrush"), null, new Rect(0, 0, width, ActualHeight));
-        GuideDrawing.Text(dc, "КАНАЛЫ", new(13, 13), 10, GuideDrawing.Brush("MutedBrush"), GuideLayout.ChannelWidth - 20, 18, dpi);
+        GuideDrawing.Text(dc, L.T("КАНАЛЫ"), new(13, 13), 10, GuideDrawing.Brush("MutedBrush"), GuideLayout.ChannelWidth - 20, 18, dpi);
         if (width <= GuideLayout.ChannelWidth) return;
         dc.PushClip(new RectangleGeometry(new Rect(GuideLayout.ChannelWidth, 0, width - GuideLayout.ChannelWidth, ActualHeight)));
         double nowX = GuideLayout.ChannelWidth + viewport.Range.Position(viewport.Now) - viewport.Offset;

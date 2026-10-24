@@ -21,4 +21,5 @@
     <ProjectReference Include="..\DzhiggaTV.Player\DzhiggaTV.Player.csproj" />
     <Content Include="..\..\native\*.dll" Link="native\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+<ItemGroup><ProjectReference Include="../DzhiggaTV.Localization.Wpf/DzhiggaTV.Localization.Wpf.csproj" /></ItemGroup>
 </Project>

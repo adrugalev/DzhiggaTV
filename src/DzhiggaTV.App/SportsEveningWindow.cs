@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -22,7 +23,7 @@ public sealed class SportsEveningWindow : Window
     private readonly DispatcherTimer _layoutTimer = new() { Interval = TimeSpan.FromSeconds(1) };
     private bool _guideLoading;
     private readonly TextBlock _sound = new() { FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-    private readonly TextBlock _empty = new() { Text = "Выберите каналы для одновременного просмотра", FontSize = 18, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+    private readonly TextBlock _empty = new() { Text = L.T("Выберите каналы для одновременного просмотра"), FontSize = 18, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     private readonly Button _mute, _fullscreen;
     private bool _closed, _isFullscreen;
     private string? _expandedChannelId;
@@ -51,7 +52,7 @@ public sealed class SportsEveningWindow : Window
         _programme = new(this, _model);
         _screens = new(_programme); _screens.Children.Add(_programme);
         Theme.Window(this); WindowBounds.Attach(this, () => _isFullscreen);
-        Owner = main; Title = "DzhiggaTV · Мультиэкран";
+        Owner = main; Title = L.T("DzhiggaTV · Мультиэкран");
         Width = Math.Min(1440, SystemParameters.WorkArea.Width - 24); Height = Math.Min(900, SystemParameters.WorkArea.Height - 36);
         MinWidth = Math.Min(860, Width); MinHeight = Math.Min(500, Height); WindowStartupLocation = WindowStartupLocation.CenterOwner;
         _audio.Volume = volume; _audio.IsMuted = muted;
@@ -59,22 +60,22 @@ public sealed class SportsEveningWindow : Window
         root.RowDefinitions.Add(new() { Height = GridLength.Auto }); root.RowDefinitions.Add(new()); root.RowDefinitions.Add(new() { Height = GridLength.Auto });
         var toolbar = _toolbar = new Grid { Margin = new(4, 0, 0, 12) };
         toolbar.ColumnDefinitions.Add(new()); toolbar.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
-        toolbar.Children.Add(new TextBlock { Text = "Мультиэкран", FontSize = 22, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+        toolbar.Children.Add(new TextBlock { Text = L.T("Мультиэкран"), FontSize = 22, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
         var actions = new StackPanel { Orientation = Orientation.Horizontal }; Grid.SetColumn(actions, 1); toolbar.Children.Add(actions);
-        var choose = Button("Выбрать каналы", "Добавить или убрать каналы"); choose.SetResourceReference(BorderBrushProperty, "AccentBrush");
-        _fullscreen = Button("Полный экран", "Полный экран (F11)");
-        var close = Button("Вернуться", "Закрыть мультиэкран и вернуться к плееру");
+        var choose = Button(L.T("Выбрать каналы"), L.T("Добавить или убрать каналы")); choose.SetResourceReference(BorderBrushProperty, "AccentBrush");
+        _fullscreen = Button(L.T("Полный экран"), L.T("Полный экран (F11)"));
+        var close = Button(L.T("Вернуться"), L.T("Закрыть мультиэкран и вернуться к плееру"));
         actions.Children.Add(choose); actions.Children.Add(_fullscreen); actions.Children.Add(close); root.Children.Add(toolbar);
         var viewing = new Grid(); Grid.SetRow(viewing, 1); root.Children.Add(viewing); viewing.Children.Add(_screens); viewing.Children.Add(_empty);
         var footer = _footer = new Grid { Margin = new(4, 10, 4, 0) };
         footer.ColumnDefinitions.Add(new()); footer.ColumnDefinitions.Add(new() { Width = GridLength.Auto }); footer.ColumnDefinitions.Add(new() { Width = GridLength.Auto });
         footer.Children.Add(_sound); _sound.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
-        var hint = new TextBlock { Text = "Перетащите видео — поменять местами · Двойной щелчок — полный экран", FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new(16, 0, 16, 0) };
+        var hint = new TextBlock { Text = L.T("Перетащите видео — поменять местами · Двойной щелчок — полный экран"), FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new(16, 0, 16, 0) };
         hint.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); Grid.SetColumn(hint, 1); footer.Children.Add(hint);
         var soundControls = new StackPanel { Orientation = Orientation.Horizontal }; Grid.SetColumn(soundControls, 2); footer.Children.Add(soundControls);
-        _mute = Button("", "Выключить / включить звук (M)"); _mute.MinWidth = 98; soundControls.Children.Add(_mute);
-        var slider = new Slider { Minimum = 0, Maximum = 100, Value = volume, IsMoveToPointEnabled = true, Width = 100, VerticalAlignment = VerticalAlignment.Center, Margin = new(8, 0, 0, 0), ToolTip = "Громкость" };
-        System.Windows.Automation.AutomationProperties.SetName(slider, "Громкость мультиэкрана"); soundControls.Children.Add(slider);
+        _mute = Button("", L.T("Выключить / включить звук (M)")); _mute.MinWidth = 98; soundControls.Children.Add(_mute);
+        var slider = new Slider { Minimum = 0, Maximum = 100, Value = volume, IsMoveToPointEnabled = true, Width = 100, VerticalAlignment = VerticalAlignment.Center, Margin = new(8, 0, 0, 0), ToolTip = L.T("Громкость") };
+        System.Windows.Automation.AutomationProperties.SetName(slider, L.T("Громкость мультиэкрана")); soundControls.Children.Add(slider);
         slider.ValueChanged += (_, e) => _audio.Volume = e.NewValue;
         Grid.SetRow(footer, 2); root.Children.Add(footer); _empty.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         choose.Click += (_, _) => ChooseChannels(); _fullscreen.Click += (_, _) => ToggleFullscreen(); close.Click += (_, _) => Close();
@@ -261,8 +262,8 @@ public sealed class SportsEveningWindow : Window
     {
         foreach (var tile in _tiles.Values) tile.SetAudioSelected(tile.Channel.Id == _audio.SelectedId, _audio.IsMuted);
         _sound.Text = _audio.SelectedId is { } id && _tiles.TryGetValue(id, out var selected)
-            ? $"{(_audio.IsMuted ? "Звук выключен · выбран" : "Звук")}: {selected.Channel.Name}" : "Звук: канал не выбран";
-        _mute.Content = _audio.IsMuted ? "Включить звук" : "Без звука";
+            ? $"{(_audio.IsMuted ? L.T("Звук выключен · выбран") : L.T("Звук"))}: {selected.Channel.Name}" : L.T("Звук: канал не выбран");
+        _mute.Content = _audio.IsMuted ? L.T("Включить звук") : L.T("Без звука");
         RefreshProgramme();
     }
     private void RefreshProgramme() => _programme.Show(_audio.SelectedId is { } id && _tiles.TryGetValue(id, out var selected) ? selected.Channel : null);
@@ -310,7 +311,7 @@ public sealed class SportsEveningWindow : Window
             _isFullscreen = false; WindowState = WindowState.Normal; WindowStyle = WindowStyle.SingleBorderWindow; ResizeMode = ResizeMode.CanResize;
             if (_restore is { } restore) { Left = restore.Bounds.Left; Top = restore.Bounds.Top; Width = restore.Bounds.Width; Height = restore.Bounds.Height; WindowState = restore.State; }
         }
-        _fullscreen.Content = _isFullscreen ? "Выйти из полного экрана" : "Полный экран";
+        _fullscreen.Content = _isFullscreen ? L.T("Выйти из полного экрана") : L.T("Полный экран");
     }
 
     internal static Button Button(string text, string tip) => new() { Content = text, ToolTip = tip, FontSize = 12, Padding = new(10, 6, 10, 6), Margin = new(3, 0, 0, 0), MinHeight = 32 };
@@ -326,7 +327,7 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
     private readonly Button _sound;
     private readonly Grid _root, _header;
     private readonly TextBlock _programme;
-    private readonly TextBlock _status = new() { FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(10, 0, 10, 4), Text = "Подключение к трансляции…" };
+    private readonly TextBlock _status = new() { FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(10, 0, 10, 4), Text = L.T("Подключение к трансляции…") };
     private bool _disposed, _audioSelected, _compact;
     public event EventHandler? AudioRequested;
     public event EventHandler? RemoveRequested;
@@ -350,22 +351,22 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
         logo.SetBinding(ChannelLogo.PathProperty, new Binding(nameof(ChannelItem.LogoPath)) { Source = channel }); header.Children.Add(logo);
         var title = new TextBlock { Text = $"{channel.Number}  {channel.Name}", FontSize = 13, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new(7, 0, 4, 0), ToolTip = channel.Name };
         Grid.SetColumn(title, 1); header.Children.Add(title);
-        _sound = SportsEveningWindow.Button("Звук", $"Выбрать звук: {channel.Name}"); _sound.Width = 64; _sound.Padding = new(5, 3, 5, 3);
+        _sound = SportsEveningWindow.Button(L.T("Звук"), L.F("Выбрать звук: {0}", channel.Name)); _sound.Width = 64; _sound.Padding = new(5, 3, 5, 3);
         _sound.Click += (_, _) => AudioRequested?.Invoke(this, EventArgs.Empty); Grid.SetColumn(_sound, 2); header.Children.Add(_sound);
-        var retry = SportsEveningWindow.Button("↻", "Переподключить этот канал"); retry.Width = 28; retry.Padding = new(0); retry.Click += async (_, _) => await PlayAsync(); Grid.SetColumn(retry, 3); header.Children.Add(retry);
-        var remove = SportsEveningWindow.Button("×", $"Убрать канал: {channel.Name}"); remove.Width = 28; remove.Padding = new(0); remove.Click += (_, _) => RemoveRequested?.Invoke(this, EventArgs.Empty); Grid.SetColumn(remove, 4); header.Children.Add(remove);
+        var retry = SportsEveningWindow.Button("↻", L.T("Переподключить этот канал")); retry.Width = 28; retry.Padding = new(0); retry.Click += async (_, _) => await PlayAsync(); Grid.SetColumn(retry, 3); header.Children.Add(retry);
+        var remove = SportsEveningWindow.Button("×", L.F("Убрать канал: {0}", channel.Name)); remove.Width = 28; remove.Padding = new(0); remove.Click += (_, _) => RemoveRequested?.Invoke(this, EventArgs.Empty); Grid.SetColumn(remove, 4); header.Children.Add(remove);
         SizeChanged += (_, _) =>
         {
             _compact = ActualWidth < 300;
             _sound.Width = _compact ? 32 : 64;
-            _sound.Content = _compact ? _audioSelected ? "♪ ✓" : "♪" : _audioSelected ? "Звук ✓" : "Звук";
+            _sound.Content = _compact ? _audioSelected ? "♪ ✓" : "♪" : _audioSelected ? L.T("Звук ✓") : L.T("Звук");
             title.Visibility = ActualWidth < 180 ? Visibility.Collapsed : Visibility.Visible;
             logo.Visibility = ActualWidth < 145 ? Visibility.Collapsed : Visibility.Visible;
             header.ColumnDefinitions[0].Width = new(ActualWidth < 145 ? 0 : 28);
             retry.Visibility = ActualWidth < 175 ? Visibility.Collapsed : Visibility.Visible;
         };
-        System.Windows.Automation.AutomationProperties.SetName(_sound, $"Звук: {channel.Name}");
-        System.Windows.Automation.AutomationProperties.SetName(remove, $"Убрать: {channel.Name}");
+        System.Windows.Automation.AutomationProperties.SetName(_sound, L.F("Звук: {0}", channel.Name));
+        System.Windows.Automation.AutomationProperties.SetName(remove, L.F("Убрать: {0}", channel.Name));
         root.Children.Add(header);
         var video = new Border { Background = Brushes.Black, Child = _host }; Grid.SetRow(video, 1); root.Children.Add(video);
         var programme = _programme = new TextBlock { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new(10, 6, 10, 0) };
@@ -408,12 +409,12 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
             await Player.PlayAsync(Channel.Channel.Url, _lifetime.Token);
         }
         catch (OperationCanceledException) { }
-        catch { if (!_disposed) _status.Text = "Не удалось подключиться. Нажмите ↻ для повтора."; }
+        catch { if (!_disposed) _status.Text = L.T("Не удалось подключиться. Нажмите ↻ для повтора."); }
     }
     private void OnStateChanged(object? sender, PlaybackStateChangedEventArgs e) => Dispatcher.BeginInvoke(() =>
     {
         e = Player.Status;
-        if (!_disposed) { _status.Text = e.State == PlaybackState.Playing ? "Прямой эфир" : e.Message; if (e.State == PlaybackState.Playing) RefreshVideoAspect(); }
+        if (!_disposed) { _status.Text = e.State == PlaybackState.Playing ? L.T("Прямой эфир") : e.Message; if (e.State == PlaybackState.Playing) RefreshVideoAspect(); }
     });
     public void RefreshVideoAspect()
     {
@@ -428,8 +429,8 @@ public sealed class SportsTile : Border, ISportsAudio, IDisposable
         SetResourceReference(BorderBrushProperty, selected ? "AccentBrush" : "BorderBrush");
         _sound.SetResourceReference(Control.BorderBrushProperty, selected ? "AccentBrush" : "BorderBrush");
         _sound.SetResourceReference(Control.ForegroundProperty, selected ? "AccentBrush" : "TextBrush");
-        _sound.Content = _compact ? selected ? "♪ ✓" : "♪" : selected ? "Звук ✓" : "Звук";
-        _sound.ToolTip = selected ? muted ? "Источник выбран, общий звук выключен" : "Звук идёт с этого канала" : $"Выбрать звук: {Channel.Name}";
+        _sound.Content = _compact ? selected ? "♪ ✓" : "♪" : selected ? L.T("Звук ✓") : L.T("Звук");
+        _sound.ToolTip = selected ? muted ? L.T("Источник выбран, общий звук выключен") : L.T("Звук идёт с этого канала") : L.F("Выбрать звук: {0}", Channel.Name);
     }
     public void Dispose()
     {

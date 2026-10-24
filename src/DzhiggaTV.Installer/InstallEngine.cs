@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -37,14 +38,14 @@ public static class InstallEngine
         EnsureNoReparseAncestors(parent);
         Directory.CreateDirectory(parent);
         EnsureNoReparseAncestors(parent);
-        progress?.Report(new(0, "Проверка установочного архива…"));
+        progress?.Report(new(0, L.T("Проверка установочного архива…")));
         using var archive = new ZipArchive(source, ZipArchiveMode.Read, true);
         List<PayloadEntry> payload = ValidatePayload(archive);
         Manifest? previous = await ValidateExistingAsync(root, token);
         string stage = Path.Combine(parent, ".DzhiggaTV.stage-" + Guid.NewGuid().ToString("N"));
         string backup = Path.Combine(parent, ".DzhiggaTV.previous-" + Guid.NewGuid().ToString("N"));
         EnsureDirectChild(stage, parent); EnsureDirectChild(backup, parent);
-        if (Directory.Exists(stage) || Directory.Exists(backup) || File.Exists(stage) || File.Exists(backup)) throw new InstallException("Временная папка занята. Повторите установку.");
+        if (Directory.Exists(stage) || Directory.Exists(backup) || File.Exists(stage) || File.Exists(backup)) throw new InstallException(L.T("Временная папка занята. Повторите установку."));
         Directory.CreateDirectory(stage);
         var written = new List<string>();
         var files = new List<InstalledFile>();
@@ -68,20 +69,20 @@ public static class InstallEngine
                 while ((read = await input.ReadAsync(buffer, token)) != 0)
                 {
                     bytes += read;
-                    if (bytes > item.Entry.Length || bytes > MaximumUnpackedBytes) throw new InstallException("Неверный размер файла в архиве.");
+                    if (bytes > item.Entry.Length || bytes > MaximumUnpackedBytes) throw new InstallException(L.T("Неверный размер файла в архиве."));
                     hash.AppendData(buffer, 0, read);
                     await output.WriteAsync(buffer.AsMemory(0, read), token);
                     completed += read;
                     if (completed - lastReported >= 4 * 1024 * 1024)
                     {
                         lastReported = completed;
-                        progress?.Report(new(total == 0 ? 0 : completed * 92d / total, "Распаковка DzhiggaTV…"));
+                        progress?.Report(new(total == 0 ? 0 : completed * 92d / total, L.T("Распаковка DzhiggaTV…")));
                     }
                 }
-                if (bytes != item.Entry.Length) throw new InstallException("Установочный архив повреждён.");
+                if (bytes != item.Entry.Length) throw new InstallException(L.T("Установочный архив повреждён."));
                 files.Add(new(item.RelativePath, bytes, Convert.ToHexStringLower(hash.GetHashAndReset())));
             }
-            string guide = "DzhiggaTV — удаление\r\n\r\n1. Закройте DzhiggaTV.\r\n2. Удалите эту папку приложения: " + root + "\r\n3. Удалите созданные ярлыки DzhiggaTV из меню «Пуск» и с рабочего стола.\r\n\r\nНастройки, избранное, плейлисты и EPG хранятся отдельно в %LOCALAPPDATA%\\DzhiggaTV и остаются у пользователя.\r\nУстановщик не удаляет личные данные.\r\n";
+            string guide = L.T("DzhiggaTV — удаление\r\n\r\n1. Закройте DzhiggaTV.\r\n2. Удалите эту папку приложения: ") + root + L.T("\r\n3. Удалите созданные ярлыки DzhiggaTV из меню «Пуск» и с рабочего стола.\r\n\r\nНастройки, избранное, плейлисты и EPG хранятся отдельно в %LOCALAPPDATA%\\DzhiggaTV и остаются у пользователя.\r\nУстановщик не удаляет личные данные.\r\n");
             string guidePath = SafePath(stage, RemovalGuide);
             written.Add(RemovalGuide);
             await File.WriteAllTextAsync(guidePath, guide, token);
@@ -91,13 +92,13 @@ public static class InstallEngine
             {
                 var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(SafePath(stage, "DzhiggaTV.exe"));
                 if (info.ProductName != "DzhiggaTV" || !Version.TryParse(info.FileVersion, out var actualVersion) || actualVersion != expectedVersion)
-                    throw new InstallException("Версия подготовленного приложения не совпадает с выпуском.");
+                    throw new InstallException(L.T("Версия подготовленного приложения не совпадает с выпуском."));
             }
             var manifest = new Manifest(1, Product, root, applicationHash, DateTimeOffset.UtcNow, files);
             written.Add(Marker);
             await File.WriteAllTextAsync(SafePath(stage, Marker), JsonSerializer.Serialize(manifest, Json), token);
             token.ThrowIfCancellationRequested();
-            progress?.Report(new(95, "Завершение установки…"));
+            progress?.Report(new(95, L.T("Завершение установки…")));
             // Revalidate immediately before the directory swap; an unrelated directory is never replaced.
             await ValidateExistingAsync(root, token);
             EnsureNoReparseAncestors(root);
@@ -119,7 +120,7 @@ public static class InstallEngine
                 }
                 catch { leftover = backup; }
             }
-            progress?.Report(new(100, "DzhiggaTV установлен"));
+            progress?.Report(new(100, L.T("DzhiggaTV установлен")));
             return new(root, files.Count, leftover);
         }
         finally
@@ -130,21 +131,21 @@ public static class InstallEngine
 
     private static string ValidateDestination(string destination)
     {
-        if (string.IsNullOrWhiteSpace(destination) || !Path.IsPathFullyQualified(destination)) throw new InstallException("Укажите полный путь к папке DzhiggaTV.");
+        if (string.IsNullOrWhiteSpace(destination) || !Path.IsPathFullyQualified(destination)) throw new InstallException(L.T("Укажите полный путь к папке DzhiggaTV."));
         string root = Path.GetFullPath(destination).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (!Path.GetFileName(root).Equals("DzhiggaTV", StringComparison.OrdinalIgnoreCase)) throw new InstallException("Название конечной папки должно быть DzhiggaTV. Выберите отдельную папку приложения.");
-        if (root.StartsWith(@"\\", StringComparison.Ordinal)) throw new InstallException("Для установки выберите локальный диск.");
+        if (!Path.GetFileName(root).Equals("DzhiggaTV", StringComparison.OrdinalIgnoreCase)) throw new InstallException(L.T("Название конечной папки должно быть DzhiggaTV. Выберите отдельную папку приложения."));
+        if (root.StartsWith(@"\\", StringComparison.Ordinal)) throw new InstallException(L.T("Для установки выберите локальный диск."));
         string windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows).TrimEnd(Path.DirectorySeparatorChar);
         string userData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DzhiggaTV");
-        if (root.Equals(userData, StringComparison.OrdinalIgnoreCase) || IsInside(root, userData) || root.Equals(windows, StringComparison.OrdinalIgnoreCase) || IsInside(root, windows)) throw new InstallException("Выберите отдельную папку приложения, например Programs\\DzhiggaTV.");
+        if (root.Equals(userData, StringComparison.OrdinalIgnoreCase) || IsInside(root, userData) || root.Equals(windows, StringComparison.OrdinalIgnoreCase) || IsInside(root, windows)) throw new InstallException(L.T("Выберите отдельную папку приложения, например Programs\\DzhiggaTV."));
         EnsureNoReparseAncestors(root);
-        if (File.Exists(root)) throw new InstallException("Вместо папки существует файл. Выберите другую папку.");
+        if (File.Exists(root)) throw new InstallException(L.T("Вместо папки существует файл. Выберите другую папку."));
         return root;
     }
 
     private static List<PayloadEntry> ValidatePayload(ZipArchive archive)
     {
-        if (archive.Entries.Count is 0 or > 5000) throw new InstallException("Неверное число файлов в установочном архиве.");
+        if (archive.Entries.Count is 0 or > 5000) throw new InstallException(L.T("Неверное число файлов в установочном архиве."));
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<PayloadEntry>();
         long length = 0;
@@ -153,12 +154,12 @@ public static class InstallEngine
             string normalized = entry.FullName.Replace('\\', '/');
             bool directory = normalized.EndsWith('/');
             string relative = ValidateRelative(normalized.TrimEnd('/'));
-            if ((entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0 || ((entry.ExternalAttributes >> 16) & 0xf000) == 0xa000) throw new InstallException("Архив содержит недопустимую ссылку.");
+            if ((entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0 || ((entry.ExternalAttributes >> 16) & 0xf000) == 0xa000) throw new InstallException(L.T("Архив содержит недопустимую ссылку."));
             if (directory) continue;
-            if (!names.Add(relative) || relative.Equals(Marker, StringComparison.OrdinalIgnoreCase) || relative.Equals(RemovalGuide, StringComparison.OrdinalIgnoreCase)) throw new InstallException("Архив содержит повторяющиеся или служебные имена.");
-            if (entry.Length < 0 || entry.Length > 512L * 1024 * 1024) throw new InstallException("Недопустимый размер файла в архиве.");
+            if (!names.Add(relative) || relative.Equals(Marker, StringComparison.OrdinalIgnoreCase) || relative.Equals(RemovalGuide, StringComparison.OrdinalIgnoreCase)) throw new InstallException(L.T("Архив содержит повторяющиеся или служебные имена."));
+            if (entry.Length < 0 || entry.Length > 512L * 1024 * 1024) throw new InstallException(L.T("Недопустимый размер файла в архиве."));
             length = checked(length + entry.Length);
-            if (length > MaximumUnpackedBytes) throw new InstallException("Установочный архив превышает допустимый размер.");
+            if (length > MaximumUnpackedBytes) throw new InstallException(L.T("Установочный архив превышает допустимый размер."));
             result.Add(new(entry, relative));
         }
         foreach (string name in names)
@@ -166,44 +167,44 @@ public static class InstallEngine
             string? parent = Path.GetDirectoryName(name.Replace('/', Path.DirectorySeparatorChar));
             while (!string.IsNullOrEmpty(parent))
             {
-                if (names.Contains(parent.Replace(Path.DirectorySeparatorChar, '/'))) throw new InstallException("Файл и папка имеют одинаковый путь в архиве.");
+                if (names.Contains(parent.Replace(Path.DirectorySeparatorChar, '/'))) throw new InstallException(L.T("Файл и папка имеют одинаковый путь в архиве."));
                 parent = Path.GetDirectoryName(parent);
             }
         }
-        if (!result.Any(item => item.RelativePath.Equals("DzhiggaTV.exe", StringComparison.OrdinalIgnoreCase) && item.Entry.Length > 0)) throw new InstallException("В архиве отсутствует DzhiggaTV.exe.");
+        if (!result.Any(item => item.RelativePath.Equals("DzhiggaTV.exe", StringComparison.OrdinalIgnoreCase) && item.Entry.Length > 0)) throw new InstallException(L.T("В архиве отсутствует DzhiggaTV.exe."));
         return result;
     }
 
     internal static string ValidateRelative(string relative)
     {
         relative = relative.Replace('\\', '/');
-        if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Length > 220) throw new InstallException("Недопустимый путь в установочном архиве.");
+        if (string.IsNullOrWhiteSpace(relative) || Path.IsPathRooted(relative) || relative.Length > 220) throw new InstallException(L.T("Недопустимый путь в установочном архиве."));
         foreach (var part in relative.Split('/'))
         {
             string stem = part.Split('.')[0];
             if (part.Length == 0 || part is "." or ".." || part.TrimEnd(' ', '.') != part || part.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || part.Contains(':') || part.Any(char.IsControl)
                 || stem.Equals("CON", StringComparison.OrdinalIgnoreCase) || stem.Equals("PRN", StringComparison.OrdinalIgnoreCase) || stem.Equals("AUX", StringComparison.OrdinalIgnoreCase) || stem.Equals("NUL", StringComparison.OrdinalIgnoreCase)
                 || (stem.Length == 4 && (stem.StartsWith("COM", StringComparison.OrdinalIgnoreCase) || stem.StartsWith("LPT", StringComparison.OrdinalIgnoreCase)) && stem[3] is >= '1' and <= '9'))
-                throw new InstallException("Недопустимое имя файла в установочном архиве.");
+                throw new InstallException(L.T("Недопустимое имя файла в установочном архиве."));
         }
         return relative;
     }
     internal static string SafePath(string root, string relative)
     {
         string path = Path.GetFullPath(Path.Combine(root, ValidateRelative(relative).Replace('/', Path.DirectorySeparatorChar)));
-        if (!IsInside(path, root)) throw new InstallException("Путь выходит за пределы папки установки.");
+        if (!IsInside(path, root)) throw new InstallException(L.T("Путь выходит за пределы папки установки."));
         return path;
     }
     private static bool IsInside(string path, string root) => path.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
     private static void EnsureDirectChild(string path, string parent)
     {
-        if (!string.Equals(Path.GetDirectoryName(Path.GetFullPath(path)), Path.GetFullPath(parent), StringComparison.OrdinalIgnoreCase)) throw new InstallException("Неверная временная папка установки.");
+        if (!string.Equals(Path.GetDirectoryName(Path.GetFullPath(path)), Path.GetFullPath(parent), StringComparison.OrdinalIgnoreCase)) throw new InstallException(L.T("Неверная временная папка установки."));
         EnsureNoReparseAncestors(parent);
     }
     internal static void EnsureNoReparseAncestors(string path)
     {
         for (string? current = Path.GetFullPath(path); !string.IsNullOrEmpty(current); current = Path.GetDirectoryName(current))
-            if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) throw new InstallException("Папка установки не должна проходить через символические ссылки или junction.");
+            if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) throw new InstallException(L.T("Папка установки не должна проходить через символические ссылки или junction."));
     }
 
     private static async Task<Manifest?> ValidateExistingAsync(string root, CancellationToken token)
@@ -212,29 +213,29 @@ public static class InstallEngine
         EnsureNoReparseAncestors(root);
         if (!Directory.EnumerateFileSystemEntries(root).Any()) return null;
         string marker = SafePath(root, Marker);
-        if (!File.Exists(marker) || new FileInfo(marker).Length > 2 * 1024 * 1024) throw new InstallException("Выбранная папка не пуста и не принадлежит установщику DzhiggaTV. Выберите отдельную папку.");
+        if (!File.Exists(marker) || new FileInfo(marker).Length > 2 * 1024 * 1024) throw new InstallException(L.T("Выбранная папка не пуста и не принадлежит установщику DzhiggaTV. Выберите отдельную папку."));
         EnsureNoReparseAncestors(marker);
         Manifest? manifest;
         try { manifest = JsonSerializer.Deserialize<Manifest>(await File.ReadAllTextAsync(marker, token), Json); }
-        catch (JsonException) { throw new InstallException("Метка предыдущей установки повреждена. Выберите другую папку."); }
-        if (manifest == null || manifest.FormatVersion != 1 || manifest.ProductId != Product || !root.Equals(manifest.InstallRoot, StringComparison.OrdinalIgnoreCase) || manifest.Files is null || manifest.Files.Count is 0 or > 5000) throw new InstallException("Папка не подтверждена как установка DzhiggaTV.");
+        catch (JsonException) { throw new InstallException(L.T("Метка предыдущей установки повреждена. Выберите другую папку.")); }
+        if (manifest == null || manifest.FormatVersion != 1 || manifest.ProductId != Product || !root.Equals(manifest.InstallRoot, StringComparison.OrdinalIgnoreCase) || manifest.Files is null || manifest.Files.Count is 0 or > 5000) throw new InstallException(L.T("Папка не подтверждена как установка DzhiggaTV."));
         var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Marker };
         foreach (var file in manifest.Files)
         {
             string relative = ValidateRelative(file.RelativePath);
-            if (!known.Add(relative) || file.Length < 0 || file.Sha256 is not { Length: 64 } || file.Sha256.Any(c => !Uri.IsHexDigit(c))) throw new InstallException("Манифест предыдущей установки повреждён.");
+            if (!known.Add(relative) || file.Length < 0 || file.Sha256 is not { Length: 64 } || file.Sha256.Any(c => !Uri.IsHexDigit(c))) throw new InstallException(L.T("Манифест предыдущей установки повреждён."));
             string path = SafePath(root, relative);
             if (File.Exists(path))
             {
                 EnsureNoReparseAncestors(path);
                 var actual = await DescribeAsync(root, relative, token);
-                if (actual.Length != file.Length || actual.Sha256 != file.Sha256) throw new InstallException("Файлы предыдущей установки изменены. Выберите новую папку, чтобы сохранить изменения.");
+                if (actual.Length != file.Length || actual.Sha256 != file.Sha256) throw new InstallException(L.T("Файлы предыдущей установки изменены. Выберите новую папку, чтобы сохранить изменения."));
             }
         }
         var app = manifest.Files.SingleOrDefault(file => file.RelativePath.Equals("DzhiggaTV.exe", StringComparison.OrdinalIgnoreCase));
-        if (app == null || app.Sha256 != manifest.ApplicationHash || !File.Exists(SafePath(root, app.RelativePath))) throw new InstallException("Не удалось подтвердить предыдущую версию DzhiggaTV.");
+        if (app == null || app.Sha256 != manifest.ApplicationHash || !File.Exists(SafePath(root, app.RelativePath))) throw new InstallException(L.T("Не удалось подтвердить предыдущую версию DzhiggaTV."));
         foreach (string path in EnumerateSafe(root))
-            if (File.Exists(path) && !known.Contains(Path.GetRelativePath(root, path).Replace('\\', '/'))) throw new InstallException("В папке приложения найдены посторонние файлы. Выберите новую папку, чтобы сохранить их.");
+            if (File.Exists(path) && !known.Contains(Path.GetRelativePath(root, path).Replace('\\', '/'))) throw new InstallException(L.T("В папке приложения найдены посторонние файлы. Выберите новую папку, чтобы сохранить их."));
         return manifest;
     }
     private static IEnumerable<string> EnumerateSafe(string root)
@@ -245,7 +246,7 @@ public static class InstallEngine
             string parent = pending.Pop();
             foreach (string path in Directory.EnumerateFileSystemEntries(parent))
             {
-                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new InstallException("В папке приложения обнаружена символическая ссылка.");
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new InstallException(L.T("В папке приложения обнаружена символическая ссылка."));
                 yield return path;
                 if (Directory.Exists(path)) pending.Push(path);
             }

@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Globalization;
 using DzhiggaTV.Remote;
 using DzhiggaTV.Core;
@@ -8,9 +9,17 @@ namespace DzhiggaTV.App;
 public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
 {
     private MainViewModel M => main.Model;
-    private Task<T> Ui<T>(Func<T> action, CancellationToken token) => main.Dispatcher.InvokeAsync(action, DispatcherPriority.Background, token).Task;
-    private Task UiAsync(Func<Task> action, CancellationToken token) => main.Dispatcher.InvokeAsync(action, DispatcherPriority.Background, token).Task.Unwrap();
-    private ChannelItem Allowed(string id) => M.AllChannels.Find(c => c.Id == id && M.IsAllowed(c)) ?? throw new RemoteException("Канал недоступен или скрыт на компьютере.", 404);
+    private Task<T> Ui<T>(Func<T> action, CancellationToken token) => main.Dispatcher.InvokeAsync(() =>
+    {
+        using var language = L.UseLanguage(L.DefaultLanguage);
+        return action();
+    }, DispatcherPriority.Background, token).Task;
+    private Task UiAsync(Func<Task> action, CancellationToken token) => main.Dispatcher.InvokeAsync(async () =>
+    {
+        using var language = L.UseLanguage(L.DefaultLanguage);
+        await action();
+    }, DispatcherPriority.Background, token).Task.Unwrap();
+    private ChannelItem Allowed(string id) => M.AllChannels.Find(c => c.Id == id && M.IsAllowed(c)) ?? throw new RemoteException(L.T("Канал недоступен или скрыт на компьютере."), 404);
     public async Task<RemoteCatalog> CatalogAsync(CatalogQuery query, CancellationToken token)
     {
         var snapshot = await Ui(() =>
@@ -68,10 +77,10 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
     {
         var row = await Ui(() => { var c = Allowed(channelId); return (c.Channel, Epg: M.EpgFor(c.Id)); }, token);
         var now = DateTimeOffset.UtcNow;
-        if (row.Epg is null || start > now) throw new RemoteException("Передача ещё не началась или отсутствует в телепрограмме.", 404);
+        if (row.Epg is null || start > now) throw new RemoteException(L.T("Передача ещё не началась или отсутствует в телепрограмме."), 404);
         var programme = (await Task.Run(() => M.Guide.GetNowNextAsync(row.Epg, start, token), token)).Current;
         if (programme is null || programme.Start != start || programme.End <= now && !Catchup.CanPlay(row.Channel, programme, now))
-            throw new RemoteException("Выбранная передача недоступна в архиве этого канала.", 404);
+            throw new RemoteException(L.T("Выбранная передача недоступна в архиве этого канала."), 404);
         return programme;
     }
     public Task<StreamSource> SourceAsync(string channelId, CancellationToken token) => SourceAsync(channelId, null, token);
@@ -100,7 +109,7 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
             }
             url = url[..separator];
         }
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) throw new RemoteException("Адрес канала не поддерживается Remote.", 415);
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)) throw new RemoteException(L.T("Адрес канала не поддерживается Remote."), 415);
         return new StreamSource(c.Id, c.Name, uri, headers);
     }, token);
     }
@@ -124,7 +133,7 @@ public sealed class DesktopRemoteLibrary(MainWindow main) : IRemoteLibrary
                 var favorite = Allowed(command.ChannelId ?? ""); if (favorite.IsFavorite != (command.Value != 0)) await M.ToggleFavoriteAsync(favorite); break;
             case "collection.add": case "collection.remove":
                 var channel = Allowed(command.ChannelId ?? "");
-                if (command.Name is null || !M.State.Collections.TryGetValue(command.Name, out var collection)) throw new RemoteException("Подборка не найдена.", 404);
+                if (command.Name is null || !M.State.Collections.TryGetValue(command.Name, out var collection)) throw new RemoteException(L.T("Подборка не найдена."), 404);
                 collection.RemoveAll(id => id == channel.Id); if (command.Action == "collection.add") collection.Add(channel.Id);
                 await M.SaveAsync(); M.RefreshFilter(); break;
             default: await main.RemoteCommandAsync(command, token); break;

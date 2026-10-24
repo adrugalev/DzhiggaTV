@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using DzhiggaTV.Core;
 
 namespace DzhiggaTV.App;
@@ -10,7 +11,7 @@ public sealed partial class MainViewModel
     public async Task SetEpgOffsetAsync(string channelId, int minutes)
     {
         if (minutes is < -ChannelEpg.MaximumOffsetMinutes or > ChannelEpg.MaximumOffsetMinutes) throw new ArgumentOutOfRangeException(nameof(minutes));
-        if (!AllChannels.Any(c => c.Id == channelId)) throw new ArgumentException("Канал не найден.", nameof(channelId));
+        if (!AllChannels.Any(c => c.Id == channelId)) throw new ArgumentException(L.T("Канал не найден."), nameof(channelId));
         if (minutes == EpgOffset(channelId)) return;
         if (minutes == 0) State.EpgOffsets.Remove(channelId); else State.EpgOffsets[channelId] = minutes;
         ++EpgTimeRevision; ++_catalogGeneration; _programmeSearchQuery = ""; _programmeMatches = new Dictionary<string, Programme>();

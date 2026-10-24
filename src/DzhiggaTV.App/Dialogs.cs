@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -11,6 +12,8 @@ public static class Theme
     public static void Window(Window window)
     {
         window.Style = (Style)Application.Current.FindResource(typeof(Window));
+        window.Language = System.Windows.Markup.XmlLanguage.GetLanguage(L.Culture.Name);
+        window.FontFamily = new FontFamily(L.Language == "zh-Hans" ? "Microsoft YaHei UI, Microsoft YaHei, Segoe UI" : "Segoe UI Variable, Segoe UI");
         WindowAppearance.Attach(window);
     }
     public static void Apply(bool light)
@@ -36,10 +39,10 @@ public sealed class TextPrompt : Window
         panel.Children.Add(new TextBlock { Text = label, Margin = new(0,0,0,12) });
         _text = new() { Text = value }; panel.Children.Add(_text);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0,16,0,0) };
-        var cancel = new Button { Content = "Отмена", IsCancel = true }; buttons.Children.Add(cancel);
-        var ok = new Button { Content = "Сохранить", IsDefault = true }; ok.Click += (_, _) => { if (!string.IsNullOrWhiteSpace(_text.Text)) DialogResult = true; }; buttons.Children.Add(ok); panel.Children.Add(buttons);
+        var cancel = new Button { Content = L.T("Отмена"), IsCancel = true }; buttons.Children.Add(cancel);
+        var ok = new Button { Content = L.T("Сохранить"), IsDefault = true }; ok.Click += (_, _) => { if (!string.IsNullOrWhiteSpace(_text.Text)) DialogResult = true; }; buttons.Children.Add(ok); panel.Children.Add(buttons);
         Loaded += (_, _) => { _text.Focus(); _text.SelectAll(); };
     }
     public static string? Show(Window owner, string title, string label, string value = "")
-    { var dialog = new TextPrompt(owner, title, label, value); return dialog.ShowDialog() == true ? dialog._text.Text.Trim() : null; }
+    { var dialog = new TextPrompt(owner, title, label, value); return dialog.ShowDialog() == true ? new string(dialog._text.Text.Trim().AsSpan()) : null; }
 }

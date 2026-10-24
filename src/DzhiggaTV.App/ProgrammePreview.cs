@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -52,7 +53,7 @@ internal sealed class ProgrammePreview
     {
         _owner = owner; _model = model; _buttons = buttons;
         _getProgramme = getProgramme; _canShow = canShow; _availableWidth = availableWidth;
-        _currentBadge = currentBadge ?? (() => "СЕЙЧАС В ЭФИРЕ");
+        _currentBadge = currentBadge ?? (() => L.T("СЕЙЧАС В ЭФИРЕ"));
         // Keep each popup over its own card and its trigger exposed. Explicit placement
         // also avoids the system menu-alignment preference moving a popup to another card.
         _popup.CustomPopupPlacementCallback = (size, target, _) =>
@@ -63,7 +64,7 @@ internal sealed class ProgrammePreview
         Panel = new() { CornerRadius = new(10), BorderThickness = new(1), Padding = new(14, 12, 14, 12), Visibility = Visibility.Collapsed };
         Panel.SetResourceReference(Border.BackgroundProperty, "PanelBrush"); Panel.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
         Panel.SetResourceReference(TextElement.ForegroundProperty, "TextBrush");
-        System.Windows.Automation.AutomationProperties.SetName(Panel, "Полное описание передачи");
+        System.Windows.Automation.AutomationProperties.SetName(Panel, L.T("Полное описание передачи"));
         var body = new StackPanel();
         foreach (var block in new[] { _badge, _title, _time }) body.Children.Add(block);
         _badge.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
@@ -159,7 +160,7 @@ internal sealed class ProgrammePreview
         var programme = _getProgramme(_index);
         if (programme is null) { Hide(); return; }
         if (_shown == programme) return;
-        _shown = programme; _badge.Text = _index switch { 0 => _currentBadge(), 1 => "ДАЛЕЕ", _ => "ЗАТЕМ" };
+        _shown = programme; _badge.Text = _index switch { 0 => _currentBadge(), 1 => L.T("ДАЛЕЕ"), _ => L.T("ЗАТЕМ") };
         _title.Text = programme.Title;
         _time.Text = $"{programme.Start.ToLocalTime():dd.MM · HH:mm} — {programme.End.ToLocalTime():HH:mm}";
         _description.Show(programme);

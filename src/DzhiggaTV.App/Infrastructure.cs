@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
@@ -5,9 +6,10 @@ using DzhiggaTV.Core;
 
 namespace DzhiggaTV.App;
 
-public abstract class Observable : INotifyPropertyChanged
+public abstract class Observable : INotifyPropertyChanged, DzhiggaTV.Localization.ILocalizedViewModel
 {
     public event PropertyChangedEventHandler? PropertyChanged;
+    public void RefreshLanguage() => PropertyChanged?.Invoke(this, new(null));
     protected void Raise([CallerMemberName] string? name = null) => PropertyChanged?.Invoke(this, new(name));
     protected bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
     { if (EqualityComparer<T>.Default.Equals(field, value)) return false; field = value; Raise(name); return true; }
@@ -22,8 +24,8 @@ public sealed class ChannelItem(Channel channel) : Observable
 {
     public Channel Channel { get; } = channel;
     public CatchupSource? Archive { get; } = Catchup.From(channel);
-    public string ArchiveLabel => Archive is { } archive ? $"↶ {archive.Days} дн." : "";
-    public string ArchiveHint => Archive is { } archive ? $"В плейлисте заявлен архив до {archive.Days} дн. Наличие конкретной записи зависит от провайдера. Откройте телепрограмму, чтобы выбрать передачу." : "";
+    public string ArchiveLabel => Archive is { } archive ? L.F("↶ {0} дн.", archive.Days) : "";
+    public string ArchiveHint => Archive is { } archive ? L.F("В плейлисте заявлен архив до {0} дн. Наличие конкретной записи зависит от провайдера. Откройте телепрограмму, чтобы выбрать передачу.", archive.Days) : "";
     public string Id => Channel.Id;
     public int Number { get; init; } = channel.Order + 1;
     private string _name = channel.Name;
@@ -35,8 +37,8 @@ public sealed class ChannelItem(Channel channel) : Observable
     public string FavoriteGlyph => IsFavorite ? "★" : "☆";
     private string? _logoPath;
     public string? LogoPath { get => _logoPath; set => Set(ref _logoPath, value); }
-    private string _nowTitle = "Телепрограмма не назначена";
-    public string NowTitle { get => _nowTitle; set { if (Set(ref _nowTitle, value)) Raise(nameof(ProgrammeSummary)); } }
+    private string _nowTitle = L.T("Телепрограмма не назначена");
+    public string NowTitle { get => L.Refresh(_nowTitle); set { if (Set(ref _nowTitle, value)) Raise(nameof(ProgrammeSummary)); } }
     private Programme? _searchProgramme;
     public Programme? SearchProgramme
     {

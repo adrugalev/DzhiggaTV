@@ -1,6 +1,8 @@
 using System.Windows;
 using DzhiggaTV.Core;
 
+using L = DzhiggaTV.Localization.Texts;
+
 namespace DzhiggaTV.App;
 
 public sealed record GuideRange(DateTimeOffset Start, DateTimeOffset End)
@@ -108,7 +110,7 @@ public sealed class GuideViewport
 
 public sealed record GuidePlaylistChoice(string? Id, string Name)
 {
-    public override string ToString() => Name;
+    public override string ToString() => L.Refresh(Name);
 }
 
 public static class GuideFiltering

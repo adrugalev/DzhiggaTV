@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
@@ -29,7 +30,7 @@ public sealed class RemoteStreams : IDisposable
     public async Task<object> StartAsync(string deviceId, string channelId, bool transcode, string serverUrl, CancellationToken token, bool compatible = false, DateTimeOffset? programmeStart = null)
     {
         var options = _options();
-        if (!options.AllowViewing) throw new RemoteException("Просмотр на телефонах отключён на компьютере.", 403);
+        if (!options.AllowViewing) throw new RemoteException(L.T("Просмотр на телефонах отключён на компьютере."), 403);
         long generation, epoch;
         lock (_gate) { generation = _starts.GetValueOrDefault(deviceId) + 1; _starts[deviceId] = generation; epoch = _epoch; }
         var source = await _library.SourceAsync(channelId, programmeStart, token); _policy.Validate(source.Uri); token.ThrowIfCancellationRequested();
@@ -56,9 +57,9 @@ public sealed class RemoteStreams : IDisposable
             if (epoch != _epoch || _starts.GetValueOrDefault(deviceId) != generation) throw new OperationCanceledException("Superseded stream request.");
             var old = _streams.Values.FirstOrDefault(v => v.DeviceId == deviceId);
             if (old is not null) Remove(old);
-            if (_streams.Count >= options.MaximumStreams) throw new RemoteException("Достигнут лимит мобильных потоков. Остановите просмотр на другом устройстве.", 409);
-            if ((transcode || compatible) && (!options.AllowTranscoding || !File.Exists(options.FfmpegPath))) throw new RemoteException("Включите совместимость iPhone и выберите ffmpeg.exe в настройках Remote на ПК.", 409);
-            if ((transcode || compatible) && _streams.Values.Any(v => v.UsesEncoder)) throw new RemoteException("Преобразование уже используется другим устройством. Одновременно доступна одна задача.", 409);
+            if (_streams.Count >= options.MaximumStreams) throw new RemoteException(L.T("Достигнут лимит мобильных потоков. Остановите просмотр на другом устройстве."), 409);
+            if ((transcode || compatible) && (!options.AllowTranscoding || !File.Exists(options.FfmpegPath))) throw new RemoteException(L.T("Включите совместимость iPhone и выберите ffmpeg.exe в настройках Remote на ПК."), 409);
+            if ((transcode || compatible) && _streams.Values.Any(v => v.UsesEncoder)) throw new RemoteException(L.T("Преобразование уже используется другим устройством. Одновременно доступна одна задача."), 409);
             viewing = new(deviceId, source, transcode ? "transcode" : compatible ? "compatible" : "proxy", _policy); _streams.Add(viewing.Id, viewing);
         }
         try
@@ -69,24 +70,24 @@ public sealed class RemoteStreams : IDisposable
             {
                 using var probeTimeout = CancellationTokenSource.CreateLinkedTokenSource(token); probeTimeout.CancelAfter(TimeSpan.FromSeconds(12));
                 using var probe = await OpenAsync(viewing, source.Uri, null, probeTimeout.Token);
-                if (!probe.IsSuccessStatusCode) throw new RemoteException("Провайдер не предоставил поток. Проверьте лимит одновременных подключений.", 502);
+                if (!probe.IsSuccessStatusCode) throw new RemoteException(L.T("Провайдер не предоставил поток. Проверьте лимит одновременных подключений."), 502);
                 using var input = await probe.Content.ReadAsStreamAsync(probeTimeout.Token); var header = new byte[32];
                 int count = await input.ReadAtLeastAsync(header, 8, false, probeTimeout.Token);
                 bool hls = Encoding.UTF8.GetString(header, 0, count).TrimStart('\uFEFF', '\r', '\n', ' ').StartsWith("#EXTM3U", StringComparison.Ordinal);
                 if (!hls)
                 {
-                    if (!options.AllowTranscoding || !File.Exists(options.FfmpegPath)) throw new RemoteException("Это не HLS-поток. Разрешите преобразование через FFmpeg в настройках Remote на компьютере.", 415);
+                    if (!options.AllowTranscoding || !File.Exists(options.FfmpegPath)) throw new RemoteException(L.T("Это не HLS-поток. Разрешите преобразование через FFmpeg в настройках Remote на компьютере."), 415);
                     lock (_gate)
                     {
                         if (!_streams.ContainsKey(viewing.Id)) throw new OperationCanceledException();
-                        if (_streams.Values.Any(v => v.UsesEncoder)) throw new RemoteException("Уже работает одна задача преобразования. Остановите её перед запуском другой.", 409);
+                        if (_streams.Values.Any(v => v.UsesEncoder)) throw new RemoteException(L.T("Уже работает одна задача преобразования. Остановите её перед запуском другой."), 409);
                         viewing.Mode = "transcode"; transcode = true;
                     }
                 }
             }
             if (!transcode && !compatible && options.Delivery == "direct")
             {
-                if (!options.AllowDirectUrls || source.Headers.Count > 0) throw new RemoteException("Прямое воспроизведение требует разрешения адресов и потока без специальных HTTP-заголовков.", 409);
+                if (!options.AllowDirectUrls || source.Headers.Count > 0) throw new RemoteException(L.T("Прямое воспроизведение требует разрешения адресов и потока без специальных HTTP-заголовков."), 409);
                 using var response = await OpenAsync(viewing, source.Uri, null, token);
                 var text = await ReadPlaylistAsync(response, token);
                 HlsPlaylist.Rewrite(text, response.RequestMessage!.RequestUri!, uri => { _policy.Validate(uri); return uri.AbsoluteUri; });
@@ -106,11 +107,11 @@ public sealed class RemoteStreams : IDisposable
                 foreach (var arg in new[] { "-c:a", "aac", "-b:a", "128k", "-ac", "2", "-f", "hls", "-hls_time", "4", "-hls_list_size", "6", "-hls_flags", "delete_segments+independent_segments+temp_file" }) start.ArgumentList.Add(arg);
                 if (compatible && !transcode) foreach (var arg in new[] { "-hls_segment_type", "fmp4", "-hls_fmp4_init_filename", "init.mp4" }) start.ArgumentList.Add(arg);
                 foreach (var arg in new[] { "-hls_segment_filename", compatible && !transcode ? "part%06d.m4s" : "part%06d.ts", "index.m3u8" }) start.ArgumentList.Add(arg);
-                viewing.Process = Process.Start(start) ?? throw new RemoteException("Не удалось запустить FFmpeg.");
+                viewing.Process = Process.Start(start) ?? throw new RemoteException(L.T("Не удалось запустить FFmpeg."));
                 _ = DrainAsync(viewing.Process.StandardError); _ = DrainAsync(viewing.Process.StandardOutput);
                 using var wait = CancellationTokenSource.CreateLinkedTokenSource(token, viewing.Cancellation.Token); wait.CancelAfter(TimeSpan.FromSeconds(40));
                 while (!File.Exists(Path.Combine(viewing.Directory, "index.m3u8")))
-                { if (viewing.Process.HasExited) throw new RemoteException("FFmpeg не смог открыть поток. Проверьте поддержку H.264/AAC в выбранной сборке FFmpeg.", 415); await Task.Delay(200, wait.Token); }
+                { if (viewing.Process.HasExited) throw new RemoteException(L.T("FFmpeg не смог открыть поток. Проверьте поддержку H.264/AAC в выбранной сборке FFmpeg."), 415); await Task.Delay(200, wait.Token); }
                 return new { url = $"/converted/{viewing.Id}/index.m3u8", mode = viewing.Mode, channelId };
             }
             return new { url = viewing.Path("root"), mode = "proxy", channelId };
@@ -143,7 +144,7 @@ public sealed class RemoteStreams : IDisposable
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, viewing.Cancellation.Token); timeout.CancelAfter(TimeSpan.FromSeconds(35));
         Uri uri = viewing.Resolve(resource);
         using var response = await OpenAsync(viewing, uri, context.Request.Headers.Range.ToString(), timeout.Token);
-        if (!response.IsSuccessStatusCode) throw new RemoteException(response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.Forbidden ? "IPTV-провайдер отклонил запрос. Возможно, исчерпан лимит подключений." : "IPTV-поток временно недоступен.", 502);
+        if (!response.IsSuccessStatusCode) throw new RemoteException(response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.Forbidden ? L.T("IPTV-провайдер отклонил запрос. Возможно, исчерпан лимит подключений.") : L.T("IPTV-поток временно недоступен."), 502);
         var type = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
         bool playlist = type.Contains("mpegurl", StringComparison.OrdinalIgnoreCase) || response.RequestMessage!.RequestUri!.AbsolutePath.EndsWith(".m3u8", StringComparison.OrdinalIgnoreCase) || resource == "root" && !viewing.UsesEncoder;
         byte[] prefix = [];
@@ -179,9 +180,9 @@ public sealed class RemoteStreams : IDisposable
     {
         var v = Resolve(deviceId, id);
         await _library.SourceAsync(v.Source.ChannelId, context.RequestAborted);
-        if (v.Directory is null || file is not ("index.m3u8" or "init.mp4") && !(file.StartsWith("part", StringComparison.Ordinal) && (file.Length == 13 && file.EndsWith(".ts", StringComparison.Ordinal) || file.Length == 14 && file.EndsWith(".m4s", StringComparison.Ordinal)) && file.AsSpan(4, 6).ToString().All(char.IsAsciiDigit))) throw new RemoteException("Фрагмент не найден.", 404);
+        if (v.Directory is null || file is not ("index.m3u8" or "init.mp4") && !(file.StartsWith("part", StringComparison.Ordinal) && (file.Length == 13 && file.EndsWith(".ts", StringComparison.Ordinal) || file.Length == 14 && file.EndsWith(".m4s", StringComparison.Ordinal)) && file.AsSpan(4, 6).ToString().All(char.IsAsciiDigit))) throw new RemoteException(L.T("Фрагмент не найден."), 404);
         var path = Path.Combine(v.Directory, file);
-        if (!File.Exists(path)) throw new RemoteException("Фрагмент ещё не готов. Повторите подключение.", 404);
+        if (!File.Exists(path)) throw new RemoteException(L.T("Фрагмент ещё не готов. Повторите подключение."), 404);
         context.Response.ContentType = file == "index.m3u8" ? "application/vnd.apple.mpegurl" : file == "init.mp4" ? "video/mp4" : file.EndsWith(".m4s", StringComparison.Ordinal) ? "video/iso.segment" : "video/mp2t";
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, v.Cancellation.Token);
         var data = await File.ReadAllBytesAsync(path, timeout.Token); Interlocked.Add(ref v.Bytes, data.Length); await context.Response.Body.WriteAsync(data, timeout.Token);
@@ -193,7 +194,7 @@ public sealed class RemoteStreams : IDisposable
             _policy.Validate(uri);
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             if (!string.IsNullOrEmpty(range))
-            { if (!RangeHeaderValue.TryParse(range, out var value) || value.Ranges.Count != 1) throw new RemoteException("Некорректный диапазон.", 416); request.Headers.Range = value; }
+            { if (!RangeHeaderValue.TryParse(range, out var value) || value.Ranges.Count != 1) throw new RemoteException(L.T("Некорректный диапазон."), 416); request.Headers.Range = value; }
             foreach (var header in viewing.Source.Headers)
                 if ((header.Key is "User-Agent" or "Referer" or "Origin") || uri.GetLeftPart(UriPartial.Authority) == viewing.Source.Uri.GetLeftPart(UriPartial.Authority) && header.Key is "Authorization" or "Cookie") request.Headers.TryAddWithoutValidation(header.Key, header.Value);
             if (!request.Headers.Contains("User-Agent")) request.Headers.TryAddWithoutValidation("User-Agent", "DzhiggaTV-Remote/2.0");
@@ -201,25 +202,25 @@ public sealed class RemoteStreams : IDisposable
             if ((int)response.StatusCode is 301 or 302 or 303 or 307 or 308)
             {
                 var target = response.Headers.Location; response.Dispose();
-                if (target is null) throw new RemoteException("Некорректное перенаправление IPTV.", 502);
+                if (target is null) throw new RemoteException(L.T("Некорректное перенаправление IPTV."), 502);
                 uri = new Uri(uri, target); continue;
             }
             return response;
         }
-        throw new RemoteException("Слишком много перенаправлений IPTV.", 502);
+        throw new RemoteException(L.T("Слишком много перенаправлений IPTV."), 502);
     }
     private static async Task<string> ReadPlaylistAsync(HttpResponseMessage response, CancellationToken token, byte[]? prefix = null)
     {
-        if (!response.IsSuccessStatusCode) throw new RemoteException("Провайдер не предоставил поток.", 502);
+        if (!response.IsSuccessStatusCode) throw new RemoteException(L.T("Провайдер не предоставил поток."), 502);
         using var stream = await response.Content.ReadAsStreamAsync(token);
         using var output = new MemoryStream(); if (prefix is not null) output.Write(prefix); var buffer = new byte[8192]; int read;
         while ((read = await stream.ReadAsync(buffer, token)) > 0)
-        { if (output.Length + read > 1024 * 1024) throw new RemoteException("HLS-плейлист слишком велик или формат потока несовместим с Safari.", 415); output.Write(buffer, 0, read); }
+        { if (output.Length + read > 1024 * 1024) throw new RemoteException(L.T("HLS-плейлист слишком велик или формат потока несовместим с Safari."), 415); output.Write(buffer, 0, read); }
         return Encoding.UTF8.GetString(output.ToArray());
     }
     private Viewing Resolve(string deviceId, string id, bool touch = true)
     {
-        lock (_gate) { Prune(); if (!_streams.TryGetValue(id, out var v) || v.DeviceId != deviceId) throw new RemoteException("Просмотр завершён. Выберите канал заново.", 404); if (touch) v.Touched = DateTimeOffset.UtcNow; return v; }
+        lock (_gate) { Prune(); if (!_streams.TryGetValue(id, out var v) || v.DeviceId != deviceId) throw new RemoteException(L.T("Просмотр завершён. Выберите канал заново."), 404); if (touch) v.Touched = DateTimeOffset.UtcNow; return v; }
     }
     private void Prune() { foreach (var v in _streams.Values.Where(v => DateTimeOffset.UtcNow - v.Touched > TimeSpan.FromSeconds(65)).ToArray()) Remove(v); }
     private void Remove(Viewing v) { _streams.Remove(v.Id); v.Dispose(); }
@@ -239,7 +240,7 @@ public sealed class RemoteStreams : IDisposable
         public Uri Resolve(string key)
         {
             if (key == "root") return Source.Uri;
-            lock (_refsGate) { if (!_refs.TryGetValue(key, out var value)) throw new RemoteException("Ссылка HLS устарела.", 404); return value.Uri; }
+            lock (_refsGate) { if (!_refs.TryGetValue(key, out var value)) throw new RemoteException(L.T("Ссылка HLS устарела."), 404); return value.Uri; }
         }
         public string Register(Uri uri, bool encoder = false)
         {
@@ -251,7 +252,7 @@ public sealed class RemoteStreams : IDisposable
                 {
                     var expired = _refs.Where(r => r.Value.Seen < DateTimeOffset.UtcNow.AddMinutes(-2)).Take(1024).ToArray();
                     foreach (var r in expired) { _refs.Remove(r.Key); _urls.Remove(r.Value.Uri.AbsoluteUri); }
-                    if (_refs.Count >= 4096) throw new RemoteException("Слишком много ссылок в HLS-плейлисте.", 502);
+                    if (_refs.Count >= 4096) throw new RemoteException(L.T("Слишком много ссылок в HLS-плейлисте."), 502);
                 }
                 key = DeviceRegistry.Token(); _refs.Add(key, (uri, DateTimeOffset.UtcNow)); _urls.Add(uri.AbsoluteUri, key); return Path(key, encoder);
             }

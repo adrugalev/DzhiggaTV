@@ -2,6 +2,7 @@ param([string]$PlaylistPath, [ValidateSet('Debug','Release')][string]$Configurat
 . (Join-Path $PSScriptRoot 'common.ps1')
 $previousFixture = $env:DZHIGGATV_TEST_PLAYLIST
 try {
+    Invoke-DzhiggaDotnet -Arguments @('run', '--project', (Join-Path $RepositoryRoot 'tests\DzhiggaTV.Localization.Tests\DzhiggaTV.Localization.Tests.csproj'), '-c', $Configuration, '--no-launch-profile')
     if ($PlaylistPath) {
         if (!(Test-Path -LiteralPath $PlaylistPath -PathType Leaf)) { throw 'Не найден локальный тестовый плейлист.' }
         $env:DZHIGGATV_TEST_PLAYLIST = [IO.Path]::GetFullPath($PlaylistPath)

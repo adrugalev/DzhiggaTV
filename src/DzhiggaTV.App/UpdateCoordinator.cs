@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using DzhiggaTV.Services;
 
 namespace DzhiggaTV.App;
@@ -33,7 +34,7 @@ public sealed class UpdateCoordinator : Observable, IDisposable
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
             catch (UpdateException e) { LastError = e.Message; }
-            catch { LastError = "Не удалось связаться с GitHub. Проверьте интернет и попробуйте ещё раз."; }
+            catch { LastError = L.T("Не удалось связаться с GitHub. Проверьте интернет и попробуйте ещё раз."); }
         }
         finally { _checking.Release(); }
     }

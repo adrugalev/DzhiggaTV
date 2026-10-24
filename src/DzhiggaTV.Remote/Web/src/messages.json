@@ -1,0 +1,578 @@
+{
+  "Нет подключения к DzhiggaTV. Проверьте домашнюю сеть.": {
+    "En": "No connection to DzhiggaTV. Check your home network.",
+    "Zh": "无法连接到 DzhiggaTV，请检查家庭网络。"
+  },
+  "Не удалось выполнить действие.": {
+    "En": "The action could not be completed.",
+    "Zh": "操作未能完成。"
+  },
+  "Браузер": {
+    "En": "Browser",
+    "Zh": "浏览器"
+  },
+  "Подключение отклонено на компьютере.": {
+    "En": "The connection was denied on the computer.",
+    "Zh": "电脑上已拒绝此连接。"
+  },
+  "Код истёк. Обновите QR-код на компьютере.": {
+    "En": "The code expired. Refresh the QR code on the computer.",
+    "Zh": "二维码已过期，请在电脑上刷新。"
+  },
+  "Откройте настройки Remote на компьютере и отсканируйте QR-код.": {
+    "En": "Open Remote settings on the computer and scan the QR code.",
+    "Zh": "请打开电脑上的 Remote 设置并扫描二维码。"
+  },
+  "Доступ устройства отозван. Для подключения нужен новый QR-код.": {
+    "En": "Access for this device was revoked. Pair again with a new QR code.",
+    "Zh": "此设备的访问权限已被撤销，请使用新二维码重新配对。"
+  },
+  "ВАШ ТЕЛЕВИЗОР. РЯДОМ.": {
+    "En": "YOUR TV. CLOSE BY.",
+    "Zh": "您的电视，近在身边。"
+  },
+  "Подтвердите на компьютере": {
+    "En": "Approve on the computer",
+    "Zh": "在电脑上批准"
+  },
+  "Код на обоих экранах должен совпадать.": {
+    "En": "The code must match on both screens.",
+    "Zh": "两块屏幕上的验证码应一致。"
+  },
+  "После подтверждения здесь откроются каналы.": {
+    "En": "Channels will appear here once approved.",
+    "Zh": "批准后，频道将显示在此处。"
+  },
+  "Подключаемся…": {
+    "En": "Connecting…",
+    "Zh": "正在连接…"
+  },
+  "Подключите телефон": {
+    "En": "Connect your phone",
+    "Zh": "连接手机"
+  },
+  "Откройте камеру iPhone и отсканируйте QR-код в DzhiggaTV.": {
+    "En": "Open the iPhone camera and scan the QR code in DzhiggaTV.",
+    "Zh": "请打开 iPhone 相机，扫描 DzhiggaTV 中的二维码。"
+  },
+  "Проверить подключение": {
+    "En": "Check connection",
+    "Zh": "检查连接"
+  },
+  "Телефон и компьютер должны быть в одной домашней сети. Проверьте, что Remote включён, компьютер не спит, а гостевой Wi-Fi или VPN не блокирует доступ.": {
+    "En": "The phone and computer must be on the same home network. Make sure Remote is enabled, the computer is awake, and guest Wi-Fi or VPN is not blocking access.",
+    "Zh": "手机和电脑必须连接同一家庭网络。请确认 Remote 已启用、电脑未休眠，且访客 Wi-Fi 或 VPN 未阻止访问。"
+  },
+  "Нет подключения к DzhiggaTV. Команда не отправлена.": {
+    "En": "No connection to DzhiggaTV. The command was not sent.",
+    "Zh": "无法连接到 DzhiggaTV，命令未发送。"
+  },
+  "Просмотр на телефоне отключён на компьютере.": {
+    "En": "Mobile viewing is disabled on the computer.",
+    "Zh": "电脑上已停用手机观看。"
+  },
+  "Нажмите ▶ на видео, чтобы начать просмотр со звуком.": {
+    "En": "Tap ▶ on the video to start playback with sound.",
+    "Zh": "请点击视频上的 ▶ 以开始有声播放。"
+  },
+  "Не удалось открыть канал с компьютера. Выберите канал в списке.": {
+    "En": "Could not open the computer's channel. Choose a channel from the list.",
+    "Zh": "无法打开电脑上的频道，请从列表中选择频道。"
+  },
+  "Подбираем совместимый звук · качество видео сохраняется": {
+    "En": "Preparing compatible audio · video quality is preserved",
+    "Zh": "正在准备兼容声音 · 保留原始视频画质"
+  },
+  "Этот формат видео тоже несовместим с Safari. Можно преобразовать видео в H.264.": {
+    "En": "This video format is also incompatible with Safari. You can convert the video to H.264.",
+    "Zh": "此视频格式也与 Safari 不兼容，可将视频转换为 H.264。"
+  },
+  "Safari не поддерживает формат этого потока. Попробуйте совместимый звук или преобразование видео.": {
+    "En": "Safari does not support this stream format. Try compatible audio or video conversion.",
+    "Zh": "Safari 不支持此视频流格式，请尝试兼容声音或视频转换。"
+  },
+  "Для этого канала включите «Совместимость iPhone» в окне Remote на компьютере. Это позволит преобразовать звук, сохранив качество видео.": {
+    "En": "For this channel, enable iPhone compatibility in Remote on the computer. Audio can then be converted while keeping the video quality.",
+    "Zh": "请在电脑的 Remote 窗口中为此频道启用 iPhone 兼容模式，以转换声音并保留视频画质。"
+  },
+  "Safari не смог загрузить поток. Проверьте сеть и лимит подключений провайдера.": {
+    "En": "Safari could not load the stream. Check the network and your provider's connection limit.",
+    "Zh": "Safari 无法加载视频流，请检查网络和服务提供商的连接数量限制。"
+  },
+  "На ПК: {0}": {
+    "En": "On PC: {0}",
+    "Zh": "电脑播放：{0}"
+  },
+  "Дома": {
+    "En": "At home",
+    "Zh": "家庭网络"
+  },
+  "Нет подключения": {
+    "En": "Not connected",
+    "Zh": "未连接"
+  },
+  "Нет подключения к DzhiggaTV · пробуем восстановить связь": {
+    "En": "No connection to DzhiggaTV · reconnecting",
+    "Zh": "无法连接到 DzhiggaTV · 正在重新连接"
+  },
+  "Плеер телефона": {
+    "En": "Phone player",
+    "Zh": "手机播放器"
+  },
+  "Подключение…": {
+    "En": "Connecting…",
+    "Zh": "正在连接…"
+  },
+  "Включить звук": {
+    "En": "Enable sound",
+    "Zh": "开启声音"
+  },
+  "Начать просмотр": {
+    "En": "Start watching",
+    "Zh": "开始观看"
+  },
+  "Остановить просмотр": {
+    "En": "Stop watching",
+    "Zh": "停止观看"
+  },
+  "СМОТРЮ АРХИВ": {
+    "En": "WATCHING ARCHIVE",
+    "Zh": "正在回看"
+  },
+  "СМОТРЮ ЗДЕСЬ": {
+    "En": "WATCHING HERE",
+    "Zh": "在此观看"
+  },
+  "· ИСХОДНОЕ ВИДЕО / AAC": {
+    "En": "· ORIGINAL VIDEO / AAC",
+    "Zh": "· 原始视频／AAC"
+  },
+  "Телепрограмма пока недоступна": {
+    "En": "TV guide unavailable for now",
+    "Zh": "暂无节目单"
+  },
+  "Развернуть плеер": {
+    "En": "Expand player",
+    "Zh": "展开播放器"
+  },
+  "Свернуть плеер": {
+    "En": "Collapse player",
+    "Zh": "折叠播放器"
+  },
+  "Полный экран": {
+    "En": "Fullscreen",
+    "Zh": "全屏"
+  },
+  "Картинка в картинке": {
+    "En": "Picture in Picture",
+    "Zh": "画中画"
+  },
+  "Повторить": {
+    "En": "Retry",
+    "Zh": "重试"
+  },
+  "Совместимый звук · без потери видео": {
+    "En": "Compatible audio · original video",
+    "Zh": "兼容声音 · 保留原始视频"
+  },
+  "Преобразовать видео в H.264": {
+    "En": "Convert video to H.264",
+    "Zh": "将视频转换为 H.264"
+  },
+  "Канал для экрана {0}": {
+    "En": "Channel for screen {0}",
+    "Zh": "画面 {0} 的频道"
+  },
+  "Избранное": {
+    "En": "Favorites",
+    "Zh": "收藏"
+  },
+  "Телевидение": {
+    "En": "Television",
+    "Zh": "电视"
+  },
+  "каналов": {
+    "En": "channels",
+    "Zh": "个频道"
+  },
+  "Режим выбора канала": {
+    "En": "Channel selection mode",
+    "Zh": "频道选择模式"
+  },
+  "Смотреть здесь": {
+    "En": "Watch here",
+    "Zh": "在此观看"
+  },
+  "Управлять ПК": {
+    "En": "Control PC",
+    "Zh": "遥控电脑"
+  },
+  "Канал, фильм или матч": {
+    "En": "Channel, film or match",
+    "Zh": "频道、电影或赛事"
+  },
+  "Поиск канала или передачи": {
+    "En": "Search channel or programme",
+    "Zh": "搜索频道或节目"
+  },
+  "Очистить поиск": {
+    "En": "Clear search",
+    "Zh": "清除搜索"
+  },
+  "Фильтры каналов": {
+    "En": "Channel filters",
+    "Zh": "频道筛选"
+  },
+  "Категория": {
+    "En": "Category",
+    "Zh": "分类"
+  },
+  "Все категории": {
+    "En": "All categories",
+    "Zh": "所有分类"
+  },
+  "Плейлист": {
+    "En": "Playlist",
+    "Zh": "播放列表"
+  },
+  "Все плейлисты": {
+    "En": "All playlists",
+    "Zh": "所有播放列表"
+  },
+  "Подборка": {
+    "En": "Collection",
+    "Zh": "合集"
+  },
+  "Все каналы": {
+    "En": "All channels",
+    "Zh": "所有频道"
+  },
+  "Недавно смотрел": {
+    "En": "Recently watched",
+    "Zh": "最近观看"
+  },
+  "Сортировка": {
+    "En": "Sort",
+    "Zh": "排序"
+  },
+  "По порядку": {
+    "En": "Playlist order",
+    "Zh": "播放列表顺序"
+  },
+  "А–Я": {
+    "En": "A–Z",
+    "Zh": "名称顺序"
+  },
+  "Телепрограмма": {
+    "En": "TV guide",
+    "Zh": "节目单"
+  },
+  "Выберите канал в разделе ТВ или найдите его ниже.": {
+    "En": "Choose a channel on the TV tab or find it below.",
+    "Zh": "请在电视页面选择频道，或在下方查找。"
+  },
+  "Найти канал для телепрограммы": {
+    "En": "Find a channel for the TV guide",
+    "Zh": "查找需要查看节目单的频道"
+  },
+  "Найти канал": {
+    "En": "Find channel",
+    "Zh": "查找频道"
+  },
+  "Канал телепрограммы": {
+    "En": "TV guide channel",
+    "Zh": "节目单频道"
+  },
+  "Выберите канал": {
+    "En": "Choose a channel",
+    "Zh": "选择频道"
+  },
+  "Дата программы": {
+    "En": "Guide date",
+    "Zh": "节目单日期"
+  },
+  "Сейчас": {
+    "En": "Now",
+    "Zh": "现在"
+  },
+  "Загружаем программу…": {
+    "En": "Loading guide…",
+    "Zh": "正在加载节目单…"
+  },
+  "Канал": {
+    "En": "Channel",
+    "Zh": "频道"
+  },
+  "СЕЙЧАС В ЭФИРЕ": {
+    "En": "ON NOW",
+    "Zh": "正在播出"
+  },
+  "Для этого канала пока нет программы.": {
+    "En": "No guide is available for this channel yet.",
+    "Zh": "此频道暂无节目单。"
+  },
+  "Просмотр ТВ доступен без EPG.": {
+    "En": "You can watch TV without EPG.",
+    "Zh": "没有节目单也可以观看电视。"
+  },
+  "Пульт": {
+    "En": "Remote",
+    "Zh": "遥控"
+  },
+  "СЕЙЧАС НА КОМПЬЮТЕРЕ": {
+    "En": "NOW ON COMPUTER",
+    "Zh": "电脑正在播放"
+  },
+  "Управление плеером отключено в настройках на компьютере.": {
+    "En": "Player control is disabled in settings on the computer.",
+    "Zh": "电脑设置中已停用播放器遥控。"
+  },
+  "Предыдущий канал": {
+    "En": "Previous channel",
+    "Zh": "上一频道"
+  },
+  "Воспроизвести": {
+    "En": "Play",
+    "Zh": "播放"
+  },
+  "Пауза": {
+    "En": "Pause",
+    "Zh": "暂停"
+  },
+  "Следующий канал": {
+    "En": "Next channel",
+    "Zh": "下一频道"
+  },
+  "Выключить или включить звук": {
+    "En": "Mute or unmute",
+    "Zh": "静音或取消静音"
+  },
+  "Выйти из полного экрана": {
+    "En": "Exit fullscreen",
+    "Zh": "退出全屏"
+  },
+  "Выбрать канал": {
+    "En": "Choose channel",
+    "Zh": "选择频道"
+  },
+  "Звуковая дорожка": {
+    "En": "Audio track",
+    "Zh": "音轨"
+  },
+  "Мультиэкран": {
+    "En": "Multi-screen",
+    "Zh": "多画面"
+  },
+  "Выключить": {
+    "En": "Turn off",
+    "Zh": "关闭"
+  },
+  "Включить": {
+    "En": "Turn on",
+    "Zh": "开启"
+  },
+  "экран": {
+    "En": "screen",
+    "Zh": "个画面"
+  },
+  "экрана": {
+    "En": "screens",
+    "Zh": "个画面"
+  },
+  "ЭКРАН": {
+    "En": "SCREEN",
+    "Zh": "画面"
+  },
+  "Звук экрана {0}": {
+    "En": "Audio for screen {0}",
+    "Zh": "画面 {0} 的声音"
+  },
+  "Развернуть экран {0}": {
+    "En": "Expand screen {0}",
+    "Zh": "全屏显示画面 {0}"
+  },
+  "Настройки": {
+    "En": "Settings",
+    "Zh": "设置"
+  },
+  "МОЁ УСТРОЙСТВО": {
+    "En": "MY DEVICE",
+    "Zh": "我的设备"
+  },
+  "Связь с компьютером": {
+    "En": "Computer connection",
+    "Zh": "电脑连接"
+  },
+  "Подключено": {
+    "En": "Connected",
+    "Zh": "已连接"
+  },
+  "Нет связи": {
+    "En": "Disconnected",
+    "Zh": "未连接"
+  },
+  "Мобильных потоков": {
+    "En": "Mobile streams",
+    "Zh": "手机视频流"
+  },
+  "до": {
+    "En": "up to",
+    "Zh": "最多"
+  },
+  "Просмотр на телефоне": {
+    "En": "Phone viewing",
+    "Zh": "手机观看"
+  },
+  "Разрешён": {
+    "En": "Allowed",
+    "Zh": "已允许"
+  },
+  "Выключен": {
+    "En": "Off",
+    "Zh": "已关闭"
+  },
+  "Язык интерфейса": {
+    "En": "Interface language",
+    "Zh": "界面语言"
+  },
+  "Быстрый доступ": {
+    "En": "Quick access",
+    "Zh": "快速访问"
+  },
+  "В Safari нажмите «Поделиться» → «На экран Домой». Так Remote будет всегда под рукой.": {
+    "En": "In Safari, tap Share → Add to Home Screen to keep Remote close at hand.",
+    "Zh": "在 Safari 中点击“分享 → 添加到主屏幕”，即可随时打开 Remote。"
+  },
+  "Локальный HTTP работает, пока компьютер включён и находится в той же сети. Офлайн-просмотр не поддерживается; HTTP не шифрует трафик.": {
+    "En": "Local HTTP works while the computer is on and on the same network. Offline viewing is not supported, and HTTP does not encrypt traffic.",
+    "Zh": "本地 HTTP 需要电脑保持开机且连接同一网络。不支持离线观看，HTTP 流量不加密。"
+  },
+  "Звук и видео на iPhone": {
+    "En": "iPhone audio and video",
+    "Zh": "iPhone 声音与视频"
+  },
+  "Громкость телефона регулируется его кнопками. Дорожки и субтитры доступны в штатном меню видео, если они есть в потоке. AirPlay и «Картинка в картинке» появляются при поддержке браузером.": {
+    "En": "Use the phone's buttons to adjust volume. Tracks and subtitles are available in the native video menu when provided by the stream. AirPlay and Picture in Picture appear when supported by the browser.",
+    "Zh": "使用手机按键调整音量。视频流提供音轨和字幕时，可在系统视频菜单中选择。浏览器支持时会显示 AirPlay 和画中画功能。"
+  },
+  "Каналы на телефоне и компьютере независимы. Лимит одновременных подключений задаёт ваш IPTV-провайдер.": {
+    "En": "Phone and computer channels are independent. Your IPTV provider sets the simultaneous-connection limit.",
+    "Zh": "手机和电脑播放的频道相互独立，同时连接数量由您的 IPTV 服务提供商限制。"
+  },
+  "Компьютер отвечает. Подключение работает.": {
+    "En": "The computer is responding. Your connection is working.",
+    "Zh": "电脑响应正常，连接可用。"
+  },
+  "Отключить это устройство": {
+    "En": "Disconnect this device",
+    "Zh": "断开此设备"
+  },
+  "Разделы": {
+    "En": "Sections",
+    "Zh": "页面导航"
+  },
+  "ТВ": {
+    "En": "TV",
+    "Zh": "电视"
+  },
+  "Программа": {
+    "En": "Guide",
+    "Zh": "节目单"
+  },
+  "Описание этой передачи пока недоступно.": {
+    "En": "A description for this programme is not available yet.",
+    "Zh": "此节目暂无简介。"
+  },
+  "Передача ещё не началась.": {
+    "En": "The programme has not started yet.",
+    "Zh": "节目尚未开始。"
+  },
+  "Откроется выбранная запись из архива.": {
+    "En": "The selected archive recording will open.",
+    "Zh": "将打开所选回看录像。"
+  },
+  "Включится текущий прямой эфир канала.": {
+    "En": "The channel's current live stream will play.",
+    "Zh": "将播放该频道的当前直播。"
+  },
+  "Включить на ПК": {
+    "En": "Play on PC",
+    "Zh": "在电脑上播放"
+  },
+  "КАНАЛ": {
+    "En": "CHANNEL",
+    "Zh": "频道"
+  },
+  "Смотреть на телефоне": {
+    "En": "Watch on phone",
+    "Zh": "在手机上观看"
+  },
+  "Убрать из избранного": {
+    "En": "Remove from favorites",
+    "Zh": "取消收藏"
+  },
+  "Добавить в избранное": {
+    "En": "Add to favorites",
+    "Zh": "添加到收藏"
+  },
+  "О передаче": {
+    "En": "About this programme",
+    "Zh": "节目详情"
+  },
+  "Добавить": {
+    "En": "Add",
+    "Zh": "添加"
+  },
+  "Убрать из подборки {0}": {
+    "En": "Remove from {0}",
+    "Zh": "从 {0} 中移除"
+  },
+  "Свободный экран": {
+    "En": "Empty screen",
+    "Zh": "空画面"
+  },
+  "Канал недоступен": {
+    "En": "Channel unavailable",
+    "Zh": "频道不可用"
+  },
+  "Громкость компьютера": {
+    "En": "Computer volume",
+    "Zh": "电脑音量"
+  },
+  "Загружаем каналы…": {
+    "En": "Loading channels…",
+    "Zh": "正在加载频道…"
+  },
+  "Каналы не найдены.": {
+    "En": "No channels found.",
+    "Zh": "未找到频道。"
+  },
+  "Попробуйте другой поиск или категорию.": {
+    "En": "Try another search or category.",
+    "Zh": "请尝试其他搜索词或分类。"
+  },
+  "Показать ещё": {
+    "En": "Show more",
+    "Zh": "显示更多"
+  },
+  "Нет данных о передаче": {
+    "En": "No programme information",
+    "Zh": "暂无节目信息"
+  },
+  "Убрать из избранного: ": {
+    "En": "Remove from favorites: ",
+    "Zh": "取消收藏："
+  },
+  "В избранное: ": {
+    "En": "Add to favorites: ",
+    "Zh": "添加到收藏："
+  },
+  "Действия с каналом ": {
+    "En": "Channel actions: ",
+    "Zh": "频道操作："
+  },
+  "Закрыть": {
+    "En": "Close",
+    "Zh": "关闭"
+  }
+}

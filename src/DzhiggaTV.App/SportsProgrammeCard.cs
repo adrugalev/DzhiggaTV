@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -10,7 +11,7 @@ internal sealed class SportsProgrammeCard : Border
 {
     public Button Details { get; } = new()
     {
-        Content = "Подробнее", FontSize = 11, Height = 20, Padding = new(6, 0, 6, 0), Margin = new(0),
+        Content = L.T("Подробнее"), FontSize = 11, Height = 20, Padding = new(6, 0, 6, 0), Margin = new(0),
         Background = Brushes.Transparent, BorderThickness = new(0), HorizontalAlignment = HorizontalAlignment.Right
     };
     private readonly TextBlock _title = new() { FontSize = 16, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap,
@@ -40,7 +41,7 @@ internal sealed class SportsProgrammeCard : Border
         footer.Children.Add(_progress); Grid.SetColumn(Details, 1); footer.Children.Add(Details); Grid.SetRow(footer, 3); root.Children.Add(footer);
         foreach (var text in new[] { _time, _synopsis }) text.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
         Details.SetResourceReference(Control.ForegroundProperty, "AccentBrush");
-        System.Windows.Automation.AutomationProperties.SetName(Details, "Подробнее · " + label);
+        System.Windows.Automation.AutomationProperties.SetName(Details, L.T("Подробнее · ") + label);
         SizeChanged += (_, _) => UpdateSynopsis();
         Show(null);
     }

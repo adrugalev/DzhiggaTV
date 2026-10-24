@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.ComponentModel;
 using DzhiggaTV.Core;
 using System.Globalization;
@@ -154,13 +155,13 @@ public partial class MainWindow : Window
     {
         if (_engineReady || VideoHost.VideoHandle == IntPtr.Zero) return;
         try { Player.Initialize(VideoHost.VideoHandle); _engineReady = true; if (_initialized) ApplyPlayerSettings(); }
-        catch { Model.PlaybackStatus = "Не удалось загрузить libmpv. Проверьте папку native и разрядность x64."; }
+        catch { Model.PlaybackStatus = L.T("Не удалось загрузить libmpv. Проверьте папку native и разрядность x64."); }
     }
     public async Task GuardAsync(Func<Task> action)
     {
         try { await action(); } catch (OperationCanceledException) { }
         catch (ArchiveUnavailableException error) { Model.Status = error.Message; _overlay?.ShowArchiveNotice(error.Message); }
-        catch { Model.Status = "Действие не завершено. Проверьте доступность файла или сети и повторите."; }
+        catch { Model.Status = L.T("Действие не завершено. Проверьте доступность файла или сети и повторите."); }
     }
     public async Task PlayAsync(ChannelItem item)
     {
@@ -170,7 +171,7 @@ public partial class MainWindow : Window
         var generation = ++_playGeneration;
         _playCancellation?.Cancel(); _playCancellation?.Dispose(); _playCancellation = new();
         var token = _playCancellation.Token;
-        HasPlayback = true; Model.PlaybackStatus = "Подключение к каналу…"; _overlay?.RefreshState();
+        HasPlayback = true; Model.PlaybackStatus = L.T("Подключение к каналу…"); _overlay?.RefreshState();
         await GuardAsync(async () =>
         {
             await Model.ActivateChannelAsync(item);
@@ -209,7 +210,7 @@ public partial class MainWindow : Window
     {
         await WithModalAsync(async () =>
         {
-            var dialog = new OpenFileDialog { Filter = "IPTV-плейлисты (*.m3u;*.m3u8)|*.m3u;*.m3u8|Все файлы|*.*", Title = "DzhiggaTV · добавить плейлист" };
+            var dialog = new OpenFileDialog { Filter = L.T("IPTV-плейлисты (*.m3u;*.m3u8)|*.m3u;*.m3u8|Все файлы|*.*"), Title = L.T("DzhiggaTV · добавить плейлист") };
             if (dialog.ShowDialog(this) == true) await GuardAsync(() => Model.ImportAsync(dialog.FileName));
         });
         await OfferEpgConnectionAsync();
@@ -220,7 +221,7 @@ public partial class MainWindow : Window
         var answer = MessageBoxResult.No;
         await WithModalAsync(() =>
         {
-            answer = MessageBox.Show(this, "Подключить телепрограмму и логотипы EPG.ONE?\n\nЗагрузка продолжится в фоне, можно сразу смотреть каналы. Публичное зеркало сервиса подключается автоматически; адреса ваших трансляций ему не отправляются.", "DzhiggaTV · телепрограмма", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            answer = MessageBox.Show(this, L.T("Подключить телепрограмму и логотипы EPG.ONE?\n\nЗагрузка продолжится в фоне, можно сразу смотреть каналы. Публичное зеркало сервиса подключается автоматически; адреса ваших трансляций ему не отправляются."), L.T("DzhiggaTV · телепрограмма"), MessageBoxButton.YesNo, MessageBoxImage.Question);
             return Task.CompletedTask;
         });
         Model.SetSetting("epg.prompted", true); Model.SetSetting("epg.enabled", answer == MessageBoxResult.Yes); await Model.SaveAsync();
@@ -257,7 +258,7 @@ public partial class MainWindow : Window
             }
             catch (Exception error)
             {
-                MessageBox.Show(owner, error is DzhiggaTV.Services.UpdateException ? error.Message : "Не удалось запустить обновление. Повторите попытку.", "DzhiggaTV · Обновление", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(owner, error is DzhiggaTV.Services.UpdateException ? error.Message : L.T("Не удалось запустить обновление. Повторите попытку."), L.T("DzhiggaTV · Обновление"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
         return Task.CompletedTask;
@@ -320,7 +321,7 @@ public partial class MainWindow : Window
                 };
                 menu.Items.Add(entry);
             }
-            if (Model.Groups.Count == 1) menu.Items.Add(new MenuItem { Header = "Нет категорий", IsEnabled = false });
+            if (Model.Groups.Count == 1) menu.Items.Add(new MenuItem { Header = L.T("Нет категорий"), IsEnabled = false });
             menu.PlacementTarget = button; menu.IsOpen = true; return;
         }
         if (tag == "all") { Model.Search = ""; Model.SelectedGroup = "Все категории"; }
@@ -334,7 +335,7 @@ public partial class MainWindow : Window
         NavHeading.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
         foreach (var label in FindVisualChildren<TextBlock>(Navigation).Where(t => Equals(t.Tag, "NavLabel")))
             label.Visibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
-        NavToggleButton.ToolTip = collapsed ? "Развернуть панель" : "Свернуть панель";
+        NavToggleButton.ToolTip = collapsed ? L.T("Развернуть панель") : L.T("Свернуть панель");
         System.Windows.Automation.AutomationProperties.SetName(NavToggleButton, (string)NavToggleButton.ToolTip);
     }
     private void Channel_RightClick(object sender, MouseButtonEventArgs e)
@@ -342,13 +343,13 @@ public partial class MainWindow : Window
         var item = FindParent<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext as ChannelItem; if (item is null) return;
         var menu = new ContextMenu();
         void Add(string label, Func<Task> action) { var option = new MenuItem { Header = label }; option.Click += async (_, _) => await GuardAsync(action); menu.Items.Add(option); }
-        Add(item.IsFavorite ? "Убрать из избранного" : "Добавить в избранное", () => Model.ToggleFavoriteAsync(item));
-        Add("Переименовать в приложении…", () => WithModalAsync(async () => { if (TextPrompt.Show(this, "Название канала", "Новое название", item.Name) is { Length: > 0 } name) { Model.State.Renames[item.Id] = name; item.Name = name; await Model.SaveAsync(); Model.RaisePlayback(); } }));
-        Add("Пользовательская категория…", () => WithModalAsync(async () => { if (TextPrompt.Show(this, "Категория", "Название категории", item.Group) is { Length: > 0 } group) { Model.State.CustomCategories[item.Id] = group; await Model.SaveAsync(); await Model.ReloadAsync(); } }));
-        Add("Назначить телепрограмму…", () => WithModalAsync(() => { new MappingWindow(this, item).ShowDialog(); return Model.RefreshEpgViewAsync(); }));
-        Add("Поправка времени телепрограммы…", () => WithModalAsync(() => { new EpgTimingWindow(this, this, item).ShowDialog(); return Task.CompletedTask; }));
-        Add("Установить логотип…", () => WithModalAsync(async () => { var d = new OpenFileDialog { Filter = "Изображения|*.png;*.jpg;*.jpeg;*.webp;*.bmp" }; if (d.ShowDialog(this) == true) { Model.State.UserLogos[item.Id] = d.FileName; Model.InvalidateLogo(item.Id); await Model.SaveAsync(); await Model.LoadViewportAsync([item]); } }));
-        Add("Скрыть канал", async () => { Model.State.Hidden.Add(item.Id); await Model.SaveAsync(); Model.RefreshFilter(); });
+        Add(item.IsFavorite ? L.T("Убрать из избранного") : L.T("Добавить в избранное"), () => Model.ToggleFavoriteAsync(item));
+        Add(L.T("Переименовать в приложении…"), () => WithModalAsync(async () => { if (TextPrompt.Show(this, L.T("Название канала"), L.T("Новое название"), item.Name) is { Length: > 0 } name) { Model.State.Renames[item.Id] = name; item.Name = name; await Model.SaveAsync(); Model.RaisePlayback(); } }));
+        Add(L.T("Пользовательская категория…"), () => WithModalAsync(async () => { if (TextPrompt.Show(this, L.T("Категория"), L.T("Название категории"), item.Group) is { Length: > 0 } group) { Model.State.CustomCategories[item.Id] = group; await Model.SaveAsync(); await Model.ReloadAsync(); } }));
+        Add(L.T("Назначить телепрограмму…"), () => WithModalAsync(() => { new MappingWindow(this, item).ShowDialog(); return Model.RefreshEpgViewAsync(); }));
+        Add(L.T("Поправка времени телепрограммы…"), () => WithModalAsync(() => { new EpgTimingWindow(this, this, item).ShowDialog(); return Task.CompletedTask; }));
+        Add(L.T("Установить логотип…"), () => WithModalAsync(async () => { var d = new OpenFileDialog { Filter = L.T("Изображения|*.png;*.jpg;*.jpeg;*.webp;*.bmp") }; if (d.ShowDialog(this) == true) { Model.State.UserLogos[item.Id] = d.FileName; Model.InvalidateLogo(item.Id); await Model.SaveAsync(); await Model.LoadViewportAsync([item]); } }));
+        Add(L.T("Скрыть канал"), async () => { Model.State.Hidden.Add(item.Id); await Model.SaveAsync(); Model.RefreshFilter(); });
         menu.PlacementTarget = ChannelList; menu.IsOpen = true; e.Handled = true;
     }
     private void Channel_DragStart(object sender, MouseButtonEventArgs e) { _dragOrigin = e.GetPosition(ChannelList); _dragItem = FindParent<ListBoxItem>(e.OriginalSource as DependencyObject)?.DataContext as ChannelItem; }
@@ -582,7 +583,7 @@ public partial class MainWindow : Window
             Player.TogglePause(); report["pause"] = Player.IsPaused; Player.TogglePause();
             report["channels"] = Model.AllChannels.Count; report["groups"] = Model.AllChannels.Select(c => c.Channel.Group).Distinct().Count();
             await Player.PlayAsync(media); await Task.Delay(1200); report["reload"] = Player.GetStatistics().Width > 0;
-            Model.Status = "Автоматическая проверка UI и локального видео завершена.";
+            Model.Status = L.T("Автоматическая проверка UI и локального видео завершена.");
         }
         catch (Exception error) { report["errorType"] = error.GetType().Name; }
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(reportPath))!);

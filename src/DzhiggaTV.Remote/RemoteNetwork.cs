@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Collections;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -8,7 +9,7 @@ namespace DzhiggaTV.Remote;
 
 public sealed record RemoteAddress(string Address, int Prefix, string Adapter, bool Private, bool Virtual)
 {
-    public override string ToString() => $"{Address} · {Adapter}{(Private ? "" : " · публичная / неизвестная сеть")}";
+    public override string ToString() => $"{Address} · {Adapter}{(Private ? "" : L.T(" · публичная / неизвестная сеть"))}";
     public bool Contains(IPAddress address)
     {
         var a = IPAddress.Parse(Address).GetAddressBytes(); var b = address.MapToIPv4().GetAddressBytes();
@@ -33,8 +34,8 @@ public static class RemoteNetwork
     {
         var addresses = Addresses();
         var selected = preferred.Length > 0 ? addresses.FirstOrDefault(a => a.Address == preferred) : addresses.FirstOrDefault(a => a.Private && !a.Virtual) ?? addresses.FirstOrDefault(a => a.Private);
-        if (selected is null) throw new RemoteException("Не найдена частная домашняя сеть. Подключите Ethernet или Wi-Fi и выберите профиль «Частная сеть» в Windows.");
-        if (!selected.Private) throw new RemoteException("Remote доступен только в частной сети Windows. Проверьте профиль выбранного адаптера.");
+        if (selected is null) throw new RemoteException(L.T("Не найдена частная домашняя сеть. Подключите Ethernet или Wi-Fi и выберите профиль «Частная сеть» в Windows."));
+        if (!selected.Private) throw new RemoteException(L.T("Remote доступен только в частной сети Windows. Проверьте профиль выбранного адаптера."));
         return selected;
     }
     public static bool IsLan(IPAddress address)
@@ -70,8 +71,8 @@ public sealed class SourcePolicy
     public void Validate(Uri uri)
     {
         if (!uri.IsAbsoluteUri || uri.Scheme is not ("http" or "https") || uri.UserInfo.Length > 0 || uri.Fragment.Length > 0 || uri.Host.Length == 0)
-            throw new RemoteException("Этот адрес потока нельзя передать в Remote.");
-        if (IPAddress.TryParse(uri.Host.Trim('[', ']'), out var ip) && !Allowed(ip)) throw new RemoteException("Remote не обращается к локальным и служебным адресам источников.");
+            throw new RemoteException(L.T("Этот адрес потока нельзя передать в Remote."));
+        if (IPAddress.TryParse(uri.Host.Trim('[', ']'), out var ip) && !Allowed(ip)) throw new RemoteException(L.T("Remote не обращается к локальным и служебным адресам источников."));
     }
     public bool Allowed(IPAddress address)
     {
@@ -94,7 +95,7 @@ public sealed class SourcePolicy
         handler.ConnectCallback = async (context, token) =>
         {
             var addresses = await Dns.GetHostAddressesAsync(context.DnsEndPoint.Host, token);
-            if (addresses.Length == 0 || addresses.Any(a => !Allowed(a))) throw new RemoteException("Источник перенаправляет запрос в локальную или служебную сеть.", 502);
+            if (addresses.Length == 0 || addresses.Any(a => !Allowed(a))) throw new RemoteException(L.T("Источник перенаправляет запрос в локальную или служебную сеть."), 502);
             foreach (var address in addresses)
             {
                 var socket = new Socket(address.AddressFamily, SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
@@ -102,7 +103,7 @@ public sealed class SourcePolicy
                 catch (SocketException) { socket.Dispose(); }
                 catch { socket.Dispose(); throw; }
             }
-            throw new RemoteException("Не удалось подключиться к IPTV-провайдеру.", 502);
+            throw new RemoteException(L.T("Не удалось подключиться к IPTV-провайдеру."), 502);
         };
         return new(handler) { Timeout = Timeout.InfiniteTimeSpan };
     }

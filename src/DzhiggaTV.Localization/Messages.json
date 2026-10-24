@@ -1,0 +1,4026 @@
+{
+  "\nПоследняя ошибка видео: ": {
+    "En": "\nLast video error: ",
+    "Zh": "\n最近的视频错误："
+  },
+  "\r\n3. Удалите созданные ярлыки DzhiggaTV из меню «Пуск» и с рабочего стола.\r\n\r\nНастройки, избранное, плейлисты и EPG хранятся отдельно в %LOCALAPPDATA%\\DzhiggaTV и остаются у пользователя.\r\nУстановщик не удаляет личные данные.\r\n": {
+    "En": "\r\n3. Remove the DzhiggaTV shortcuts from the Start menu and desktop.\r\n\r\nSettings, favorites, playlists and EPG are stored separately in %LOCALAPPDATA%\\DzhiggaTV and remain on your computer.\r\nThe installer does not delete personal data.\r\n",
+    "Zh": "\r\n3. 删除开始菜单和桌面上的 DzhiggaTV 快捷方式。\r\n\r\n设置、收藏、播放列表和节目单单独保存在 %LOCALAPPDATA%\\DzhiggaTV 中，卸载后仍会保留。\r\n安装程序不会删除个人数据。\r\n"
+  },
+  " · публичная / неизвестная сеть": {
+    "En": " · public / unknown network",
+    "Zh": " · 公用或未知网络"
+  },
+  " / {0:0.0} МиБ": {
+    "En": " / {0:0.0} MiB",
+    "Zh": " / {0:0.0} MiB"
+  },
+  " из {0:F1}": {
+    "En": " of {0:F1}",
+    "Zh": " / {0:F1}"
+  },
+  " МБ · {0:F1} МБ/с": {
+    "En": " MB · {0:F1} MB/s",
+    "Zh": " MB · {0:F1} MB/秒"
+  },
+  " подключён\nПриятного просмотра!": {
+    "En": " connected\nEnjoy watching!",
+    "Zh": "已连接\n祝您观看愉快！"
+  },
+  " Предыдущая версия сохранена рядом с папкой приложения.": {
+    "En": " The previous version was backed up next to the application folder.",
+    "Zh": "旧版本已备份到应用文件夹旁。"
+  },
+  " Ярлык создать не удалось; запустите DzhiggaTV.exe из папки установки.": {
+    "En": " A shortcut could not be created. Run DzhiggaTV.exe from the installation folder.",
+    "Zh": "未能创建快捷方式，请从安装文件夹运行 DzhiggaTV.exe。"
+  },
+  "«Каналы» получили янтарный телевизор, «Телепрограмма» — фиолетовый лист расписания с часами; зелёный «Мультиэкран» сохранён. Иконки больше не остаются цветными после клика и закрытия окна. Сообщение об актуальной версии перенесено слева от кнопки. В выборе мультиэкрана исправлено обрезанное поле числа экранов и добавлена загрузка логотипов видимых каналов при открытии, поиске и прокрутке. Переносимая карточка стала квадратной и плавно вырастает до размера ячейки.": {
+    "En": "Channels now has an amber TV icon, TV guide a purple schedule and clock, and Multi-screen retains its green icon. Icons return to their normal appearance after clicking and closing a window. The up-to-date message now sits to the left of the update button. The screen-count field in the Multi-screen picker is no longer clipped. Logos load for visible channels when opening, searching and scrolling. Drag cards are square and smoothly expand to fill their target slot.",
+    "Zh": "频道采用琥珀色电视图标，节目单采用紫色日程与时钟图标，多画面保留绿色图标。点击并关闭窗口后，图标会恢复正常外观。版本已是最新的提示移至更新按钮左侧。多画面选择窗口中的画面数量字段不再被截断；打开、搜索和滚动列表时会加载可见频道的标志。拖动卡片改为正方形，放入位置时平滑放大并填满格子。"
+  },
+  "«Мультиэкран» открывается с тем же количеством экранов, которое было при последнем использовании. Текущий канал основного плеера занимает первое место и получает звук: если его не было в наборе, он заменяет прежний первый канал. При первом запуске с текущим каналом открывается один экран без автоматического окна выбора; добавлять и убирать каналы можно кнопкой «Выбрать каналы».": {
+    "En": "Multi-screen opens with the same number of screens as last time. The main player's current channel occupies the first slot and provides audio; if it was not in the saved set, it replaces the previous first channel. On first use, a single screen opens with the current channel, without showing the picker automatically. Use Choose channels to add or remove channels.",
+    "Zh": "多画面会沿用上次的画面数量。主播放器的当前频道置于首个位置并提供声音；如果保存的组合中没有该频道，它会替换原来的首个频道。首次使用时直接打开当前频道的单画面，不会自动弹出选择窗口。可通过“选择频道”添加或移除频道。"
+  },
+  "«Подробнее» у «Сейчас в эфире», «Далее» и «Затем» открывает одинаковые всплывающие окна рядом с кнопкой, с возможностью перекрытия края видео. Год, страна и жанр выделены отдельным блоком, сюжет сохранён с абзацами, актёры и создатели отделены линией. Такое же оформление используется в телепрограмме; в карточке текущей передачи показан сюжет без служебного вступления.": {
+    "En": "Details in On now, Next and Later open matching popovers beside their buttons and may overlap the edge of the video. Year, country and genre have a separate section; the synopsis keeps its paragraphs, with cast and crew separated by a divider. The TV guide uses the same layout. The current-programme card shows the synopsis without introductory metadata.",
+    "Zh": "“正在播出”“接下来”和“随后”的“详情”均在按钮旁打开相同样式的浮层，可覆盖视频边缘。年份、国家和类型单独成块；剧情简介保留分段，演职员信息以分隔线区分。节目单采用相同布局，当前节目卡片仅显示剧情简介，不包含开头的资料信息。"
+  },
+  "«Спортивный вечер» переименован в «Мультиэкран»: новое название используется в меню, заголовках окон, выборе каналов и подсказках.": {
+    "En": "Sports Evening has been renamed Multi-screen throughout the menus, window titles, channel picker and tooltips.",
+    "Zh": "“体育之夜”已统一更名为“多画面”，包括菜单、窗口标题、频道选择和工具提示。"
+  },
+  "{0:0.00} Мбит/с": {
+    "En": "{0:0.00} Mbps",
+    "Zh": "{0:0.00} Mbps"
+  },
+  "{0:N0} из {1:N0} каналов": {
+    "En": "{0:N0} of {1:N0} channels",
+    "Zh": "{0:N0} / {1:N0} 个频道"
+  },
+  "{0:N0} каналов": {
+    "En": "{0:N0} channels",
+    "Zh": "{0:N0} 个频道"
+  },
+  "{0:N0} каналов · {1} категорий": {
+    "En": "{0:N0} channels · {1} categories",
+    "Zh": "{0:N0} 个频道 · {1} 个分类"
+  },
+  "{0} · {1:0.0} МиБ": {
+    "En": "{0} · {1:0.0} MiB",
+    "Zh": "{0} · {1:0.0} MiB"
+  },
+  "{0} · {1} · частная сеть. Можно включить Remote.": {
+    "En": "{0} · {1} · private network. Remote is ready to enable.",
+    "Zh": "{0} · {1} · 专用网络，可以启用 Remote。"
+  },
+  "{0} · {1} · Windows использует профиль «Публичная». Для запуска откройте свойства этой домашней сети, выберите «Частная», затем нажмите «Обновить сеть».": {
+    "En": "{0} · {1} · Windows marks this network as Public. Open the properties of this home network, select Private, then choose Refresh network.",
+    "Zh": "{0} · {1} · Windows 将此网络标记为“公用”。请打开该家庭网络的属性，选择“专用”，然后点击“刷新网络”。"
+  },
+  "{0} мин": {
+    "En": "{0} min",
+    "Zh": "{0} 分钟"
+  },
+  "{0} ч {1} мин": {
+    "En": "{0} hr {1} min",
+    "Zh": "{0} 小时 {1} 分钟"
+  },
+  "↶ {0} дн.": {
+    "En": "↶ {0} d",
+    "Zh": "↶ {0} 天"
+  },
+  "↶ АРХИВ {0} ДН.": {
+    "En": "↶ ARCHIVE {0} D",
+    "Zh": "↶ 回看 {0} 天"
+  },
+  "+10 — передача начинается на 10 минут позже расписания.\n−10 — на 10 минут раньше. 0 — без поправки.": {
+    "En": "+10 means the programme starts 10 minutes later than scheduled.\n−10 means 10 minutes earlier. 0 means no correction.",
+    "Zh": "+10 表示节目比节目单晚 10 分钟开始。\n−10 表示提前 10 分钟。0 表示不校正。"
+  },
+  "▶ С начала": {
+    "En": "▶ From start",
+    "Zh": "▶ 从头播放"
+  },
+  "▶ Смотреть": {
+    "En": "▶ Watch",
+    "Zh": "▶ 观看"
+  },
+  "1. Подключите телефон к тому же роутеру.\n2. Откройте камеру iPhone и наведите на QR-код.\n3. Подтвердите подключение на компьютере.": {
+    "En": "1. Connect your phone to the same router.\n2. Open the iPhone camera and scan the QR code.\n3. Approve the connection on the computer.",
+    "Zh": "1. 将手机连接到同一路由器。\n2. 打开 iPhone 相机并扫描二维码。\n3. 在电脑上批准连接。"
+  },
+  "Автоматическая проверка UI и локального видео завершена.": {
+    "En": "The automatic UI and local-video check has finished.",
+    "Zh": "界面和本地视频的自动检查已完成。"
+  },
+  "Автоматически · домашняя сеть": {
+    "En": "Automatic · home network",
+    "Zh": "自动 · 家庭网络"
+  },
+  "Автоматически · HLS или FFmpeg": {
+    "En": "Automatic · HLS or FFmpeg",
+    "Zh": "自动 · HLS 或 FFmpeg"
+  },
+  "Автоматически по параметрам дисплея": {
+    "En": "Automatic, based on the display",
+    "Zh": "根据显示器自动选择"
+  },
+  "Адрес канала не поддерживается Remote.": {
+    "En": "Remote does not support this channel address.",
+    "Zh": "Remote 不支持此频道地址。"
+  },
+  "Адрес установщика не принадлежит выпуску DzhiggaTV.": {
+    "En": "The installer address does not belong to a DzhiggaTV release.",
+    "Zh": "安装程序地址不属于 DzhiggaTV 发行版本。"
+  },
+  "Аппаратный декодер": {
+    "En": "Hardware decoder",
+    "Zh": "硬件解码器"
+  },
+  "АРХИВ": {
+    "En": "ARCHIVE",
+    "Zh": "回看"
+  },
+  "Архив · ": {
+    "En": "Archive · ",
+    "Zh": "回看 · "
+  },
+  "АРХИВ · {0} ДН.": {
+    "En": "ARCHIVE · {0} D",
+    "Zh": "回看 · {0} 天"
+  },
+  "АРХИВ · ЗАВЕРШЁН": {
+    "En": "ARCHIVE · ENDED",
+    "Zh": "回看 · 已结束"
+  },
+  "АРХИВ · НЕ УДАЛОСЬ ЗАГРУЗИТЬ": {
+    "En": "ARCHIVE · COULD NOT LOAD",
+    "Zh": "回看 · 加载失败"
+  },
+  "Архив канала · {0} дн.": {
+    "En": "Channel archive · {0} d",
+    "Zh": "频道回看 · {0} 天"
+  },
+  "Архив не содержит поддерживаемых пиконов.": {
+    "En": "The archive contains no supported channel logos.",
+    "Zh": "压缩包中没有受支持的频道标志。"
+  },
+  "Архив недоступен": {
+    "En": "Archive unavailable",
+    "Zh": "回看不可用"
+  },
+  "Архив пиконов импортирован.": {
+    "En": "Channel logo archive imported.",
+    "Zh": "频道标志压缩包已导入。"
+  },
+  "Архив пиконов превышает допустимый размер.": {
+    "En": "The channel logo archive exceeds the size limit.",
+    "Zh": "频道标志压缩包超出大小限制。"
+  },
+  "Архив продолжает воспроизведение после окончания передачи. Название, описание и следующие передачи обновляются по времени записи без остановки видео. Когда заканчивается загруженный участок архива, автоматически открывается продолжение; у самой границы прямого эфира просмотр продолжается в эфире. Пробелы в телепрограмме не прерывают просмотр; выбранная вручную карточка истории сохраняется при смене передачи в видео.": {
+    "En": "Archive playback continues after the programme ends. Titles, descriptions and upcoming programmes follow the recording time without stopping the video. When the loaded archive section ends, the next section opens automatically; at the live edge, playback continues live. Gaps in the TV guide do not interrupt playback. A manually selected history card stays selected when the programme playing in the video changes.",
+    "Zh": "节目结束后，回看会继续播放。标题、简介和后续节目按照录像时间更新，不会中断视频。已加载的回看片段结束后会自动打开下一段；到达直播时间点时转为直播。节目单中的空缺不会中断播放；视频切换到下一节目时，手动选中的历史节目卡片仍会保留。"
+  },
+  "Архив содержит недопустимую ссылку.": {
+    "En": "The archive contains an unsafe link.",
+    "Zh": "压缩包中包含不安全的链接。"
+  },
+  "Архив содержит повторяющиеся или служебные имена.": {
+    "En": "The archive contains duplicate or reserved names.",
+    "Zh": "压缩包中包含重复名称或系统保留名称。"
+  },
+  "Архив EPG превышает допустимый размер.": {
+    "En": "The EPG archive exceeds the size limit.",
+    "Zh": "节目单压缩包超出大小限制。"
+  },
+  "Архивная передача недоступна.": {
+    "En": "This archived programme is unavailable.",
+    "Zh": "此回看节目不可用。"
+  },
+  "Аудиодорожки": {
+    "En": "Audio tracks",
+    "Zh": "音轨"
+  },
+  "Аудиокодек": {
+    "En": "Audio codec",
+    "Zh": "音频编码"
+  },
+  "База дельта-пакета должна быть старше нового выпуска.": {
+    "En": "The delta package baseline must be older than the new release.",
+    "Zh": "差分更新包的基准版本必须早于新版本。"
+  },
+  "Без закрепления": {
+    "En": "Not pinned",
+    "Zh": "未置顶"
+  },
+  "Без звука": {
+    "En": "Mute",
+    "Zh": "静音"
+  },
+  "Библиотека: {0:N0} каналов. Пользовательские изменения сохранены локально.": {
+    "En": "Library: {0:N0} channels. Your changes are saved locally.",
+    "Zh": "媒体库：{0:N0} 个频道。您的更改已保存在本机。"
+  },
+  "Более ранних передач в доступном архиве нет в телепрограмме": {
+    "En": "The TV guide has no earlier programmes within the available archive",
+    "Zh": "节目单中没有更早的可回看节目"
+  },
+  "Буфер": {
+    "En": "Buffer",
+    "Zh": "缓冲"
+  },
+  "Буфер, секунды": {
+    "En": "Buffer, seconds",
+    "Zh": "缓冲时长（秒）"
+  },
+  "Буферизация…": {
+    "En": "Buffering…",
+    "Zh": "正在缓冲…"
+  },
+  "Быстрое подключение Dzhigga Remote: кнопка Wi-Fi рядом с избранным в плеере включает просмотр и совместимость iPhone, при необходимости готовит компоненты и показывает QR-код поверх видео. Карточка закрывается кнопкой или Escape, работающий Remote остаётся включён. Настройки доступны слева. В Windows и веб-версии выбор найденной архивной передачи запускает именно её; текущая передача открывает прямой эфир. Выбор архивной передачи работает также при управлении ПК с телефона; проверяется наличие записи в телепрограмме и доступность архива.": {
+    "En": "Quick connect for Dzhigga Remote: the Wi-Fi button beside Favorites enables viewing and iPhone compatibility, prepares components if needed, and displays a QR code over the video. Close the card with its button or Escape; Remote keeps running. Settings are available in the sidebar. Selecting an archive search result in Windows or on the web plays that exact programme; a current programme opens live TV. Archived programmes can also be selected from the phone's PC remote, with EPG and archive availability checks.",
+    "Zh": "Dzhigga Remote 快速连接：播放器收藏按钮旁的 Wi-Fi 按钮可启用观看和 iPhone 兼容模式，按需准备组件，并在视频上显示二维码。使用关闭按钮或 Escape 关闭卡片后，Remote 仍会运行，设置可从左侧打开。在 Windows 或网页中选择回看搜索结果会播放所选节目，当前节目则打开直播。也可通过手机遥控电脑播放回看节目，并会检查节目单记录和回看可用性。"
+  },
+  "В «Избранном» убраны поиск и выбор категории: фильтры из других разделов не влияют на избранные каналы, Ctrl+F не активирует поиск. Если нет данных о времени окончания текущей передачи, строка «До конца осталось» полностью скрывается. Из бокового меню убраны лишние подписи.": {
+    "En": "Search and category filters have been removed from Favorites. Filters from other sections do not affect favorite channels, and Ctrl+F does not activate search there. If a programme's end time is unknown, the Time remaining line is hidden completely. Extra sidebar captions have been removed.",
+    "Zh": "收藏中移除了搜索和分类筛选。其他页面的筛选不会影响收藏频道，Ctrl+F 也不会在此启用搜索。若没有当前节目的结束时间，将完全隐藏剩余时间一行。同时移除了侧栏中的多余说明。"
+  },
+  "В «Мультиэкране» видео можно перетаскивать прямо между ячейками: каналы меняются местами без переподключения и смены звука. Двойной щелчок разворачивает один канал на весь экран; повторный двойной щелчок или Esc возвращает сетку, остальные трансляции продолжаются. Боковая телепрограмма показывает до 24 следующих передач с прокруткой. Полноэкранное описание оформлено компактной карточкой слева, не шире четверти экрана; сведения о фильме отделены от описания.": {
+    "En": "Drag videos between Multi-screen slots to swap channels without reconnecting or changing audio. Double-click a channel to expand it to full screen; double-click again or press Esc to restore the grid while other streams continue playing. The side guide shows up to 24 upcoming programmes with scrolling. The fullscreen description is a compact card on the left, no wider than a quarter of the screen, with film details separated from the synopsis.",
+    "Zh": "在多画面中可直接拖动视频交换位置，无需重新连接，也不会改变声音来源。双击频道可将其全屏显示，再次双击或按 Esc 可恢复网格，其他直播继续播放。侧边节目单最多显示 24 个后续节目，并可滚动查看。全屏简介采用左侧紧凑卡片，宽度不超过屏幕四分之一，影片资料与剧情简介分开显示。"
+  },
+  "В архиве отсутствует DzhiggaTV.exe.": {
+    "En": "The archive does not contain DzhiggaTV.exe.",
+    "Zh": "压缩包中缺少 DzhiggaTV.exe。"
+  },
+  "В библиотеке пока нет каналов": {
+    "En": "Your library has no channels yet",
+    "Zh": "媒体库中还没有频道"
+  },
+  "В верхней панели добавлены видимые кнопки сворачивания, разворачивания / восстановления и закрытия окна.": {
+    "En": "Visible minimize, maximize / restore and close buttons have been added to the top bar.",
+    "Zh": "顶部栏新增了清晰可见的最小化、最大化／还原和关闭按钮。"
+  },
+  "В дельта-пакете отсутствует манифест.": {
+    "En": "The delta package has no manifest.",
+    "Zh": "差分更新包中缺少清单。"
+  },
+  "В карточках текущей и следующей передачи показаны подробные описания из телепрограммы. Длинный текст прокручивается, размер карточек подстраивается под окно и наличие описания.": {
+    "En": "Current and upcoming programme cards now display full descriptions from the TV guide. Long text scrolls, and card sizes adapt to the window and available descriptions.",
+    "Zh": "当前节目和下一节目卡片现在会显示节目单中的详细简介。长文本可滚动查看，卡片大小会随窗口及简介内容调整。"
+  },
+  "В меню плеера оставлены только звуковая дорожка, соотношение сторон и информация о потоке. Это же меню открывается правой кнопкой мыши по видео в обычном, полноэкранном и мини-режиме. Текущая звуковая дорожка и соотношение сторон отмечаются галочкой. Техническая статистика переименована в «Информация о потоке»; клавиша I сохранена. В отдельном окне телепрограммы расписание можно листать, зажав левую кнопку мыши и перетаскивая его вправо или влево. Названия каналов остаются на месте; жест не переключает видео, щелчок и двойной щелчок сохраняют свои действия.": {
+    "En": "The player menu now contains only Audio track, Aspect ratio and Stream information. Right-click the video to open the same menu in normal, fullscreen or mini mode. Checkmarks identify the current audio track and aspect ratio. Technical statistics has been renamed Stream information; the I shortcut is unchanged. In the separate TV guide window, hold the left mouse button and drag horizontally to browse the schedule. Channel names stay fixed. Dragging does not switch playback, and single- and double-click actions are preserved.",
+    "Zh": "播放器菜单仅保留音轨、画面比例和流信息。在普通、全屏或迷你模式下，右键点击视频均可打开相同菜单。当前音轨和画面比例以勾选标识。“技术统计”更名为“流信息”，仍使用 I 快捷键。在独立节目单窗口中，按住鼠标左键并左右拖动可浏览节目；频道名称保持固定，拖动不会切换播放，单击和双击操作保持不变。"
+  },
+  "В мини-плеере панели скрываются через одну секунду после ухода курсора, как в полном экране. При возврате курсора скрытие отменяется. Кнопки закрытия и закрепления поверх окон также удерживают панели видимыми. Открытое меню, перетаскивание ползунка и управление с клавиатуры не прерываются автоскрытием.": {
+    "En": "Mini-player panels hide one second after the pointer leaves, just as in fullscreen mode. Moving the pointer back cancels hiding. The close and always-on-top buttons also keep the panels visible. Open menus, slider dragging and keyboard interaction are not interrupted by auto-hide.",
+    "Zh": "迷你播放器与全屏模式一致，鼠标移开一秒后隐藏面板；移回时会取消隐藏。将鼠标放在关闭或置顶按钮上也会保持面板可见。自动隐藏不会打断已打开的菜单、滑块拖动或键盘操作。"
+  },
+  "В нижней панели «Мультиэкрана» вместо длинного расписания показаны три карточки: «Сейчас в эфире», «Далее» и «Затем». Описания открываются рядом с «Подробнее», как в основном плеере. Расширенное расписание в боковой панели сохранено.": {
+    "En": "The lower Multi-screen panel now shows three cards instead of a long schedule: On now, Next and Later. Descriptions open beside Details, as in the main player. The expanded side-panel schedule is preserved.",
+    "Zh": "多画面底部面板改为“正在播出”“接下来”和“随后”三张卡片，代替长节目列表。简介与主播放器一致，在“详情”旁打开。侧栏仍保留完整的后续节目列表。"
+  },
+  "В нижней строке оставлены только количество каналов в библиотеке и подсказка «F11 — полный экран». Убраны лишние служебные надписи.": {
+    "En": "The bottom bar now contains only the library channel count and the F11 fullscreen hint. Extra technical text has been removed.",
+    "Zh": "底部栏仅保留媒体库频道数量和 F11 全屏提示，已移除多余的技术说明。"
+  },
+  "В обновлении отсутствует DzhiggaTV.exe.": {
+    "En": "The update does not contain DzhiggaTV.exe.",
+    "Zh": "更新中缺少 DzhiggaTV.exe。"
+  },
+  "В основном списке каналы с архивом отмечены значком ↶ и глубиной в днях. В карточках под видео можно листать предыдущие передачи стрелками, читать описания и запускать выбранную запись кнопкой «Смотреть». Просмотр истории не переключает видео; «К просмотру» возвращает информацию о воспроизводимой передаче. Учитываются доступная глубина архива, даты и смена канала.": {
+    "En": "Archive-capable channels in the main list are marked with ↶ and their retention depth in days. Use the arrows on the cards below the video to browse earlier programmes, read descriptions and start a recording with Watch. Browsing history does not switch the video; Back to playback restores the information for the programme being played. Archive retention, dates and channel changes are respected.",
+    "Zh": "主列表中支持回看的频道会显示 ↶ 和可回看天数。通过视频下方卡片上的箭头可浏览此前节目、阅读简介，并点击“观看”播放所选录像。浏览历史不会切换视频；“返回播放”可恢复正在播放节目的信息。可回看范围、日期和频道切换都会被正确处理。"
+  },
+  "В папке приложения найдены посторонние файлы. Выберите новую папку, чтобы сохранить их.": {
+    "En": "The application folder contains unrelated files. Choose a new folder to keep them safe.",
+    "Zh": "应用文件夹中有其他文件，请选择新文件夹以保留这些文件。"
+  },
+  "В папке приложения обнаружена символическая ссылка.": {
+    "En": "A symbolic link was found in the application folder.",
+    "Zh": "应用文件夹中发现了符号链接。"
+  },
+  "В плейлисте заявлен архив до {0} дн. Наличие конкретной записи зависит от провайдера. Откройте телепрограмму, чтобы выбрать передачу.": {
+    "En": "The playlist advertises up to {0} days of archive. Availability of individual recordings depends on the provider. Open the TV guide to choose a programme.",
+    "Zh": "播放列表标注最多可回看 {0} 天。具体录像是否可用取决于服务提供商。请打开节目单选择节目。"
+  },
+  "В полном экране над кнопками управления показываются название канала, текущая передача, время эфира и прогресс просмотра. Информация появляется и исчезает вместе с управлением; при отсутствии телепрограммы дополнительный блок скрыт.": {
+    "En": "Fullscreen mode now shows the channel name, current programme, broadcast times and progress above the controls. Information appears and hides together with the controls. The extra section is hidden when no TV guide is available.",
+    "Zh": "全屏模式会在控制栏上方显示频道名、当前节目、播出时间和播放进度。这些信息与控制栏一起出现或隐藏，没有节目单时不显示额外信息区。"
+  },
+  "В полном экране увеличена область описания с прокруткой: сюжет отделён от года, жанра, страны и сведений о фильме. Полосы прокрутки стали тоньше на 30%. Описания «Далее» и «Затем» открываются рядом со своей кнопкой «Подробнее», поверх нижнего края видео.": {
+    "En": "The fullscreen reading area is larger and scrollable. The synopsis is separated from the year, genre, country and film details. Scrollbars are 30% thinner. Next and Later descriptions open beside their Details buttons, over the lower edge of the video.",
+    "Zh": "全屏阅读区已扩大并支持滚动，剧情简介与年份、类型、国家及影片资料分开显示。滚动条宽度缩小了 30%。下一节目和随后节目的简介会在各自的“详情”按钮旁打开，覆盖视频下缘。"
+  },
+  "В полноэкранную панель добавлено описание текущей передачи. Канал выделен цветом, текст оформлен с удобными отступами и ограничен двумя–тремя строками без прокрутки. При отсутствии описания пустое место не показывается; вся панель скрывается вместе с управлением.": {
+    "En": "The fullscreen panel now includes the current programme description. The channel name is highlighted, and the text uses comfortable spacing with two or three lines and no scrolling. No empty space appears when a description is missing. The whole panel hides together with the controls.",
+    "Zh": "全屏面板新增当前节目简介。频道名以强调色显示，文本采用舒适间距，显示两到三行且不滚动。没有简介时不会留下空白区域，整个面板与控制栏一起隐藏。"
+  },
+  "В сети": {
+    "En": "Online",
+    "Zh": "在线"
+  },
+  "В установщике отсутствует архив приложения.": {
+    "En": "The installer does not contain the application archive.",
+    "Zh": "安装程序中缺少应用压缩包。"
+  },
+  "В этой папке уже установлена более новая версия. Откройте плеер.": {
+    "En": "A newer version is already installed in this folder. Open the player.",
+    "Zh": "此文件夹中已安装更高版本，请打开播放器。"
+  },
+  "В этой сборке отсутствует установочный архив.": {
+    "En": "This build does not contain an installation archive.",
+    "Zh": "此构建中没有安装压缩包。"
+  },
+  "В эфире": {
+    "En": "Live",
+    "Zh": "直播"
+  },
+  "Введите целое число минут от −1440 до +1440.": {
+    "En": "Enter a whole number of minutes from −1440 to +1440.",
+    "Zh": "请输入 −1440 至 +1440 之间的整数分钟数。"
+  },
+  "Введите PIN": {
+    "En": "Enter PIN",
+    "Zh": "输入 PIN 码"
+  },
+  "Вернуться": {
+    "En": "Return",
+    "Zh": "返回"
+  },
+  "Вернуться к текущему эфиру (Ctrl+Home)": {
+    "En": "Return to live TV (Ctrl+Home)",
+    "Zh": "返回直播（Ctrl+Home）"
+  },
+  "Версия актуальна. Новых версий не найдено.": {
+    "En": "You're up to date. No new versions found.",
+    "Zh": "已是最新版本，未发现新版本。"
+  },
+  "Версия подготовленного приложения не совпадает с выпуском.": {
+    "En": "The prepared application version does not match the release.",
+    "Zh": "准备好的应用版本与发行版本不一致。"
+  },
+  "Версия установщика не совпадает с выпуском. Обновление не запущено.": {
+    "En": "The installer version does not match the release. The update was not started.",
+    "Zh": "安装程序版本与发行版本不一致，更新未启动。"
+  },
+  "Верхняя панель стала ниже примерно на 37%: уменьшены логотип, название и отступы, номер версии расположен в одну строку. Видеоплееру доступно больше места; компактная панель сохраняется после выхода из полного экрана и мини-плеера.": {
+    "En": "The top bar is approximately 37% shorter: the logo, title and padding are smaller, and the version fits on one line. More space is available for video. The compact bar is preserved when returning from fullscreen and mini modes.",
+    "Zh": "顶部栏高度约缩小 37%，标志、标题和间距更紧凑，版本号保持在一行内，为视频腾出更多空间。从全屏或迷你模式返回时，仍保持紧凑的顶部栏。"
+  },
+  "Видео и HDR": {
+    "En": "Video & HDR",
+    "Zh": "视频与 HDR"
+  },
+  "Видеобитрейт": {
+    "En": "Video bitrate",
+    "Zh": "视频码率"
+  },
+  "Видеовывод": {
+    "En": "Video output",
+    "Zh": "视频输出"
+  },
+  "Видеодвижок закрыт": {
+    "En": "Video engine closed",
+    "Zh": "视频引擎已关闭"
+  },
+  "видеодвижок не отвечает": {
+    "En": "video engine is not responding",
+    "Zh": "视频引擎无响应"
+  },
+  "Видеодвижок не отвечает": {
+    "En": "Video engine is not responding",
+    "Zh": "视频引擎无响应"
+  },
+  "Видеодвижок не отвечает. Перезапустите приложение.": {
+    "En": "The video engine is not responding. Restart the application.",
+    "Zh": "视频引擎无响应，请重启应用。"
+  },
+  "Видеодвижок остановился. Перезапустите приложение.": {
+    "En": "The video engine has stopped. Restart the application.",
+    "Zh": "视频引擎已停止，请重启应用。"
+  },
+  "Видеокодек": {
+    "En": "Video codec",
+    "Zh": "视频编码"
+  },
+  "Включаем Remote и совместимость с iPhone…": {
+    "En": "Enabling Remote and iPhone compatibility…",
+    "Zh": "正在启用 Remote 和 iPhone 兼容模式…"
+  },
+  "Включать последний канал при запуске": {
+    "En": "Play the last channel on startup",
+    "Zh": "启动时播放上次观看的频道"
+  },
+  "Включите совместимость iPhone и выберите ffmpeg.exe в настройках Remote на ПК.": {
+    "En": "Enable iPhone compatibility and select ffmpeg.exe in Remote settings on the PC.",
+    "Zh": "请在电脑的 Remote 设置中启用 iPhone 兼容模式，并选择 ffmpeg.exe。"
+  },
+  "Включить звук": {
+    "En": "Enable sound",
+    "Zh": "开启声音"
+  },
+  "Включить совместимость iPhone": {
+    "En": "Enable iPhone compatibility",
+    "Zh": "启用 iPhone 兼容模式"
+  },
+  "Включить Remote": {
+    "En": "Enable Remote",
+    "Zh": "启用 Remote"
+  },
+  "Вместо папки существует файл. Выберите другую папку.": {
+    "En": "A file already exists at this location. Choose a different folder.",
+    "Zh": "此位置已存在同名文件，请选择其他文件夹。"
+  },
+  "Внешний вид": {
+    "En": "Appearance",
+    "Zh": "外观"
+  },
+  "Во время «Спортивного вечера» основной плеер продолжает трансляцию без паузы, с выключенным звуком. При возврате восстанавливается звук текущего эфира без накопленной из-за паузы задержки.": {
+    "En": "During Sports Evening, the main player continues live playback without pausing, with its audio muted. Returning restores the current live audio without the delay caused by pausing.",
+    "Zh": "使用“体育之夜”时，主播放器保持直播并静音，不会暂停。返回后恢复当前直播的声音，不会产生暂停造成的延迟。"
+  },
+  "Воспроизведение завершено": {
+    "En": "Playback finished",
+    "Zh": "播放已结束"
+  },
+  "Воспроизведение остановлено": {
+    "En": "Playback stopped",
+    "Zh": "播放已停止"
+  },
+  "Воспроизведение продолжится автоматически": {
+    "En": "Playback will resume automatically",
+    "Zh": "将自动恢复播放"
+  },
+  "Восстанавливаем трансляцию": {
+    "En": "Restoring the stream",
+    "Zh": "正在恢复直播流"
+  },
+  "Временная папка занята. Повторите установку.": {
+    "En": "The temporary folder is in use. Try installing again.",
+    "Zh": "临时文件夹正在使用中，请重试安装。"
+  },
+  "Время действия QR-кода истекло.": {
+    "En": "The QR code has expired.",
+    "Zh": "二维码已过期。"
+  },
+  "Время телепрограммы": {
+    "En": "TV guide time",
+    "Zh": "节目单时间"
+  },
+  "Все каналы": {
+    "En": "All channels",
+    "Zh": "所有频道"
+  },
+  "Все категории": {
+    "En": "All categories",
+    "Zh": "所有分类"
+  },
+  "Все плейлисты": {
+    "En": "All playlists",
+    "Zh": "所有播放列表"
+  },
+  "Всего каналов: {0:N0}; видимых: {1:N0}\nС текущей программой: {2:N0} ({3:P1})\nС доступным логотипом: {4:N0}\nСпорных: {5:N0}; без назначения: {6:N0}\nПоследнее обновление: {7}": {
+    "En": "Total channels: {0:N0}; visible: {1:N0}\nWith a current programme: {2:N0} ({3:P1})\nWith an available logo: {4:N0}\nAmbiguous: {5:N0}; unmapped: {6:N0}\nLast update: {7}",
+    "Zh": "频道总数：{0:N0}；可见：{1:N0}\n有当前节目信息：{2:N0}（{3:P1}）\n有可用标志：{4:N0}\n匹配不明确：{5:N0}；未匹配：{6:N0}\n上次更新：{7}"
+  },
+  "Выберите дату в пределах двух недель.": {
+    "En": "Choose a date within two weeks.",
+    "Zh": "请选择前后两周范围内的日期。"
+  },
+  "Выберите источник звука в карточках мультиэкрана.": {
+    "En": "Choose the audio source on a Multi-screen card.",
+    "Zh": "请在多画面卡片上选择声音来源。"
+  },
+  "Выберите канал": {
+    "En": "Choose a channel",
+    "Zh": "选择频道"
+  },
+  "Выберите канал.": {
+    "En": "Choose a channel.",
+    "Zh": "请选择频道。"
+  },
+  "Выберите каналы для одновременного просмотра": {
+    "En": "Choose channels to watch together",
+    "Zh": "选择要同时观看的频道"
+  },
+  "Выберите отдельную папку приложения, например Programs\\DzhiggaTV.": {
+    "En": "Choose a separate application folder, for example Programs\\DzhiggaTV.",
+    "Zh": "请选择独立的应用文件夹，例如 Programs\\DzhiggaTV。"
+  },
+  "Выберите передачу": {
+    "En": "Choose a programme",
+    "Zh": "选择节目"
+  },
+  "Выберите установленный ffmpeg.exe, чтобы включить преобразование видео.": {
+    "En": "Select an installed ffmpeg.exe to enable video conversion.",
+    "Zh": "请选择已安装的 ffmpeg.exe，以启用视频转换。"
+  },
+  "Выбор каналов «Мультиэкрана» дополнен схемой: перетаскивайте каналы на нужные места, меняйте экраны местами или заменяйте канал. Галочки заполняют свободные места, кнопка «Сброс» снимает весь выбор. Расположение и пустые ячейки сохраняются. Одновременно можно смотреть до четырёх каналов в сетке 2 × 2; прежние большие наборы автоматически сокращаются.": {
+    "En": "The Multi-screen picker now includes a layout diagram. Drag channels to specific slots, swap screens or replace a channel. Checkboxes fill empty slots, and Reset clears the selection. Positions and empty slots are saved. Watch up to four channels in a 2 × 2 grid; older, larger sets are reduced automatically.",
+    "Zh": "多画面选择器新增布局示意图。可将频道拖到指定位置、交换画面或替换频道。勾选频道会填入空位，“重置”会清除全部选择。位置和空格均会保存。最多可在 2 × 2 网格中同时观看四个频道；旧版保存的较大组合会自动缩减。"
+  },
+  "Выбранная папка не пуста и не принадлежит установщику DzhiggaTV. Выберите отдельную папку.": {
+    "En": "The selected folder is not empty and is not managed by the DzhiggaTV installer. Choose a separate folder.",
+    "Zh": "所选文件夹非空，且不由 DzhiggaTV 安装程序管理。请选择独立文件夹。"
+  },
+  "Выбранная передача недоступна в архиве этого канала.": {
+    "En": "This programme is not available in this channel's archive.",
+    "Zh": "此频道的回看中没有所选节目。"
+  },
+  "Выбранное время недоступно в архиве канала.": {
+    "En": "The selected time is not available in this channel's archive.",
+    "Zh": "所选时间不在此频道的可回看范围内。"
+  },
+  "Выбранное время недоступно в архиве.": {
+    "En": "The selected time is not available in the archive.",
+    "Zh": "所选时间不在可回看范围内。"
+  },
+  "Выбрано: {0} из {1}": {
+    "En": "Selected: {0} of {1}",
+    "Zh": "已选：{0} / {1}"
+  },
+  "Выбрать звук: {0}": {
+    "En": "Audio from: {0}",
+    "Zh": "声音来源：{0}"
+  },
+  "Выбрать каналы": {
+    "En": "Choose channels",
+    "Zh": "选择频道"
+  },
+  "Выбрать ffmpeg.exe…": {
+    "En": "Choose ffmpeg.exe…",
+    "Zh": "选择 ffmpeg.exe…"
+  },
+  "Вывод gpu-next / D3D11. D3D11VA включается, когда поток и видеокарта его поддерживают. HDR не объявляется активным только по названию канала.": {
+    "En": "gpu-next / D3D11 output. D3D11VA is used when supported by the stream and graphics card. A channel name alone is not treated as evidence of HDR playback.",
+    "Zh": "使用 gpu-next / D3D11 输出。在视频流和显卡支持时启用 D3D11VA。不会仅凭频道名称判断 HDR 已启用。"
+  },
+  "Вывод primaries": {
+    "En": "Output primaries",
+    "Zh": "输出原色"
+  },
+  "Вывод transfer": {
+    "En": "Output transfer",
+    "Zh": "输出传递函数"
+  },
+  "Выйти из полного экрана": {
+    "En": "Exit fullscreen",
+    "Zh": "退出全屏"
+  },
+  "Выключить / включить звук (M)": {
+    "En": "Mute / unmute (M)",
+    "Zh": "静音／取消静音（M）"
+  },
+  "Выключить Remote": {
+    "En": "Disable Remote",
+    "Zh": "停用 Remote"
+  },
+  "Готов к воспроизведению": {
+    "En": "Ready to play",
+    "Zh": "准备播放"
+  },
+  "Готов к просмотру. Добавьте свой плейлист.": {
+    "En": "Ready to watch. Add your playlist.",
+    "Zh": "已准备就绪，请添加播放列表。"
+  },
+  "Готово": {
+    "En": "Done",
+    "Zh": "完成"
+  },
+  "Готово. Открываем обновлённый плеер…": {
+    "En": "Done. Opening the updated player…",
+    "Zh": "已完成，正在打开更新后的播放器…"
+  },
+  "Громкость": {
+    "En": "Volume",
+    "Zh": "音量"
+  },
+  "Громкость мультиэкрана": {
+    "En": "Multi-screen volume",
+    "Zh": "多画面音量"
+  },
+  "ДАЛЕЕ": {
+    "En": "NEXT",
+    "Zh": "接下来"
+  },
+  "Дальнейшая программа пока недоступна": {
+    "En": "No later programme available yet",
+    "Zh": "暂无后续节目信息"
+  },
+  "Действие не завершено. Проверьте доступность файла или сети и повторите.": {
+    "En": "The action could not be completed. Check file or network access and try again.",
+    "Zh": "操作未完成，请检查文件或网络是否可访问，然后重试。"
+  },
+  "Действие не завершено. Проверьте файл или доступ к сети.": {
+    "En": "The action could not be completed. Check the file or network connection.",
+    "Zh": "操作未完成，请检查文件或网络连接。"
+  },
+  "Декодер": {
+    "En": "Decoder",
+    "Zh": "解码器"
+  },
+  "Дельта-пакет относится к другому выпуску.": {
+    "En": "The delta package is for a different release.",
+    "Zh": "此差分更新包属于其他发行版本。"
+  },
+  "Дельта-пакет содержит недопустимый путь или ссылку.": {
+    "En": "The delta package contains an unsafe path or link.",
+    "Zh": "差分更新包中包含不安全的路径或链接。"
+  },
+  "Диагностика": {
+    "En": "Diagnostics",
+    "Zh": "诊断"
+  },
+  "Диагностика и ручное сопоставление": {
+    "En": "Diagnostics & manual mapping",
+    "Zh": "诊断与手动匹配"
+  },
+  "Для обновления нужна контрольная сумма установщика. Она ещё не опубликована.": {
+    "En": "The installer checksum is required for this update. It has not been published yet.",
+    "Zh": "此更新需要安装程序校验值，但该校验值尚未发布。"
+  },
+  "Для прямого режима разрешите передачу исходного адреса потока доверенному телефону.": {
+    "En": "For direct mode, allow sharing the original stream address with the trusted phone.",
+    "Zh": "使用直连模式前，请允许向受信任的手机提供原始视频流地址。"
+  },
+  "Для установки выберите локальный диск.": {
+    "En": "Choose a local drive for installation.",
+    "Zh": "请选择本地磁盘进行安装。"
+  },
+  "Для HDR10 / HLG требуется совместимая конфигурация Windows, дисплея, драйвера и потока. Статистика показывает метаданные источника и вывода. Аппаратная проверка HDR и поведения SDR на HDR-дисплее описана в ручном тест-плане.": {
+    "En": "HDR10 / HLG requires compatible Windows, display, driver and stream settings. Statistics show source and output metadata. Hardware HDR checks and SDR behaviour on HDR displays are described in the manual test plan.",
+    "Zh": "HDR10／HLG 需要兼容的 Windows、显示器、驱动程序和视频流配置。统计信息显示输入与输出的元数据。硬件 HDR 检查及 HDR 显示器上的 SDR 表现详见手动测试计划。"
+  },
+  "Добавить в избранное": {
+    "En": "Add to favorites",
+    "Zh": "添加到收藏"
+  },
+  "Добавить или убрать каналы": {
+    "En": "Add or remove channels",
+    "Zh": "添加或移除频道"
+  },
+  "Добавить файл…": {
+    "En": "Add file…",
+    "Zh": "添加文件…"
+  },
+  "Добавить URL…": {
+    "En": "Add URL…",
+    "Zh": "添加网址…"
+  },
+  "Добавлен «Спортивный вечер»: одновременный просмотр до девяти каналов в сетке, выбор каналов с поиском и категориями, общий регулятор громкости и звук только с выбранного канала. Источник звука переключается кнопкой или щелчком по видео. Состав каналов и выбранный источник сохраняются; доступны полный экран, удаление и переподключение отдельных трансляций. Основной плеер приостанавливается до закрытия режима.": {
+    "En": "Sports Evening has been added: watch up to nine channels in a grid, choose channels with search and categories, and use a shared volume control with audio from a single selected channel. Choose audio with a button or by clicking a video. Channels and the audio source are saved. Fullscreen, removal and reconnection are available for individual streams. The main player pauses until this mode closes.",
+    "Zh": "新增“体育之夜”：可在网格中同时观看最多九个频道，通过搜索和分类选择频道，使用统一音量控制，并仅播放所选频道的声音。通过按钮或点击视频可切换声音来源。频道组合和声音来源会被保存；支持单个画面的全屏、移除及重新连接。关闭此模式前，主播放器保持暂停。"
+  },
+  "Добавлена отдельная поправка времени телепрограммы для каждого канала, с шагом в минуту и предварительным просмотром. Она сохраняется после обновления EPG и одинаково учитывается в Windows, Remote, поиске, телепрограмме, карточках и запуске архива. Настройка доступна в разделе EPG и через контекстное меню канала. Перед открытием архива проверяется HLS: пустой ответ провайдера или недоступная запись объясняются сообщением, текущий просмотр сохраняется. Подсказка у значка архива уточняет, что глубина заявлена в плейлисте и наличие отдельных записей зависит от провайдера. В полном экране описание и управление остаются видимыми под курсором и скрываются через секунду после его ухода. Уменьшена высота верхней панели и отступы над списком каналов и видео, без изменения размеров шрифтов.": {
+    "En": "Per-channel TV guide time correction has been added, in one-minute steps with a preview. It survives EPG updates and applies consistently to Windows, Remote, search, guide cards and archive playback. Find it in EPG settings or the channel context menu. Before opening an archive, HLS is checked: an empty provider response or unavailable recording is explained while current playback continues. Archive tooltips clarify that retention is advertised by the playlist and individual recordings depend on the provider. Fullscreen description and controls stay visible under the pointer and hide one second after it leaves. The top bar and spacing above channels and video are shorter, with font sizes unchanged.",
+    "Zh": "新增各频道独立的节目单时间校正，支持一分钟步进和预览。校正在 EPG 更新后仍会保留，并一致应用于 Windows、Remote、搜索、节目卡片和回看播放。可从 EPG 设置或频道右键菜单打开。播放回看前会检查 HLS：服务商返回空内容或录像不可用时会显示原因，当前播放不会中断。回看提示说明天数由播放列表标注，具体录像取决于服务提供商。全屏简介和控制栏在鼠标下保持显示，移开一秒后隐藏。顶部栏以及频道列表和视频上方的间距已缩小，字号不变。"
+  },
+  "Добавлены дельта-обновления: плеер скачивает только изменённые файлы и использует уже установленный видеодвижок и .NET. Пакеты создаются автоматически на GitHub. Перед установкой все файлы проверяются; если небольшой пакет не подходит, загрузится полный установщик. Переход на эту версию требует одного полного обновления.": {
+    "En": "Delta updates have been added: the player downloads only changed files and reuses the installed video engine and .NET runtime. Packages are created automatically on GitHub. Every file is verified before installation; if the small package is unsuitable, the full installer is downloaded. Moving to this version requires one full update.",
+    "Zh": "新增差分更新：播放器只下载发生变化的文件，复用已安装的视频引擎和 .NET 运行时。更新包由 GitHub 自动生成，安装前会验证所有文件；若小更新包不适用，会下载完整安装程序。首次升级到此版本需要进行一次完整更新。"
+  },
+  "Добавлены номера каналов слева от логотипов в основном списке и в списке поверх видео. Нумерация общая для библиотеки: при поиске, выборе категории и переходе в избранное номер канала сохраняется.": {
+    "En": "Channel numbers now appear to the left of logos in the main list and the list over the video. Numbers belong to the whole library and remain the same when searching, filtering categories or opening Favorites.",
+    "Zh": "主列表和视频上的频道列表现在会在标志左侧显示频道编号。编号基于整个媒体库，搜索、切换分类或打开收藏时均保持不变。"
+  },
+  "Добавляйте каналы через ☆ или контекстное меню. Канал может входить в несколько подборок. В избранном и подборках порядок меняется перетаскиванием.": {
+    "En": "Add channels using ☆ or the context menu. A channel can belong to multiple collections. Drag to reorder Favorites and collections.",
+    "Zh": "通过 ☆ 或右键菜单添加频道。同一频道可加入多个合集。可通过拖动调整收藏和合集中的顺序。"
+  },
+  "Дорожка {0}": {
+    "En": "Track {0}",
+    "Zh": "音轨 {0}"
+  },
+  "Дорожка недоступна.": {
+    "En": "This track is unavailable.",
+    "Zh": "此音轨不可用。"
+  },
+  "Достигнут лимит мобильных потоков. Остановите просмотр на другом устройстве.": {
+    "En": "The mobile stream limit has been reached. Stop playback on another device.",
+    "Zh": "已达到手机播放流数量上限，请先停止其他设备上的播放。"
+  },
+  "Доступ к преобразованию не подтверждён.": {
+    "En": "Conversion access has not been authorized.",
+    "Zh": "视频转换访问尚未获得授权。"
+  },
+  "Доступ остановлен: сеть больше не частная": {
+    "En": "Access stopped: the network is no longer private",
+    "Zh": "访问已停止：网络不再是专用网络"
+  },
+  "Доступ разрешён только из выбранной домашней сети.": {
+    "En": "Access is allowed only from the selected home network.",
+    "Zh": "仅允许从所选家庭网络访问。"
+  },
+  "Доступна версия {0}": {
+    "En": "Version {0} is available",
+    "Zh": "版本 {0} 已发布"
+  },
+  "Доступные дорожки появляются в меню ••• во время воспроизведения. Несуществующие дорожки не предлагаются.": {
+    "En": "Available tracks appear in the ••• menu during playback. Tracks that do not exist are not offered.",
+    "Zh": "播放时，可用音轨会显示在 ••• 菜单中；不存在的音轨不会列出。"
+  },
+  "ещё не выполнялось": {
+    "En": "not run yet",
+    "Zh": "尚未执行"
+  },
+  "Завершаем текущую операцию…": {
+    "En": "Finishing the current operation…",
+    "Zh": "正在完成当前操作…"
+  },
+  "Завершение текущей операции…": {
+    "En": "Finishing the current operation…",
+    "Zh": "正在完成当前操作…"
+  },
+  "Завершение установки…": {
+    "En": "Finishing installation…",
+    "Zh": "正在完成安装…"
+  },
+  "Загружаем телепрограмму…": {
+    "En": "Loading the TV guide…",
+    "Zh": "正在加载节目单…"
+  },
+  "Загружаем FFmpeg · {0:F1}": {
+    "En": "Downloading FFmpeg · {0:F1}",
+    "Zh": "正在下载 FFmpeg · {0:F1}"
+  },
+  "Загружаем FFmpeg для Remote…": {
+    "En": "Downloading FFmpeg for Remote…",
+    "Zh": "正在为 Remote 下载 FFmpeg…"
+  },
+  "Загрузить прозрачные пиконы EPG.ONE": {
+    "En": "Download transparent EPG.ONE logos",
+    "Zh": "下载 EPG.ONE 透明频道标志"
+  },
+  "Загрузка и импорт EPG.ONE": {
+    "En": "EPG.ONE download & import",
+    "Zh": "下载并导入 EPG.ONE"
+  },
+  "Загрузка компонентов заняла слишком много времени. Проверьте интернет и повторите включение Remote.": {
+    "En": "Component download took too long. Check your internet connection and enable Remote again.",
+    "Zh": "组件下载超时，请检查互联网连接，然后重新启用 Remote。"
+  },
+  "Загрузка обновления · {0:N0}%  ({1:N1} из {2:N1} МБ)": {
+    "En": "Downloading update · {0:N0}%  ({1:N1} of {2:N1} MB)",
+    "Zh": "正在下载更新 · {0:N0}%（{1:N1} / {2:N1} MB）"
+  },
+  "Загрузка отменена. Можно повторить.": {
+    "En": "Download cancelled. You can try again.",
+    "Zh": "下载已取消，可以重试。"
+  },
+  "Загрузка пиконов": {
+    "En": "Downloading channel logos",
+    "Zh": "正在下载频道标志"
+  },
+  "Загрузка EPG.ONE": {
+    "En": "Downloading EPG.ONE",
+    "Zh": "正在下载 EPG.ONE"
+  },
+  "Задать или изменить PIN": {
+    "En": "Set or change PIN",
+    "Zh": "设置或更改 PIN 码"
+  },
+  "Зажмите и тяните — листать · щелчок — описание · двойной — смотреть": {
+    "En": "Drag to browse · click for details · double-click to watch",
+    "Zh": "拖动浏览 · 单击查看简介 · 双击观看"
+  },
+  "Закрепить поверх всех окон": {
+    "En": "Pin above other windows",
+    "Zh": "置于其他窗口之上"
+  },
+  "Закреплён поверх окон": {
+    "En": "Pinned above other windows",
+    "Zh": "已置于其他窗口之上"
+  },
+  "Закройте лишние вкладки Remote.": {
+    "En": "Close extra Remote tabs.",
+    "Zh": "请关闭多余的 Remote 标签页。"
+  },
+  "Закрыть": {
+    "En": "Close",
+    "Zh": "关闭"
+  },
+  "Закрыть (Esc)": {
+    "En": "Close (Esc)",
+    "Zh": "关闭（Esc）"
+  },
+  "Закрыть быстрое подключение Remote": {
+    "En": "Close Remote quick connect",
+    "Zh": "关闭 Remote 快速连接"
+  },
+  "Закрыть мультиэкран и вернуться к плееру": {
+    "En": "Close Multi-screen and return to the player",
+    "Zh": "关闭多画面并返回播放器"
+  },
+  "Заново отрисован значок Remote: более широкий смартфон с кнопкой просмотра и сигналом связи, такие же пропорции, размер рисунка и толщина контура, как у остальных значков меню. Он использует общий PNG-набор и цветную анимацию. Место для увеличения и поворота добавлено в кнопку, поэтому рисунок больше не приходится уменьшать и он не обрезается.": {
+    "En": "The Remote icon has been redrawn as a wider phone with a play button and connection signal, matching the proportions, artwork size and stroke width of the other navigation icons. It uses the shared PNG set and color animation. Extra room allows scaling and rotation without shrinking or clipping the artwork.",
+    "Zh": "Remote 图标重新设计为更宽的手机轮廓，带有播放按钮和无线信号，其比例、图形大小和线条粗细与其他导航图标一致。使用统一的 PNG 图标组和彩色动画，并增加缩放和旋转所需空间，避免图形缩小或被裁切。"
+  },
+  "Запрос с другого сайта запрещён.": {
+    "En": "Requests from another website are not allowed.",
+    "Zh": "不允许来自其他网站的请求。"
+  },
+  "Запуск Remote в публичной или неизвестной сети запрещён. Выберите домашнюю частную сеть.": {
+    "En": "Remote cannot start on a public or unknown network. Choose a private home network.",
+    "Zh": "Remote 无法在公用或未知网络上启动，请选择家庭专用网络。"
+  },
+  "Запускать Remote вместе с DzhiggaTV": {
+    "En": "Start Remote with DzhiggaTV",
+    "Zh": "随 DzhiggaTV 启动 Remote"
+  },
+  "Запустить": {
+    "En": "Start",
+    "Zh": "启动"
+  },
+  "ЗАТЕМ": {
+    "En": "LATER",
+    "Zh": "随后"
+  },
+  "Защищённый DRM-поток недоступен в Remote.": {
+    "En": "DRM-protected streams are not available in Remote.",
+    "Zh": "Remote 不支持受 DRM 保护的视频流。"
+  },
+  "Звук": {
+    "En": "Audio",
+    "Zh": "声音"
+  },
+  "Звук ✓": {
+    "En": "Audio ✓",
+    "Zh": "声音 ✓"
+  },
+  "Звук выключен · выбран": {
+    "En": "Muted · selected",
+    "Zh": "已静音 · 已选择"
+  },
+  "Звук идёт с этого канала": {
+    "En": "Audio is playing from this channel",
+    "Zh": "正在播放此频道的声音"
+  },
+  "Звук: {0}": {
+    "En": "Audio: {0}",
+    "Zh": "声音：{0}"
+  },
+  "Звук: канал не выбран": {
+    "En": "Audio: no channel selected",
+    "Zh": "声音：未选择频道"
+  },
+  "Звуковая дорожка": {
+    "En": "Audio track",
+    "Zh": "音轨"
+  },
+  "Значок Wi-Fi для быстрого подключения Remote в плеере стал компактнее: размер и толщина линий согласованы с соседними кнопками.": {
+    "En": "The Wi-Fi quick-connect icon in the player is smaller, with its size and stroke weight matched to the neighbouring buttons.",
+    "Zh": "播放器中的 Wi-Fi 快速连接图标已缩小，大小和线条粗细与相邻按钮保持一致。"
+  },
+  "Избранное": {
+    "En": "Favorites",
+    "Zh": "收藏"
+  },
+  "Избранное и подборки": {
+    "En": "Favorites & collections",
+    "Zh": "收藏与合集"
+  },
+  "Изменение размера мини-плеера сохраняет соотношение сторон видео при перетаскивании любого края или угла. Учитываются рамка окна, масштаб Windows, минимальный размер, форматы 16:9 и 4:3 и пропорции самого потока. При открытии мини-плеера и смене формата ширина и высота также согласуются с видео; выбранный размер сохраняется.": {
+    "En": "The mini-player preserves the video's aspect ratio when resizing from any edge or corner. Window borders, Windows scaling, minimum size, 16:9, 4:3 and the stream's display aspect are respected. Opening the mini-player or changing formats also fits the window dimensions to the video. Your chosen size is saved.",
+    "Zh": "从任意边缘或角落调整迷你播放器大小时，均会保持视频比例。会考虑窗口边框、Windows 缩放、最小尺寸、16:9、4:3 以及视频流的实际显示比例。打开迷你播放器或切换格式时，窗口大小也会适应视频，并保存您选定的尺寸。"
+  },
+  "Изменяйте ширину списка каналов, перетаскивая разделитель. Кнопка ☰ сворачивает левую навигацию. Интерфейс не использует обязательные анимации и учитывает reduced motion отсутствием движения.": {
+    "En": "Drag the divider to resize the channel list. The ☰ button collapses the sidebar. Navigation does not rely on animations, and reduced-motion preferences are respected.",
+    "Zh": "拖动分隔条可调整频道列表宽度，☰ 按钮可折叠侧栏。导航不依赖动画，并会遵循减少动态效果的设置。"
+  },
+  "Изображения|*.png;*.jpg;*.jpeg;*.webp;*.bmp": {
+    "En": "Images|*.png;*.jpg;*.jpeg;*.webp;*.bmp",
+    "Zh": "图片|*.png;*.jpg;*.jpeg;*.webp;*.bmp"
+  },
+  "Иконка «Спортивного вечера» приведена к общему стилю навигации: четыре скруглённых экрана, приглушённый контур в покое и зелёно-бирюзовый цвет при наведении. Используются те же плавные увеличение и поворот, подсветка с клавиатуры и учёт настройки уменьшения движения, что у остальных значков.": {
+    "En": "The Sports Evening icon now matches the navigation style: four rounded screens, a muted outline at rest and green-turquoise color on hover. It shares smooth scale and rotation, keyboard highlighting and reduced-motion support with the other icons.",
+    "Zh": "“体育之夜”图标已与导航风格统一：四个圆角画面，静止时使用柔和轮廓，悬停时呈现绿色与青绿色。与其他图标一样，支持平滑缩放、旋转、键盘高亮和减少动态效果。"
+  },
+  "Импорт плейлиста…": {
+    "En": "Importing playlist…",
+    "Zh": "正在导入播放列表…"
+  },
+  "Импорт XMLTV не завершен.": {
+    "En": "XMLTV import did not finish.",
+    "Zh": "XMLTV 导入未完成。"
+  },
+  "Импортировано {0:N0} каналов, {1} категорий.": {
+    "En": "Imported {0:N0} channels and {1} categories.",
+    "Zh": "已导入 {0:N0} 个频道和 {1} 个分类。"
+  },
+  "Импортировать архив пиконов ZIP…": {
+    "En": "Import channel logos from ZIP…",
+    "Zh": "从 ZIP 导入频道标志…"
+  },
+  "инициализация": {
+    "En": "initializing",
+    "Zh": "正在初始化"
+  },
+  "Информация о потоке": {
+    "En": "Stream information",
+    "Zh": "流信息"
+  },
+  "Исправлена загрузка телепрограммы и логотипов EPG.ONE.": {
+    "En": "EPG.ONE TV guide and logo loading has been fixed.",
+    "Zh": "已修复 EPG.ONE 节目单和频道标志的加载。"
+  },
+  "Исправлена перемотка архива вперёд после перехода назад: вне загруженного участка запись открывается с выбранного времени. Увеличены бегунок и область нажатия; при наведении и перетаскивании показаны точные дата и время перехода. Сохраняются пауза и громкость. Переход к предыдущим передачам стал заметнее: кнопка «Ранее» с крупной стрелкой, рамкой и подсветкой находится справа над названием, а ссылка на телепрограмму — в строке времени. Размер карточек сохранён.": {
+    "En": "Seeking forward in an archive after rewinding has been fixed: positions outside the loaded section reopen at the selected time. The thumb and hit area are larger, with exact seek date and time shown on hover and drag. Pause and volume are preserved. Earlier programmes are easier to find: a bordered, highlighted Earlier button with a large arrow sits to the right above the title, with the guide link on the time row. Card sizes are unchanged.",
+    "Zh": "修复了回退后向前定位回看的问题：所选位置超出已加载片段时，会从该时间重新打开。滑块和可点击区域已增大，悬停或拖动时显示准确日期和时间，同时保留暂停状态与音量。此前节目更容易找到：“此前”按钮带有大箭头、边框和高亮，位于标题上方右侧，节目单链接位于时间一行。卡片尺寸不变。"
+  },
+  "Исправлено заполнение карточек «Сейчас в эфире», «Далее» и «Затем» при запуске и восстановлении последнего канала. Сохранённая программа показывается до подключения к трансляции, не ожидая фонового обновления EPG и записи настроек. Поздняя подгрузка программы сразу обновляет карточки.": {
+    "En": "On now, Next and Later cards now populate correctly on startup and when resuming the last channel. Cached guide data appears before connecting to the stream, without waiting for background EPG updates or settings writes. Later guide data immediately refreshes the cards.",
+    "Zh": "已修复启动或恢复上次频道时“正在播出”“接下来”和“随后”卡片未填充的问题。缓存的节目单会在连接视频流前显示，无需等待后台 EPG 更新或设置写入。后续加载的节目信息会立即更新卡片。"
+  },
+  "Исправлено меню плеера и обновлено оформление номера версии.": {
+    "En": "The player menu has been fixed and the version display redesigned.",
+    "Zh": "已修复播放器菜单，并重新设计版本号的显示样式。"
+  },
+  "Исправлено обрезание значка Remote при наведении: добавлено прозрачное поле для увеличения и поворота, цвет и анимация сохранены. На вкладке «Пульт» веб-версии мобильный плеер скрывается и освобождает место для управления компьютером. При возврате к ТВ выбранный канал и тот же видеоэлемент сохраняются.": {
+    "En": "Remote icon clipping on hover has been fixed by adding transparent room for scale and rotation, preserving color and animation. On the web Remote tab, the mobile video is hidden to make room for PC controls. Returning to TV restores the selected channel and the same video element.",
+    "Zh": "已通过增加透明边距修复 Remote 图标悬停时的裁切，保留颜色和动画。在网页的遥控页面中，手机视频会隐藏，为电脑控制腾出空间；返回电视页面后，会恢复所选频道及同一个视频元素。"
+  },
+  "Исправлено окно Remote: настройки больше не накладываются, имя сетевого адаптера отображается нормально. Подключение и QR-код вынесены на первый экран, дополнительные параметры свёрнуты, пустой белый блок заменён подсказкой. Надёжно определяется профиль домашней сети Windows; исправлена ошибка COM при открытии окна. Remote добавлен в левое меню с цветным значком телефона и анимацией при наведении.": {
+    "En": "The Remote window has been fixed: settings no longer overlap, and network adapter names display correctly. Connection and QR code are on the first screen, advanced options are collapsed, and the empty white block has been replaced with guidance. Windows home-network detection is more reliable, and a COM error when opening the window has been fixed. Remote is available in the sidebar with a colored, animated phone icon.",
+    "Zh": "已修复 Remote 窗口：设置不再重叠，网络适配器名称正常显示。连接和二维码位于首页，高级选项默认折叠，原空白白色区域改为操作提示。Windows 家庭网络类型检测更可靠，并修复打开窗口时的 COM 错误。侧栏新增 Remote 入口，带有彩色手机图标和悬停动画。"
+  },
+  "Истекло время загрузки EPG. Последняя рабочая программа сохранена. Проверьте подключение и повторите обновление.": {
+    "En": "EPG download timed out. The last working guide has been kept. Check the connection and try updating again.",
+    "Zh": "EPG 下载超时，已保留上次可用的节目单。请检查连接并重试更新。"
+  },
+  "История версий": {
+    "En": "Version history",
+    "Zh": "版本历史"
+  },
+  "История изменений открывается по нажатию на номер версии.": {
+    "En": "Click the version number to open the change history.",
+    "Zh": "点击版本号可打开更新历史。"
+  },
+  "Источник": {
+    "En": "Source",
+    "Zh": "来源"
+  },
+  "Источник вернул повреждённый файл XMLTV.": {
+    "En": "The source returned a damaged XMLTV file.",
+    "Zh": "来源返回了损坏的 XMLTV 文件。"
+  },
+  "Источник выбран, общий звук выключен": {
+    "En": "Source selected; master audio is muted",
+    "Zh": "已选择声音来源；主音量已静音"
+  },
+  "Источник не является HLS. Попробуйте преобразование через FFmpeg.": {
+    "En": "The source is not HLS. Try conversion with FFmpeg.",
+    "Zh": "此来源不是 HLS，请尝试使用 FFmpeg 转换。"
+  },
+  "Источник перенаправляет запрос в локальную или служебную сеть.": {
+    "En": "The source redirects to a local or service network.",
+    "Zh": "来源将请求重定向到了本地网络或内部服务网络。"
+  },
+  "Источник подключения не подтверждён.": {
+    "En": "The connection origin has not been verified.",
+    "Zh": "连接来源尚未通过验证。"
+  },
+  "Источник XMLTV": {
+    "En": "XMLTV source",
+    "Zh": "XMLTV 来源"
+  },
+  "Исходное видео / AAC": {
+    "En": "Original video / AAC",
+    "Zh": "原始视频／AAC"
+  },
+  "Канал": {
+    "En": "Channel",
+    "Zh": "频道"
+  },
+  "Канал для поправки времени": {
+    "En": "Channel for time correction",
+    "Zh": "需要校正时间的频道"
+  },
+  "Канал или передача": {
+    "En": "Channel or programme",
+    "Zh": "频道或节目"
+  },
+  "Канал не выбран": {
+    "En": "No channel selected",
+    "Zh": "未选择频道"
+  },
+  "Канал не найден.": {
+    "En": "Channel not found.",
+    "Zh": "未找到频道。"
+  },
+  "Канал недоступен или скрыт на компьютере.": {
+    "En": "This channel is unavailable or hidden on the computer.",
+    "Zh": "此频道不可用，或已在电脑上隐藏。"
+  },
+  "Канал недоступен.": {
+    "En": "Channel unavailable.",
+    "Zh": "频道不可用。"
+  },
+  "КАНАЛ СО ЗВУКОМ": {
+    "En": "AUDIO SOURCE",
+    "Zh": "声音来源"
+  },
+  "Канал EPG не найден.": {
+    "En": "EPG channel not found.",
+    "Zh": "未找到对应的 EPG 频道。"
+  },
+  "КАНАЛЫ": {
+    "En": "CHANNELS",
+    "Zh": "频道"
+  },
+  "Карточки текущей и следующей передачи стали компактнее: короткое описание в две строки с многоточием, без внутренней прокрутки. Длинные названия аккуратно сокращаются, больше места остаётся для видео.": {
+    "En": "Current and upcoming programme cards are more compact: descriptions use two lines with an ellipsis and no internal scrolling. Long titles are trimmed neatly, leaving more space for video.",
+    "Zh": "当前节目和下一节目卡片更加紧凑：简介显示两行，超出部分使用省略号，不再内部滚动。长标题会整齐截断，为视频留出更多空间。"
+  },
+  "Категория": {
+    "En": "Category",
+    "Zh": "分类"
+  },
+  "Категория телепрограммы": {
+    "En": "TV guide category",
+    "Zh": "节目单分类"
+  },
+  "Качество при преобразовании": {
+    "En": "Conversion quality",
+    "Zh": "转换画质"
+  },
+  "Клавиатура и мышь работают в обычном, полноэкранном и компактном режимах.": {
+    "En": "Keyboard and mouse work in normal, fullscreen and compact modes.",
+    "Zh": "普通、全屏和紧凑模式均支持键盘与鼠标操作。"
+  },
+  "Кнопка «Подробнее» появляется только у обрезанного описания текущей или следующей передачи. Наведение на кнопку показывает полный текст под видео, уход с неё сразу возвращает карточки. Длинный текст прокручивается колёсиком над кнопкой; видео и список каналов остаются открытыми.": {
+    "En": "Details appears only when a current or upcoming programme description is truncated. Hover to read the full text below the video; moving away restores the cards immediately. Scroll long text with the wheel over the button. The video and channel list stay visible.",
+    "Zh": "仅当当前节目或下一节目的简介被截断时，才显示“详情”。悬停可在视频下方查看完整文本，移开后立即恢复卡片。将鼠标放在按钮上滚动滚轮可阅读长文本，视频和频道列表始终保持可见。"
+  },
+  "Код истёк или уже использован. Обновите QR-код на компьютере.": {
+    "En": "The code expired or has already been used. Refresh the QR code on the computer.",
+    "Zh": "二维码已过期或已被使用，请在电脑上刷新二维码。"
+  },
+  "команда воспроизведения": {
+    "En": "playback command",
+    "Zh": "播放命令"
+  },
+  "Компактное управление при наведении; убрана верхняя плашка внутри видео.": {
+    "En": "Compact controls on hover; the top bar inside the video has been removed.",
+    "Zh": "悬停时显示紧凑控制栏，已移除视频内的顶部栏。"
+  },
+  "Компоненты Remote готовы": {
+    "En": "Remote components are ready",
+    "Zh": "Remote 组件已准备就绪"
+  },
+  "Конфликт файла и папки в обновлении.": {
+    "En": "A file and folder conflict in the update.",
+    "Zh": "更新中的文件与文件夹存在冲突。"
+  },
+  "Копировать ссылку": {
+    "En": "Copy link",
+    "Zh": "复制链接"
+  },
+  "Кэш ограничен 256 МиБ. Логотип конкретного канала можно заменить через правую кнопку мыши. Автоматическое обновление не заменяет пользовательский выбор.": {
+    "En": "The cache is limited to 256 MiB. Right-click a channel to replace its logo. Automatic updates do not replace your custom choice.",
+    "Zh": "缓存上限为 256 MiB。右键点击频道可替换其标志，自动更新不会覆盖您自选的标志。"
+  },
+  "Личная библиотека хранится на этом компьютере. Приложение не требует внешней учётной записи.": {
+    "En": "Your personal library is stored on this computer. No external account is required.",
+    "Zh": "个人媒体库保存在此电脑上，无需外部账户。"
+  },
+  "Логотип слишком большой.": {
+    "En": "The logo is too large.",
+    "Zh": "标志图片过大。"
+  },
+  "Логотипы": {
+    "En": "Channel logos",
+    "Zh": "频道标志"
+  },
+  "Локальное медиа": {
+    "En": "Local media",
+    "Zh": "本地媒体"
+  },
+  "Локальные M3U/M3U8 и сетевые плейлисты. При обновлении идентификатор источника сохраняется, избранное и ручные соответствия остаются на месте.": {
+    "En": "Local M3U/M3U8 files and online playlists. Updating preserves the source ID, favorites and manual mappings.",
+    "Zh": "支持本地 M3U／M3U8 文件和网络播放列表。更新时会保留来源标识、收藏及手动匹配。"
+  },
+  "Локальный HLS-прокси": {
+    "En": "Local HLS proxy",
+    "Zh": "本地 HLS 代理"
+  },
+  "Манифест предыдущей установки повреждён.": {
+    "En": "The previous installation manifest is damaged.",
+    "Zh": "原安装清单已损坏。"
+  },
+  "Менять громкость и выключать звук": {
+    "En": "Change volume and mute",
+    "Zh": "调整音量与静音"
+  },
+  "Менять избранное и подборки": {
+    "En": "Edit favorites and collections",
+    "Zh": "编辑收藏与合集"
+  },
+  "Метка предыдущей установки повреждена. Выберите другую папку.": {
+    "En": "The previous installation record is damaged. Choose a different folder.",
+    "Zh": "原安装记录已损坏，请选择其他文件夹。"
+  },
+  "Мини-плеер можно изменять за любой край или угол окна: видео и управление больше не перекрывают область изменения размера. Начальный размер уменьшен до 440 × 255, минимальный — до 320 × 196. Выбранные размер и положение сохраняются при возврате в главное окно и закрытии приложения. Старый стандартный размер заменяется новым компактным; настройки собственного размера сохраняются.": {
+    "En": "Resize the mini-player from any edge or corner; video and controls no longer cover the resize area. The default size is now 440 × 255, with a minimum of 320 × 196. Size and position are saved when returning to the main window or closing the app. The old default is migrated to the new compact size, while custom dimensions are preserved.",
+    "Zh": "可从任意边缘或角落调整迷你播放器大小，视频和控制栏不再遮挡调整区域。默认尺寸缩小为 440 × 255，最小为 320 × 196。返回主窗口或关闭应用时会保存大小和位置。旧默认尺寸会迁移为新的紧凑尺寸，自定义尺寸仍会保留。"
+  },
+  "Минимальная задержка": {
+    "En": "Lowest latency",
+    "Zh": "最低延迟"
+  },
+  "Минимальная задержка отключает предварительное чтение; стабильный режим включает cache-pause. Сбалансированный использует стандартные объёмы mpv. Численные размеры буфера не выдуманы; фактическое заполнение доступно в статистике.": {
+    "En": "Lowest latency disables read-ahead; Stable enables cache-pause. Balanced uses mpv defaults. No arbitrary buffer sizes are imposed. Actual buffer levels are available in Stream information.",
+    "Zh": "最低延迟模式关闭预读，稳定模式启用 cache-pause，均衡模式使用 mpv 默认设置。不会指定随意设定的缓冲大小，实际缓冲量可在流信息中查看。"
+  },
+  "Можно выбрать до {0} каналов. Снимите одну галочку или замените канал на схеме.": {
+    "En": "Choose up to {0} channels. Uncheck one or replace a channel in the layout.",
+    "Zh": "最多可选择 {0} 个频道，请取消勾选一个频道，或在布局中替换频道。"
+  },
+  "Можно выбрать от одного до четырёх экранов.": {
+    "En": "Choose between one and four screens.",
+    "Zh": "请选择一到四个画面。"
+  },
+  "Мультиэкран": {
+    "En": "Multi-screen",
+    "Zh": "多画面"
+  },
+  "Мультиэкран автоматически перестраивается под оставшиеся каналы: пустые ячейки не занимают место, для двух и трёх видео выбирается раскладка с большей площадью изображения и сохранением пропорций. Режим четырёх каналов сохранён. Главное окно запускается развёрнутым. Заголовки установщика и отдельного окна обновления оформлены в тёмном цвете. Окно обновления стало компактнее: убраны нижний текстовый блок и кнопка «Открыть плеер», состояние показывается над полосой.": {
+    "En": "Multi-screen automatically adapts to the remaining channels. Empty slots take no space, and two- and three-video layouts maximize the picture area while preserving aspect ratios. The four-channel layout is unchanged. The main window starts maximized. Installer and update-window title bars are dark. The update window is more compact: the lower text and Open player button are removed, with status above the progress bar.",
+    "Zh": "多画面会自动适应剩余频道，空位不再占用空间；两画面和三画面布局在保持比例的同时尽量扩大视频面积，四画面布局保持不变。主窗口启动时默认最大化。安装和更新窗口采用深色标题栏。更新窗口更加紧凑，移除了底部说明和“打开播放器”按钮，状态信息显示在进度条上方。"
+  },
+  "На каналах без архива кнопка открытия телепрограммы перенесена в верхний правый угол карточки «Сейчас в эфире», рядом с её заголовком. Новая подпись — «Телепрограмма →». На каналах с архивом эта кнопка по-прежнему скрыта.": {
+    "En": "On channels without archive support, the TV guide button has moved to the upper-right corner of the On now card, beside its heading. Its new label is TV guide →. It remains hidden for channels with archive support.",
+    "Zh": "不支持回看的频道，其节目单按钮已移至“正在播出”卡片右上角、标题旁，文字改为“节目单 →”。支持回看的频道仍不显示此按钮。"
+  },
+  "На текущее время нет данных. Поправка будет применяться к загруженным передачам.": {
+    "En": "No data for the current time. The correction will apply to loaded programmes.",
+    "Zh": "当前时段暂无数据，校正将应用于已加载的节目。"
+  },
+  "На телефоне выберите ту же домашнюю сеть. Если QR не открывается, проверьте изоляцию гостевого Wi-Fi, VPN и разрешение DzhiggaTV в брандмауэре Windows для частных сетей.": {
+    "En": "Connect the phone to the same home network. If the QR code does not open, check guest Wi-Fi isolation, VPN and DzhiggaTV's private-network permission in Windows Firewall.",
+    "Zh": "请将手机连接到同一家庭网络。若扫描二维码后无法打开，请检查访客 Wi-Fi 隔离、VPN，以及 Windows 防火墙中 DzhiggaTV 的专用网络访问权限。"
+  },
+  "Наведите камеру iPhone на QR-код.\nЗатем подтвердите подключение на компьютере.": {
+    "En": "Scan the QR code with your iPhone camera.\nThen approve the connection on the computer.",
+    "Zh": "使用 iPhone 相机扫描二维码，\n然后在电脑上批准连接。"
+  },
+  "Надпись «До конца осталось» стала менее заметной: приглушённый цвет и обычное начертание. Оставшееся время показывается с точностью до минут, без секунд.": {
+    "En": "Time remaining is now less prominent, with a muted color and regular weight. Remaining time is rounded to minutes, without seconds.",
+    "Zh": "剩余时间改用较柔和的颜色和常规字重，降低视觉干扰。时间精度改为分钟，不再显示秒数。"
+  },
+  "Нажатие «С начала передачи» в плеере запускает текущую передачу с начала. Вместо отдельного выбора даты и времени открывается телепрограмма; дублирующая кнопка «Программа» убрана из карточки каналов с архивом. Добавлен контроль остановки потока, ограниченное автоматическое восстановление и сохранение позиции архива. При загрузке, буферизации и зависании в центре видео появляется анимированный индикатор; после неудачного восстановления можно повторить подключение. Пауза и обычная перемотка не считаются зависанием, а смена канала отменяет старые попытки.": {
+    "En": "From programme start plays the current programme from the beginning. The TV guide replaces the separate date/time picker, and the duplicate Guide button is removed from archive-channel cards. Stream-stall detection, bounded automatic recovery and archive-position restoration have been added. An animated indicator appears in the middle of the video during loading, buffering or stalls. Retry is available if recovery fails. Pause and normal seeking do not count as stalls, and switching channels cancels previous recovery attempts.",
+    "Zh": "点击“从节目开头播放”可从头观看当前节目。节目单替代独立的日期时间选择器，支持回看的频道卡片中移除了重复的节目单按钮。新增视频流停滞检测、有限次数的自动恢复及回看位置恢复。加载、缓冲或卡顿时，视频中央显示动画提示；恢复失败后可重新连接。正常暂停和定位不会被误判为卡顿，切换频道会取消此前的恢复尝试。"
+  },
+  "Нажмите на ячейку, чтобы прочитать полное описание.": {
+    "En": "Click a programme to read its full description.",
+    "Zh": "点击节目可查看完整简介。"
+  },
+  "Название": {
+    "En": "Name",
+    "Zh": "名称"
+  },
+  "Название или ID канала EPG.ONE": {
+    "En": "EPG.ONE channel name or ID",
+    "Zh": "EPG.ONE 频道名称或 ID"
+  },
+  "Название канала": {
+    "En": "Channel name",
+    "Zh": "频道名称"
+  },
+  "Название категории": {
+    "En": "Category name",
+    "Zh": "分类名称"
+  },
+  "Название конечной папки должно быть DzhiggaTV. Выберите отдельную папку приложения.": {
+    "En": "The final folder must be named DzhiggaTV. Choose a separate application folder.",
+    "Zh": "最终文件夹必须命名为 DzhiggaTV，请选择独立的应用文件夹。"
+  },
+  "Назначить": {
+    "En": "Assign",
+    "Zh": "匹配"
+  },
+  "Назначить программу выбранному каналу": {
+    "En": "Assign guide data to the selected channel",
+    "Zh": "为所选频道匹配节目单"
+  },
+  "Назначить телепрограмму…": {
+    "En": "Assign TV guide…",
+    "Zh": "匹配节目单…"
+  },
+  "Напрямую": {
+    "En": "Direct",
+    "Zh": "直连"
+  },
+  "Настройки и плейлисты остаются с вами.": {
+    "En": "Your settings and playlists stay with you.",
+    "Zh": "您的设置和播放列表会保留。"
+  },
+  "Настройки применены. Remote работает.": {
+    "En": "Settings applied. Remote is running.",
+    "Zh": "设置已应用，Remote 正在运行。"
+  },
+  "Настройки сервера, просмотра и пульта": {
+    "En": "Server, viewing and remote-control settings",
+    "Zh": "服务器、观看和遥控设置"
+  },
+  "Настройки сети Windows": {
+    "En": "Windows network settings",
+    "Zh": "Windows 网络设置"
+  },
+  "Настройки сохранены.": {
+    "En": "Settings saved.",
+    "Zh": "设置已保存。"
+  },
+  "Настройки JSON|*.json": {
+    "En": "JSON settings|*.json",
+    "Zh": "JSON 设置文件|*.json"
+  },
+  "Не выбрано устройство.": {
+    "En": "No device selected.",
+    "Zh": "未选择设备。"
+  },
+  "Не найдена 64-разрядная библиотека libmpv. Поместите mpv-2.dll в папку native рядом с DzhiggaTV.exe.": {
+    "En": "The 64-bit libmpv library was not found. Place mpv-2.dll in the native folder next to DzhiggaTV.exe.",
+    "Zh": "未找到 64 位 libmpv 库，请将 mpv-2.dll 放入 DzhiggaTV.exe 旁的 native 文件夹。"
+  },
+  "Не найдена частная домашняя сеть. Подключите Ethernet или Wi-Fi и выберите профиль «Частная сеть» в Windows.": {
+    "En": "No private home network was found. Connect Ethernet or Wi-Fi and choose the Private network profile in Windows.",
+    "Zh": "未找到家庭专用网络，请连接以太网或 Wi-Fi，并在 Windows 中选择“专用”网络类型。"
+  },
+  "Не удалось включить Remote. Проверьте сеть и повторите попытку.": {
+    "En": "Could not enable Remote. Check the network and try again.",
+    "Zh": "无法启用 Remote，请检查网络并重试。"
+  },
+  "Не удалось восстановить адрес архива.": {
+    "En": "Could not restore the archive address.",
+    "Zh": "无法恢复回看地址。"
+  },
+  "Не удалось восстановить трансляцию": {
+    "En": "Could not restore the stream",
+    "Zh": "无法恢复视频流"
+  },
+  "Не удалось выполнить действие. Попробуйте ещё раз. Приватные адреса не записываются в журнал.": {
+    "En": "The action could not be completed. Please try again. Private addresses are not logged.",
+    "Zh": "操作未完成，请重试。日志不会记录私密地址。"
+  },
+  "Не удалось выполнить действие. Проверьте сеть и выбранные параметры.": {
+    "En": "The action could not be completed. Check the network and selected options.",
+    "Zh": "操作未完成，请检查网络和所选参数。"
+  },
+  "Не удалось выполнить запрос. Проверьте подключение к компьютеру и доступность IPTV-провайдера.": {
+    "En": "The request could not be completed. Check the connection to the computer and your IPTV provider.",
+    "Zh": "请求未完成，请检查与电脑的连接及 IPTV 服务提供商是否可用。"
+  },
+  "Не удалось завершить обновление. Закройте другие окна DzhiggaTV, проверьте свободное место и повторите.": {
+    "En": "The update could not finish. Close other DzhiggaTV windows, check free disk space and try again.",
+    "Zh": "更新未完成，请关闭其他 DzhiggaTV 窗口，检查可用磁盘空间后重试。"
+  },
+  "Не удалось завершить установку. Закройте DzhiggaTV и выберите доступную папку.": {
+    "En": "Installation could not finish. Close DzhiggaTV and choose an accessible folder.",
+    "Zh": "安装未完成，请关闭 DzhiggaTV 并选择可访问的文件夹。"
+  },
+  "Не удалось загрузить или записать файл EPG. Проверьте сеть и свободное место.": {
+    "En": "Could not download or save the EPG file. Check the network and free disk space.",
+    "Zh": "无法下载或保存 EPG 文件，请检查网络和可用磁盘空间。"
+  },
+  "Не удалось загрузить или установить компоненты Remote. Проверьте интернет и свободное место, затем повторите включение.": {
+    "En": "Could not download or install Remote components. Check the internet connection and free disk space, then enable Remote again.",
+    "Zh": "无法下载或安装 Remote 组件，请检查互联网连接和可用磁盘空间，然后重新启用。"
+  },
+  "Не удалось загрузить предварительный просмотр.": {
+    "En": "Could not load the preview.",
+    "Zh": "无法加载预览。"
+  },
+  "Не удалось загрузить предыдущие передачи. Попробуйте ещё раз.": {
+    "En": "Could not load earlier programmes. Please try again.",
+    "Zh": "无法加载此前的节目，请重试。"
+  },
+  "Не удалось загрузить программу. Нажмите «Сейчас», чтобы повторить.": {
+    "En": "Could not load the guide. Select Now to try again.",
+    "Zh": "无法加载节目单，点击“现在”重试。"
+  },
+  "Не удалось загрузить libmpv. Проверьте папку native и разрядность x64.": {
+    "En": "Could not load libmpv. Check the native folder and x64 architecture.",
+    "Zh": "无法加载 libmpv，请检查 native 文件夹及 x64 架构。"
+  },
+  "Не удалось запустить обновление. Повторите попытку.": {
+    "En": "Could not start the update. Please try again.",
+    "Zh": "无法启动更新，请重试。"
+  },
+  "Не удалось запустить плеер. Откройте DzhiggaTV.exe из папки установки.": {
+    "En": "Could not start the player. Open DzhiggaTV.exe in the installation folder.",
+    "Zh": "无法启动播放器，请打开安装文件夹中的 DzhiggaTV.exe。"
+  },
+  "Не удалось запустить установку обновления.": {
+    "En": "Could not start the update installer.",
+    "Zh": "无法启动更新安装程序。"
+  },
+  "Не удалось запустить FFmpeg.": {
+    "En": "Could not start FFmpeg.",
+    "Zh": "无法启动 FFmpeg。"
+  },
+  "Не удалось обновить EPG. {0} Последняя рабочая программа сохранена.": {
+    "En": "Could not update EPG. {0} The last working guide has been kept.",
+    "Zh": "无法更新 EPG。{0} 已保留上次可用的节目单。"
+  },
+  "Не удалось открыть видео.": {
+    "En": "Could not open the video.",
+    "Zh": "无法打开视频。"
+  },
+  "Не удалось открыть канал. Попробуйте ещё раз.": {
+    "En": "Could not open the channel. Please try again.",
+    "Zh": "无法打开频道，请重试。"
+  },
+  "Не удалось открыть плеер. Запустите DzhiggaTV из меню «Пуск».": {
+    "En": "Could not open the player. Start DzhiggaTV from the Start menu.",
+    "Zh": "无法打开播放器，请从开始菜单启动 DzhiggaTV。"
+  },
+  "Не удалось открыть порт. Выберите свободный порт и проверьте выбранный сетевой адаптер.": {
+    "En": "Could not open the port. Choose an available port and check the selected network adapter.",
+    "Zh": "无法打开端口，请选择空闲端口并检查所选网络适配器。"
+  },
+  "Не удалось подготовить обновление. Запустите плеер и повторите попытку.": {
+    "En": "Could not prepare the update. Open the player and try again.",
+    "Zh": "无法准备更新，请打开播放器并重试。"
+  },
+  "Не удалось подключиться к серверу EPG или логотипов ({0}).": {
+    "En": "Could not connect to the EPG or logo server ({0}).",
+    "Zh": "无法连接到节目单或频道标志服务器（{0}）。"
+  },
+  "Не удалось подключиться к IPTV-провайдеру.": {
+    "En": "Could not connect to the IPTV provider.",
+    "Zh": "无法连接到 IPTV 服务提供商。"
+  },
+  "Не удалось подключиться. Нажмите ↻ для повтора.": {
+    "En": "Could not connect. Select ↻ to retry.",
+    "Zh": "无法连接，请点击 ↻ 重试。"
+  },
+  "Не удалось подтвердить предыдущую версию DzhiggaTV.": {
+    "En": "Could not verify the previous DzhiggaTV version.",
+    "Zh": "无法验证原有的 DzhiggaTV 版本。"
+  },
+  "Не удалось проверить источник команды. Откройте Remote по адресу с QR-кода.": {
+    "En": "Could not verify the command origin. Open Remote using the QR-code address.",
+    "Zh": "无法验证命令来源，请通过二维码中的地址打开 Remote。"
+  },
+  "Не удалось проверить контрольную сумму обновления.": {
+    "En": "Could not verify the update checksum.",
+    "Zh": "无法验证更新校验值。"
+  },
+  "Не удалось проверить обновления. Попробуйте позже.": {
+    "En": "Could not check for updates. Try again later.",
+    "Zh": "无法检查更新，请稍后重试。"
+  },
+  "Не удалось распаковать DzhiggaTV.": {
+    "En": "Could not extract DzhiggaTV.",
+    "Zh": "无法解压 DzhiggaTV。"
+  },
+  "Не удалось связаться с GitHub. Проверьте интернет и попробуйте ещё раз.": {
+    "En": "Could not reach GitHub. Check your internet connection and try again.",
+    "Zh": "无法连接到 GitHub，请检查互联网连接并重试。"
+  },
+  "Не удалось скачать обновление. Попробуйте ещё раз.": {
+    "En": "Could not download the update. Please try again.",
+    "Zh": "无法下载更新，请重试。"
+  },
+  "Не удалось скачать обновление. Проверьте интернет и свободное место, затем повторите.": {
+    "En": "Could not download the update. Check the internet connection and free disk space, then try again.",
+    "Zh": "无法下载更新，请检查互联网连接和可用磁盘空间后重试。"
+  },
+  "Не удалось создать libmpv.": {
+    "En": "Could not create libmpv.",
+    "Zh": "无法创建 libmpv 实例。"
+  },
+  "Не удалось сохранить поправку. Повторите попытку.": {
+    "En": "Could not save the correction. Please try again.",
+    "Zh": "无法保存时间校正，请重试。"
+  },
+  "Не указан подготовленный пакет обновления.": {
+    "En": "No prepared update package was specified.",
+    "Zh": "未指定准备好的更新包。"
+  },
+  "Не указана папка установки.": {
+    "En": "No installation folder was specified.",
+    "Zh": "未指定安装文件夹。"
+  },
+  "Небезопасный путь в архиве.": {
+    "En": "Unsafe path in archive.",
+    "Zh": "压缩包中的路径不安全。"
+  },
+  "Неверная версия пакета обновления.": {
+    "En": "Invalid update package version.",
+    "Zh": "更新包版本无效。"
+  },
+  "Неверная временная папка установки.": {
+    "En": "Invalid temporary installation folder.",
+    "Zh": "临时安装文件夹无效。"
+  },
+  "Неверная контрольная сумма обновления.": {
+    "En": "Incorrect update checksum.",
+    "Zh": "更新校验值不正确。"
+  },
+  "Неверное число файлов в дельта-пакете.": {
+    "En": "Incorrect file count in the delta package.",
+    "Zh": "差分更新包中的文件数量不正确。"
+  },
+  "Неверное число файлов в установочном архиве.": {
+    "En": "Incorrect file count in the installation archive.",
+    "Zh": "安装压缩包中的文件数量不正确。"
+  },
+  "Неверные параметры обновления.": {
+    "En": "Invalid update parameters.",
+    "Zh": "更新参数无效。"
+  },
+  "Неверные параметры ожидания плеера.": {
+    "En": "Invalid player-wait parameters.",
+    "Zh": "等待播放器退出的参数无效。"
+  },
+  "Неверный манифест обновления.": {
+    "En": "Invalid update manifest.",
+    "Zh": "更新清单无效。"
+  },
+  "Неверный размер файла в архиве.": {
+    "En": "Incorrect file size in archive.",
+    "Zh": "压缩包中的文件大小不正确。"
+  },
+  "Неверный размер файла в дельта-пакете.": {
+    "En": "Incorrect file size in the delta package.",
+    "Zh": "差分更新包中的文件大小不正确。"
+  },
+  "Недавние": {
+    "En": "Recent",
+    "Zh": "最近观看"
+  },
+  "Недопустимое имя пакета обновления.": {
+    "En": "Invalid update package name.",
+    "Zh": "更新包名称无效。"
+  },
+  "Недопустимое имя файла в установочном архиве.": {
+    "En": "Invalid file name in the installation archive.",
+    "Zh": "安装压缩包中的文件名无效。"
+  },
+  "Недопустимое перенаправление обновления.": {
+    "En": "Invalid update redirect.",
+    "Zh": "更新重定向无效。"
+  },
+  "Недопустимый путь в установочном архиве.": {
+    "En": "Invalid path in the installation archive.",
+    "Zh": "安装压缩包中的路径无效。"
+  },
+  "Недопустимый размер обновления.": {
+    "En": "Invalid update size.",
+    "Zh": "更新大小无效。"
+  },
+  "Недопустимый размер файла в архиве.": {
+    "En": "Invalid file size in archive.",
+    "Zh": "压缩包中的文件大小无效。"
+  },
+  "Недопустимый файл в манифесте обновления.": {
+    "En": "Invalid file in the update manifest.",
+    "Zh": "更新清单中的文件无效。"
+  },
+  "недоступно": {
+    "En": "unavailable",
+    "Zh": "不可用"
+  },
+  "Недоступно": {
+    "En": "Unavailable",
+    "Zh": "不可用"
+  },
+  "Неизвестная команда.": {
+    "En": "Unknown command.",
+    "Zh": "未知命令。"
+  },
+  "Некорректная громкость.": {
+    "En": "Invalid volume.",
+    "Zh": "音量无效。"
+  },
+  "Некорректная дата XMLTV или неизвестный часовой пояс.": {
+    "En": "Invalid XMLTV date or unknown time zone.",
+    "Zh": "XMLTV 日期无效或时区未知。"
+  },
+  "Некорректное перенаправление IPTV.": {
+    "En": "Invalid IPTV redirect.",
+    "Zh": "IPTV 重定向无效。"
+  },
+  "Некорректный адрес архива.": {
+    "En": "Invalid archive address.",
+    "Zh": "回看地址无效。"
+  },
+  "Некорректный адрес потока.": {
+    "En": "Invalid stream address.",
+    "Zh": "视频流地址无效。"
+  },
+  "Некорректный диапазон.": {
+    "En": "Invalid range.",
+    "Zh": "范围无效。"
+  },
+  "Неподдерживаемая ссылка HLS.": {
+    "En": "Unsupported HLS link.",
+    "Zh": "不支持的 HLS 链接。"
+  },
+  "Неподдерживаемый формат логотипа.": {
+    "En": "Unsupported logo format.",
+    "Zh": "不支持的标志格式。"
+  },
+  "Нет данных о передаче": {
+    "En": "No programme information",
+    "Zh": "暂无节目信息"
+  },
+  "Нет данных о следующей передаче": {
+    "En": "No information for the next programme",
+    "Zh": "暂无下一节目信息"
+  },
+  "Нет данных о следующих передачах": {
+    "En": "No upcoming programme information",
+    "Zh": "暂无后续节目信息"
+  },
+  "Нет данных телепрограммы": {
+    "En": "No TV guide data",
+    "Zh": "暂无节目单数据"
+  },
+  "Нет категорий": {
+    "En": "No categories",
+    "Zh": "暂无分类"
+  },
+  "Нет программы на это время": {
+    "En": "No programme for this time",
+    "Zh": "此时段暂无节目"
+  },
+  "Нет телепрограммы на это время": {
+    "En": "No TV guide for this time",
+    "Zh": "此时段暂无节目单"
+  },
+  "Нижняя строка главного окна с количеством каналов и подсказкой F11 стала вдвое ниже: 16 вместо 32. Убраны лишние вертикальные отступы, текст выровнен по центру. Освободившееся место передано области просмотра. Компактная высота сохраняется после возврата из полного экрана и мини-плеера.": {
+    "En": "The main window's bottom bar, containing the channel count and F11 hint, is half as high: 16 instead of 32. Extra vertical padding has been removed, with centered text. The freed space goes to the video. Compact height is preserved when returning from fullscreen and mini modes.",
+    "Zh": "主窗口底部显示频道数量和 F11 提示的状态栏高度减半，由 32 缩小至 16。移除了多余的上下间距，文本垂直居中，释放的空间用于视频。从全屏或迷你模式返回后仍保持紧凑高度。"
+  },
+  "Ничего не найдено": {
+    "En": "Nothing found",
+    "Zh": "未找到结果"
+  },
+  "Новое название": {
+    "En": "New name",
+    "Zh": "新名称"
+  },
+  "Новый логотип программы, тёмный заголовок окна и логотип текущего канала.": {
+    "En": "New application logo, dark window title bar and current-channel logo.",
+    "Zh": "采用新的应用标志、深色窗口标题栏，并显示当前频道标志。"
+  },
+  "Новый PIN (не менее 4 цифр)": {
+    "En": "New PIN (at least 4 digits)",
+    "Zh": "新 PIN 码（至少 4 位数字）"
+  },
+  "Новых версий пока нет. Можно продолжать просмотр.": {
+    "En": "No new version yet. You can keep watching.",
+    "Zh": "暂无新版本，您可以继续观看。"
+  },
+  "Номер версии появился рядом с названием приложения.": {
+    "En": "The version number now appears beside the application name.",
+    "Zh": "版本号现在显示在应用名称旁。"
+  },
+  "О программе": {
+    "En": "About",
+    "Zh": "关于"
+  },
+  "Обновите страницу Remote и повторите команду.": {
+    "En": "Refresh the Remote page and try the command again.",
+    "Zh": "请刷新 Remote 页面后重试命令。"
+  },
+  "Обновить выбранный": {
+    "En": "Refresh selected",
+    "Zh": "更新所选项"
+  },
+  "Обновить диагностику": {
+    "En": "Refresh diagnostics",
+    "Zh": "刷新诊断"
+  },
+  "Обновить и перезапустить": {
+    "En": "Update and restart",
+    "Zh": "更新并重启"
+  },
+  "Обновить код": {
+    "En": "Refresh code",
+    "Zh": "刷新二维码"
+  },
+  "Обновить сейчас": {
+    "En": "Update now",
+    "Zh": "立即更新"
+  },
+  "Обновить сеть": {
+    "En": "Refresh network",
+    "Zh": "刷新网络"
+  },
+  "Обновить QR-код": {
+    "En": "Refresh QR code",
+    "Zh": "刷新二维码"
+  },
+  "Обновление отменено. Можно повторить попытку.": {
+    "En": "Update cancelled. You can try again.",
+    "Zh": "更新已取消，可以重试。"
+  },
+  "Обновление через GitHub Releases: подсветка новой версии, описание изменений, загрузка с проверкой и автоматический перезапуск. В истории версий — ручная проверка обновлений.": {
+    "En": "GitHub Releases updates: a new-version indicator, release notes, verified downloads and automatic restart. The version history includes a manual update check.",
+    "Zh": "支持通过 GitHub Releases 更新：新版本提示、更新说明、经过验证的下载及自动重启。版本历史中也可手动检查更新。"
+  },
+  "Обновление DzhiggaTV": {
+    "En": "DzhiggaTV update",
+    "Zh": "DzhiggaTV 更新"
+  },
+  "Обновляем DzhiggaTV": {
+    "En": "Updating DzhiggaTV",
+    "Zh": "正在更新 DzhiggaTV"
+  },
+  "Общие": {
+    "En": "General",
+    "Zh": "常规"
+  },
+  "Одна домашняя сеть · ": {
+    "En": "Same home network · ",
+    "Zh": "同一家庭网络 · "
+  },
+  "Одновременные мобильные потоки · 1–4": {
+    "En": "Simultaneous mobile streams · 1–4",
+    "Zh": "同时播放的手机视频流 · 1–4"
+  },
+  "Одноразовая ссылка скопирована · действует 3 минуты": {
+    "En": "One-time link copied · valid for 3 minutes",
+    "Zh": "一次性链接已复制 · 3 分钟内有效"
+  },
+  "Ожидаем данные": {
+    "En": "Waiting for data",
+    "Zh": "正在等待数据"
+  },
+  "Окно настроек DzhiggaTV Remote открывается более узким, с компактным расположением QR-кода и инструкции по подключению.": {
+    "En": "DzhiggaTV Remote settings open in a narrower window, with a compact QR-code and connection-instructions layout.",
+    "Zh": "DzhiggaTV Remote 设置窗口更窄，二维码和连接说明采用更紧凑的布局。"
+  },
+  "ОПИСАНИЕ": {
+    "En": "DESCRIPTION",
+    "Zh": "简介"
+  },
+  "Описание изменений пока не добавлено.": {
+    "En": "Release notes have not been added yet.",
+    "Zh": "暂未添加更新说明。"
+  },
+  "Основной источник предустановлен: полный XMLTV с прозрачными прямоугольными логотипами. Обновление выполняется в фоне раз в сутки; при сбое остаётся последняя рабочая база.": {
+    "En": "The primary source is preconfigured: full XMLTV with transparent rectangular logos. Updates run in the background once a day; the last working database is kept if an update fails.",
+    "Zh": "已预设主要来源：完整 XMLTV 和透明矩形频道标志。每天在后台更新一次；若更新失败，会保留上次可用的数据库。"
+  },
+  "Основной язык — русский. В интерфейсе используются системные шрифты Windows. Анимации не требуются для навигации.": {
+    "En": "Russian is the default language. The interface uses Windows system fonts. Navigation does not require animations.",
+    "Zh": "默认语言为俄语。界面使用 Windows 系统字体，导航无需依赖动画。"
+  },
+  "Ответ сервера обновлений слишком большой.": {
+    "En": "The update server response is too large.",
+    "Zh": "更新服务器返回的数据过大。"
+  },
+  "Отклонить": {
+    "En": "Deny",
+    "Zh": "拒绝"
+  },
+  "Отключить": {
+    "En": "Disconnect",
+    "Zh": "断开连接"
+  },
+  "Открываем архив…": {
+    "En": "Opening archive…",
+    "Zh": "正在打开回看…"
+  },
+  "Открытая «Информация о потоке» закрывается обычным щелчком левой кнопки по видео в основном, полноэкранном и мини-режиме. Повторно открыть её можно через меню плеера или клавишей I.": {
+    "En": "Stream information now closes with a left-click on the video in the main, fullscreen and mini players. Open it again from the player menu or with I.",
+    "Zh": "在主播放器、全屏或迷你模式中，单击视频即可关闭已打开的流信息。可通过播放器菜单或 I 快捷键再次打开。"
+  },
+  "Открыть канал в прямом эфире": {
+    "En": "Play channel live",
+    "Zh": "播放此频道直播"
+  },
+  "Открыть DzhiggaTV Remote": {
+    "En": "Open DzhiggaTV Remote",
+    "Zh": "打开 DzhiggaTV Remote"
+  },
+  "Отмена": {
+    "En": "Cancel",
+    "Zh": "取消"
+  },
+  "Отозвать доступ у всех": {
+    "En": "Revoke all access",
+    "Zh": "撤销所有访问权限"
+  },
+  "Очистить поиск": {
+    "En": "Clear search",
+    "Zh": "清除搜索"
+  },
+  "Очистить экран {0}": {
+    "En": "Clear screen {0}",
+    "Zh": "清空画面 {0}"
+  },
+  "Пакет изменений отсутствует.": {
+    "En": "The delta package is missing.",
+    "Zh": "缺少差分更新包。"
+  },
+  "Папка не подтверждена как установка DzhiggaTV.": {
+    "En": "This folder has not been verified as a DzhiggaTV installation.",
+    "Zh": "未能确认此文件夹为 DzhiggaTV 安装目录。"
+  },
+  "Папка установки не должна проходить через символические ссылки или junction.": {
+    "En": "The installation path must not pass through symbolic links or junctions.",
+    "Zh": "安装路径不得经过符号链接或目录联接点。"
+  },
+  "Папка установки DzhiggaTV": {
+    "En": "DzhiggaTV installation folder",
+    "Zh": "DzhiggaTV 安装文件夹"
+  },
+  "параметр ": {
+    "En": "option ",
+    "Zh": "参数 "
+  },
+  "Параметры подключения — в Remote слева.": {
+    "En": "Connection settings are in Remote in the sidebar.",
+    "Zh": "连接设置位于左侧的 Remote 中。"
+  },
+  "Пауза": {
+    "En": "Pause",
+    "Zh": "暂停"
+  },
+  "Первый выпуск: IPTV, телепрограмма, избранное, история и мини-плеер.": {
+    "En": "First release: IPTV, TV guide, favorites, history and mini-player.",
+    "Zh": "首次发行：IPTV、节目单、收藏、观看历史和迷你播放器。"
+  },
+  "Передаточная функция: ": {
+    "En": "Transfer function: ",
+    "Zh": "传递函数："
+  },
+  "Передача видео": {
+    "En": "Video delivery",
+    "Zh": "视频传输"
+  },
+  "Передача ещё не началась": {
+    "En": "The programme has not started yet",
+    "Zh": "节目尚未开始"
+  },
+  "Передача ещё не началась или отсутствует в телепрограмме.": {
+    "En": "The programme has not started yet or is missing from the TV guide.",
+    "Zh": "节目尚未开始，或节目单中没有此节目。"
+  },
+  "Передача за пределами доступного архива": {
+    "En": "Programme outside the available archive",
+    "Zh": "节目超出可回看范围"
+  },
+  "Переименовать в приложении…": {
+    "En": "Rename in this app…",
+    "Zh": "在应用中重命名…"
+  },
+  "Переименовать выбранную": {
+    "En": "Rename selected",
+    "Zh": "重命名所选项"
+  },
+  "Переключиться на этот канал": {
+    "En": "Switch to this channel",
+    "Zh": "切换到此频道"
+  },
+  "Переподключение {0}/3…": {
+    "En": "Reconnecting {0}/3…",
+    "Zh": "正在重新连接 {0}/3…"
+  },
+  "Переподключить этот канал": {
+    "En": "Reconnect this channel",
+    "Zh": "重新连接此频道"
+  },
+  "Переработана телепрограмма: открытие на текущем эфире, движущаяся пунктирная линия точного времени и неподвижные названия каналов. Один щелчок открывает полное описание, двойной переключает канал. Компактная панель выбора дня, поиск и быстрый возврат к «Сейчас». Ускорена загрузка больших библиотек.": {
+    "En": "The TV guide has been redesigned: it opens at the current broadcast, with a moving dashed line for the exact time and fixed channel names. Single-click for a full description; double-click to switch channels. The day picker is compact, with search and a quick return to Now. Large libraries load faster.",
+    "Zh": "节目单经过重新设计：打开时定位到当前直播，使用移动虚线标示准确时间，频道名称保持固定。单击查看完整简介，双击切换频道。日期选择更加紧凑，支持搜索并快速返回“现在”。大型媒体库的加载速度也得到提升。"
+  },
+  "Перетащите видео — поменять местами · Двойной щелчок — полный экран": {
+    "En": "Drag video to swap · Double-click for fullscreen",
+    "Zh": "拖动视频交换位置 · 双击全屏"
+  },
+  "Перетащите канал": {
+    "En": "Drag a channel here",
+    "Zh": "将频道拖到此处"
+  },
+  "Пиконы сохранены в дисковом кэше.": {
+    "En": "Channel logos saved to the disk cache.",
+    "Zh": "频道标志已保存到磁盘缓存。"
+  },
+  "Плеер ещё работает. Закройте DzhiggaTV и повторите обновление.": {
+    "En": "The player is still running. Close DzhiggaTV and try the update again.",
+    "Zh": "播放器仍在运行，请关闭 DzhiggaTV 后重试更新。"
+  },
+  "Плеер сообщит, когда на GitHub появится новый выпуск.": {
+    "En": "The player will notify you when a new GitHub release is available.",
+    "Zh": "GitHub 有新版本时，播放器会提示您。"
+  },
+  "Плейлист": {
+    "En": "Playlist",
+    "Zh": "播放列表"
+  },
+  "Плейлист {0}": {
+    "En": "Playlist {0}",
+    "Zh": "播放列表 {0}"
+  },
+  "Плейлист не содержит каналов.": {
+    "En": "The playlist has no channels.",
+    "Zh": "播放列表中没有频道。"
+  },
+  "Плейлист телепрограммы": {
+    "En": "TV guide playlist",
+    "Zh": "节目单播放列表"
+  },
+  "Плейлисты": {
+    "En": "Playlists",
+    "Zh": "播放列表"
+  },
+  "Плейлисты, избранное и настройки сохранятся. Загрузка не прерывает просмотр.": {
+    "En": "Your playlists, favorites and settings will be kept. Downloading does not interrupt playback.",
+    "Zh": "您的播放列表、收藏和设置会保留，下载不会中断播放。"
+  },
+  "По источнику": {
+    "En": "Original aspect",
+    "Zh": "原始比例"
+  },
+  "Поверх всех окон · выключить": {
+    "En": "Always on top · turn off",
+    "Zh": "取消窗口置顶"
+  },
+  "Повторить": {
+    "En": "Retry",
+    "Zh": "重试"
+  },
+  "Повторный клик по звёздочке выключает избранное даже под указателем мыши и сразу убирает канал из списка избранного. В полосе плеера убраны кнопки предыдущего просмотренного канала и списка каналов; по центру показано время до конца текущей передачи с обновлением каждую секунду.": {
+    "En": "Clicking a channel's star again removes it from Favorites immediately, even beneath the pointer. The previous-channel and channel-list buttons have been removed from the player bar. The centre displays time remaining in the current programme, updated every second.",
+    "Zh": "再次点击频道旁的星标会立即取消收藏并移出收藏列表，即使鼠标仍停留在星标上。播放器栏移除了“上次观看频道”和频道列表按钮，中间显示当前节目的剩余时间，每秒更新一次。"
+  },
+  "Подборка": {
+    "En": "Collection",
+    "Zh": "合集"
+  },
+  "Подборка не найдена.": {
+    "En": "Collection not found.",
+    "Zh": "未找到合集。"
+  },
+  "Подготовим полный пакет обновления…": {
+    "En": "Preparing the full update package…",
+    "Zh": "正在准备完整更新包…"
+  },
+  "Подготовка компонентов Remote": {
+    "En": "Preparing Remote components",
+    "Zh": "正在准备 Remote 组件"
+  },
+  "Подготовка обновления…": {
+    "En": "Preparing update…",
+    "Zh": "正在准备更新…"
+  },
+  "Подготовка отменена. Можно повторить включение Remote.": {
+    "En": "Preparation cancelled. You can enable Remote again.",
+    "Zh": "准备已取消，可以重新启用 Remote。"
+  },
+  "Подготовленный пакет обновления повреждён. Откройте плеер и повторите загрузку.": {
+    "En": "The prepared update package is damaged. Open the player and download it again.",
+    "Zh": "准备好的更新包已损坏，请打开播放器并重新下载。"
+  },
+  "Поддерживаются только HTTP и HTTPS.": {
+    "En": "Only HTTP and HTTPS are supported.",
+    "Zh": "仅支持 HTTP 和 HTTPS。"
+  },
+  "Подключаемся к трансляции": {
+    "En": "Connecting to the stream",
+    "Zh": "正在连接视频流"
+  },
+  "Подключение завершено": {
+    "En": "Connection finished",
+    "Zh": "连接已结束"
+  },
+  "Подключение к каналу…": {
+    "En": "Connecting to channel…",
+    "Zh": "正在连接频道…"
+  },
+  "Подключение к трансляции…": {
+    "En": "Connecting to stream…",
+    "Zh": "正在连接视频流…"
+  },
+  "Подключение не подтверждено.\nМожно получить новый QR-код.": {
+    "En": "The connection was not approved.\nYou can generate a new QR code.",
+    "Zh": "连接未获批准。\n您可以生成新的二维码。"
+  },
+  "Подключите компьютер к домашней сети Ethernet или Wi-Fi и нажмите «Обновить сеть».": {
+    "En": "Connect the computer to your home Ethernet or Wi-Fi and choose Refresh network.",
+    "Zh": "请将电脑连接到家庭以太网或 Wi-Fi，然后点击“刷新网络”。"
+  },
+  "Подключите телефон": {
+    "En": "Connect your phone",
+    "Zh": "连接手机"
+  },
+  "Подключите устройство с помощью QR-кода на компьютере.": {
+    "En": "Pair this device using the QR code on the computer.",
+    "Zh": "请使用电脑上的二维码配对此设备。"
+  },
+  "Подключите EPG.ONE в настройках": {
+    "En": "Enable EPG.ONE in Settings",
+    "Zh": "请在设置中启用 EPG.ONE"
+  },
+  "Подключитесь к интернету и повторите проверку.": {
+    "En": "Connect to the internet and check again.",
+    "Zh": "请连接互联网后重新检查。"
+  },
+  "Подключить ещё телефон": {
+    "En": "Connect another phone",
+    "Zh": "连接另一部手机"
+  },
+  "Подключить телепрограмму и логотипы EPG.ONE?\n\nЗагрузка продолжится в фоне, можно сразу смотреть каналы. Публичное зеркало сервиса подключается автоматически; адреса ваших трансляций ему не отправляются.": {
+    "En": "Enable the EPG.ONE TV guide and channel logos?\n\nThe download runs in the background, so you can start watching immediately. The service's public mirror is used automatically. Your stream addresses are not sent to it.",
+    "Zh": "启用 EPG.ONE 节目单和频道标志吗？\n\n下载将在后台继续，您可以立即观看频道。应用会自动使用该服务的公共镜像，不会向其发送您的视频流地址。"
+  },
+  "Подключить EPG.ONE": {
+    "En": "Enable EPG.ONE",
+    "Zh": "启用 EPG.ONE"
+  },
+  "Подождите минуту перед повторным обновлением.": {
+    "En": "Wait a minute before updating again.",
+    "Zh": "请等待一分钟后再更新。"
+  },
+  "Подробнее": {
+    "En": "Details",
+    "Zh": "详情"
+  },
+  "Подробнее · ": {
+    "En": "Details · ",
+    "Zh": "详情 · "
+  },
+  "Подробного описания в телепрограмме нет.": {
+    "En": "The TV guide has no detailed description.",
+    "Zh": "节目单中没有详细简介。"
+  },
+  "Подсветка кнопок истории передач больше не остаётся после клика и ухода курсора. При навигации клавиатурой фокус обозначен отдельной рамкой. Кнопка «К просмотру» переименована в «В прямой эфир»: возвращает актуальные карточки и, если воспроизводится архив, переключает на прямую трансляцию.": {
+    "En": "History buttons no longer stay highlighted after clicking and moving the pointer away. Keyboard focus has its own outline. Back to playback has been renamed Go live: it restores current cards and switches archive playback to the live stream.",
+    "Zh": "历史节目按钮不再在点击并移开鼠标后保持高亮，键盘焦点使用独立边框标识。“返回播放”更名为“返回直播”：恢复当前节目卡片，并将回看切换为直播。"
+  },
+  "Подтвердить": {
+    "En": "Approve",
+    "Zh": "批准"
+  },
+  "Позже": {
+    "En": "Later",
+    "Zh": "稍后"
+  },
+  "Поиск передач временно недоступен. Показаны совпадения по названию каналов.": {
+    "En": "Programme search is temporarily unavailable. Showing channel-name matches.",
+    "Zh": "节目搜索暂不可用，当前显示频道名称的匹配结果。"
+  },
+  "Поиск по каналам и передачам": {
+    "En": "Search channels and programmes",
+    "Zh": "搜索频道和节目"
+  },
+  "Поиск по каналам и передачам выбранного дня (Ctrl+F)": {
+    "En": "Search channels and programmes for this day (Ctrl+F)",
+    "Zh": "搜索所选日期的频道和节目（Ctrl+F）"
+  },
+  "Пока нет подключённых устройств.": {
+    "En": "No devices connected yet.",
+    "Zh": "尚无已连接的设备。"
+  },
+  "Показать все плейлисты и категории": {
+    "En": "Show all playlists and categories",
+    "Zh": "显示所有播放列表和分类"
+  },
+  "Показать скрытые каналы": {
+    "En": "Restore hidden channels",
+    "Zh": "恢复隐藏的频道"
+  },
+  "Показывать категорию для взрослых, включая поиск и EPG": {
+    "En": "Show adult channels, including in search and EPG",
+    "Zh": "显示成人频道，包括搜索和节目单中的内容"
+  },
+  "Покрытие рассчитывается по фактически найденным текущим передачам. Сомнительные совпадения требуют ручного выбора.": {
+    "En": "Coverage is based on current programmes actually found. Uncertain matches require manual selection.",
+    "Zh": "覆盖率根据实际找到的当前节目计算，不确定的匹配需要手动选择。"
+  },
+  "Полное описание передачи": {
+    "En": "Full programme description",
+    "Zh": "完整节目简介"
+  },
+  "Полное описание передачи раскрывается на месте карточек под видео. Видео и список каналов остаются полностью открытыми, размер видеоплеера не меняется. В раскрытом блоке можно переключаться между текущей и следующей передачей; длинный текст доступен целиком с прокруткой.": {
+    "En": "The full programme description expands in place of the cards below the video. Video and the channel list remain completely visible, and the video size does not change. The expanded section switches between current and upcoming programmes, with scrolling for the entire description.",
+    "Zh": "完整节目简介会在视频下方替代卡片展开，视频和频道列表始终完整可见，视频尺寸不变。展开区域可切换当前节目和下一节目，长文本支持完整滚动阅读。"
+  },
+  "Полный · квадратные логотипы": {
+    "En": "Full · square logos",
+    "Zh": "完整 · 方形标志"
+  },
+  "Полный · прозрачные логотипы": {
+    "En": "Full · transparent logos",
+    "Zh": "完整 · 透明标志"
+  },
+  "Полный экран": {
+    "En": "Fullscreen",
+    "Zh": "全屏"
+  },
+  "Полный экран (F11)": {
+    "En": "Fullscreen (F11)",
+    "Zh": "全屏（F11）"
+  },
+  "Пользовательская категория…": {
+    "En": "Custom category…",
+    "Zh": "自定义分类…"
+  },
+  "Поправка времени для канала…": {
+    "En": "Channel time correction…",
+    "Zh": "频道时间校正…"
+  },
+  "Поправка времени телепрограммы…": {
+    "En": "TV guide time correction…",
+    "Zh": "节目单时间校正…"
+  },
+  "Поправка действует только для выбранного канала.": {
+    "En": "The correction applies only to the selected channel.",
+    "Zh": "校正仅适用于所选频道。"
+  },
+  "Поправка телепрограммы в минутах": {
+    "En": "TV guide correction in minutes",
+    "Zh": "节目单时间校正（分钟）"
+  },
+  "Порт": {
+    "En": "Port",
+    "Zh": "端口"
+  },
+  "Порт и число потоков должны быть целыми числами.": {
+    "En": "Port and stream count must be whole numbers.",
+    "Zh": "端口和视频流数量必须为整数。"
+  },
+  "Поток не отвечает. Проверяем подключение…": {
+    "En": "The stream is not responding. Checking the connection…",
+    "Zh": "视频流无响应，正在检查连接…"
+  },
+  "Поток недоступен. Попробуйте подключиться ещё раз.": {
+    "En": "The stream is unavailable. Try connecting again.",
+    "Zh": "视频流不可用，请尝试重新连接。"
+  },
+  "Превышен допустимый размер данных.": {
+    "En": "The data exceeds the allowed size.",
+    "Zh": "数据超出允许的大小限制。"
+  },
+  "Предпочтительные языки звука (через запятую)": {
+    "En": "Preferred audio languages (comma-separated)",
+    "Zh": "首选音频语言（以逗号分隔）"
+  },
+  "Предпочтительные языки субтитров": {
+    "En": "Preferred subtitle languages",
+    "Zh": "首选字幕语言"
+  },
+  "ПРЕДСТОЯЩИЙ ЭФИР": {
+    "En": "UPCOMING",
+    "Zh": "即将播出"
+  },
+  "Предыдущая команда ещё выполняется.": {
+    "En": "The previous command is still running.",
+    "Zh": "上一条命令仍在执行。"
+  },
+  "Предыдущая передача": {
+    "En": "Previous programme",
+    "Zh": "此前节目"
+  },
+  "Предыдущий день": {
+    "En": "Previous day",
+    "Zh": "前一天"
+  },
+  "Преобразование уже используется другим устройством. Одновременно доступна одна задача.": {
+    "En": "Conversion is already in use by another device. Only one task can run at a time.",
+    "Zh": "其他设备正在使用转换功能，同一时间只能运行一个转换任务。"
+  },
+  "Преобразовывать HDR в SDR (BT.709)": {
+    "En": "Convert HDR to SDR (BT.709)",
+    "Zh": "将 HDR 转换为 SDR（BT.709）"
+  },
+  "При выборе категории основной список каналов, телепрограмма и список выбора «Мультиэкрана» начинаются сверху. В телепрограмме выбор плейлиста и сброс фильтров также возвращают к началу списка. Экраны «Мультиэкрана» подстраиваются под пропорции своих трансляций, включая каналы 4:3 и анаморфное видео. Свободное место справа или снизу занимает телепрограмма канала со звуком: текущая передача, описание и две следующие. Щелчок по шкале громкости сразу перемещает бегунок в выбранную точку — в основном плеере и мультиэкране.": {
+    "En": "Selecting a category scrolls the main channel list, TV guide and Multi-screen picker to the top. In the guide, changing playlists or resetting filters also returns to the top. Multi-screen tiles fit each stream's aspect ratio, including 4:3 and anamorphic video. Free space to the right or below shows the audio channel's current programme, description and next two programmes. Clicking the volume track immediately moves the slider to that position in the main player and Multi-screen.",
+    "Zh": "选择分类时，主频道列表、节目单和多画面选择列表都会回到顶部。在节目单中切换播放列表或重置筛选也会回到顶部。多画面会适应各个视频流的比例，包括 4:3 和变形宽银幕视频。右侧或下方空余空间用于显示声音来源频道的当前节目、简介和后续两个节目。在主播放器和多画面中，点击音量条会立即将滑块移动到该位置。"
+  },
+  "При открытии «Мультиэкрана» текущий канал основного плеера становится первым в сетке и выбирается источником звука. Если его не было в сохранённом наборе, он добавляется автоматически; при девяти заполненных местах заменяет последний канал. При повторном открытии приоритет получает канал, который сейчас включён в основном плеере. Из подсказки кнопки убрано лишнее пояснение — оставлено только название «Мультиэкран».": {
+    "En": "Opening Multi-screen places the main player's current channel first and selects it for audio. If it is not in the saved set, it is added automatically; with nine filled slots, it replaces the last channel. Each opening prioritizes the channel currently playing in the main player. The button tooltip now contains only Multi-screen, without the extra explanation.",
+    "Zh": "打开多画面时，主播放器的当前频道会放在首位并作为声音来源。如果保存的组合中没有该频道，会自动加入；九个位置均已占用时则替换最后一个频道。每次打开时都会优先采用主播放器当时的频道。按钮提示仅保留“多画面”，移除了多余说明。"
+  },
+  "При открытии телепрограммы текущий канал располагается по центру списка. Кнопка «Сейчас» также возвращает к нему с центрированием. У начала и конца списка прокрутка ограничивается его границами.": {
+    "En": "When the TV guide opens, the current channel is centred in the list. Now also returns to that channel and centres it. Scrolling is clamped at the start and end of the list.",
+    "Zh": "打开节目单时，当前频道会居中显示。点击“现在”也会返回并居中定位该频道。列表顶部和底部会正确限制滚动范围。"
+  },
+  "При открытии Remote автоматически запускается канал, выбранный в основном плеере на компьютере. Просмотр на телефоне остаётся независимым: последующие переключения на ПК его не прерывают. Если браузер ограничивает автозапуск со звуком, звук включается одним нажатием. Поиск передач в Windows и Remote теперь показывает только текущий эфир и доступный архив с учётом глубины архива конкретного канала. Будущие передачи и записи за пределами архива исключены; при совпадении названий сначала показывается текущая передача, затем самая свежая доступная запись.": {
+    "En": "Opening Remote automatically starts the channel selected in the computer's main player. Phone playback remains independent: later channel changes on the PC do not interrupt it. If the browser restricts audio autoplay, sound is enabled with one tap. Programme search in Windows and Remote now shows only live programmes and available recordings within each channel's archive depth. Future programmes and expired recordings are excluded. Current matches have priority, followed by the newest available recording.",
+    "Zh": "打开 Remote 时会自动播放电脑主播放器当前选择的频道。手机上的播放保持独立，之后在电脑上切换频道不会中断手机观看。如果浏览器限制有声自动播放，可轻点一次开启声音。Windows 和 Remote 的节目搜索仅显示正在播出的节目和各频道可回看范围内的录像，排除未来节目及已过期录像。优先显示正在播出的匹配节目，其次显示最新的可用录像。"
+  },
+  "При ошибке кодека iPhone сначала попробует AAC-звук без изменения видео, сохранив UHD. Полное преобразование видео в H.264 запускается отдельной кнопкой на телефоне и может повысить нагрузку CPU. Одновременно работает одна задача.": {
+    "En": "For an iPhone codec error, AAC audio is tried first without changing the video, preserving UHD. Full H.264 video conversion starts with a separate phone button and may increase CPU use. One conversion task can run at a time.",
+    "Zh": "iPhone 遇到编码错误时，会先尝试将声音转换为 AAC，并保持视频不变，包括 UHD 分辨率。完整的 H.264 视频转换需通过手机上的独立按钮启动，可能增加 CPU 负载。同一时间仅运行一个转换任务。"
+  },
+  "При первом включении компоненты для просмотра проверяются и при необходимости загружаются автоматически. Повторная загрузка не нужна, пока установленный FFmpeg исправен.": {
+    "En": "On first activation, viewing components are checked and downloaded automatically if needed. No new download is needed while the installed FFmpeg works correctly.",
+    "Zh": "首次启用时会检查观看所需组件，并在需要时自动下载。已安装的 FFmpeg 正常工作时，无需重复下载。"
+  },
+  "При первом включении Remote компоненты для просмотра проверяются автоматически. Если FFmpeg отсутствует или не поддерживает нужные кодеки, он загружается с прогрессом и отменой; проверяются SHA-256, H.264, AAC и HLS. Установленный совместимый модуль используется повторно, в том числе после перезапуска. Совместимость со звуком iPhone включается сразу, без изменения качества исходного видео. Значок Remote выполнен в стиле iPhone: скруглённый корпус, экран до краёв, Dynamic Island и полоска жестов. Компактный Wi-Fi состоит из трёх ровных дуг окружности и точки. Сохранены цвет и анимация при наведении.": {
+    "En": "Remote now checks viewing components automatically on first activation. If FFmpeg is missing or lacks required codecs, it downloads with progress and cancellation, and verifies SHA-256, H.264, AAC and HLS. A compatible module is reused after restarts. iPhone audio compatibility is enabled immediately without changing original video quality. The Remote icon now resembles an iPhone, with a rounded body, edge-to-edge screen, Dynamic Island and gesture bar. Its compact Wi-Fi symbol uses three circular arcs and a dot. Hover color and animation are preserved.",
+    "Zh": "Remote 首次启用时会自动检查观看组件。若 FFmpeg 缺失或不支持所需编码，会提供下载进度和取消功能，并验证 SHA-256、H.264、AAC 和 HLS。兼容组件在重启后仍可复用。iPhone 声音兼容模式会立即启用，不改变原始视频画质。Remote 图标采用 iPhone 风格，包含圆角机身、全面屏、灵动岛和手势条；紧凑的 Wi-Fi 标志由三段圆弧和一点构成，并保留悬停颜色和动画。"
+  },
+  "При ручной проверке без новых выпусков рядом с кнопкой появляется надпись «Версия актуальна. Новых версий не найдено», без отдельного окна. В выборе каналов «Мультиэкрана» карточка с логотипом следует за мышью, место назначения плавно подсвечивается, а перенос завершается мягкой анимацией. Логотипы в схеме увеличены, названия стали крупнее и полужирными. Учитывается настройка сокращения анимаций.": {
+    "En": "A manual update check with no new release now shows You're up to date beside the button, without a separate window. In the Multi-screen picker, a logo card follows the mouse, targets highlight smoothly, and drops finish with a gentle animation. Layout logos are larger and names use larger semibold text. Reduced-motion preferences are respected.",
+    "Zh": "手动检查更新但没有新版本时，会在按钮旁显示版本已是最新的提示，不再打开独立窗口。多画面选择器中，带标志的卡片会跟随鼠标移动，目标位置平滑高亮，放下时带有柔和动画。布局中的标志和名称已增大，名称使用半粗体，并遵循减少动态效果设置。"
+  },
+  "Применить": {
+    "En": "Apply",
+    "Zh": "应用"
+  },
+  "Применить языки": {
+    "En": "Apply languages",
+    "Zh": "应用语言设置"
+  },
+  "Приоритет: ваш логотип → tvg-logo плейлиста → сопоставленный XMLTV → каталог EPG.ONE → локальный архив → текстовая заглушка. Изображения загружаются по мере прокрутки и сохраняются на диске.": {
+    "En": "Priority: your logo → playlist tvg-logo → mapped XMLTV → EPG.ONE catalog → local archive → text fallback. Images load as you scroll and are cached on disk.",
+    "Zh": "优先级：自选标志 → 播放列表 tvg-logo → 匹配的 XMLTV → EPG.ONE 目录 → 本地压缩包 → 文字占位。图片随滚动按需加载，并缓存在磁盘上。"
+  },
+  "Пробуем другой сервер загрузки FFmpeg…": {
+    "En": "Trying another FFmpeg download server…",
+    "Zh": "正在尝试另一个 FFmpeg 下载服务器…"
+  },
+  "Провайдер вернул пустой архив за выбранное время. Запись могла ещё не появиться или отсутствовать. Попробуйте более раннее время.": {
+    "En": "The provider returned an empty archive for this time. The recording may not be ready or may be missing. Try an earlier time.",
+    "Zh": "服务提供商在所选时间返回了空的回看内容，录像可能尚未生成或不存在。请尝试更早的时间。"
+  },
+  "Провайдер использует неподдерживаемые расширения HLS (steering / variables).": {
+    "En": "The provider uses unsupported HLS extensions (steering / variables).",
+    "Zh": "服务提供商使用了不受支持的 HLS 扩展（steering／variables）。"
+  },
+  "Провайдер не нашёл запись за выбранное время. Заявленная глубина архива не гарантирует наличие каждой передачи.": {
+    "En": "The provider could not find a recording for this time. Advertised archive depth does not guarantee every programme is available.",
+    "Zh": "服务提供商未找到所选时间的录像。标注的可回看天数不保证每个节目均有录像。"
+  },
+  "Провайдер не предоставил поток.": {
+    "En": "The provider did not supply a stream.",
+    "Zh": "服务提供商未提供视频流。"
+  },
+  "Провайдер не предоставил поток. Проверьте лимит одновременных подключений.": {
+    "En": "The provider did not supply a stream. Check the simultaneous-connection limit.",
+    "Zh": "服务提供商未提供视频流，请检查同时连接数量限制。"
+  },
+  "Провайдер отклонил запрос архива. Проверьте доступность записи и лимит подключений.": {
+    "En": "The provider rejected the archive request. Check recording availability and the connection limit.",
+    "Zh": "服务提供商拒绝了回看请求，请检查录像是否可用及连接数量限制。"
+  },
+  "Проверить ещё раз": {
+    "En": "Check again",
+    "Zh": "重新检查"
+  },
+  "Проверить обновления": {
+    "En": "Check for updates",
+    "Zh": "检查更新"
+  },
+  "Проверить подключение": {
+    "En": "Check connection",
+    "Zh": "检查连接"
+  },
+  "Проверка не завершена": {
+    "En": "Check incomplete",
+    "Zh": "检查未完成"
+  },
+  "Проверка установочного архива…": {
+    "En": "Verifying installation archive…",
+    "Zh": "正在验证安装压缩包…"
+  },
+  "Проверка FFmpeg не пройдена. Нажмите «Включить Remote», чтобы скачать компоненты заново.": {
+    "En": "FFmpeg verification failed. Select Enable Remote to download the components again.",
+    "Zh": "FFmpeg 验证失败，请点击“启用 Remote”重新下载组件。"
+  },
+  "Проверьте порт (1024–65535), число потоков (1–4) и режим передачи.": {
+    "En": "Check the port (1024–65535), stream count (1–4) and delivery mode.",
+    "Zh": "请检查端口（1024–65535）、视频流数量（1–4）和传输模式。"
+  },
+  "Проверяем загруженные компоненты…": {
+    "En": "Verifying downloaded components…",
+    "Zh": "正在验证已下载的组件…"
+  },
+  "Проверяем кодеки FFmpeg…": {
+    "En": "Checking FFmpeg codecs…",
+    "Zh": "正在检查 FFmpeg 编码组件…"
+  },
+  "Проверяем компоненты для просмотра на телефоне…": {
+    "En": "Checking mobile-viewing components…",
+    "Zh": "正在检查手机观看组件…"
+  },
+  "Проверяем новые выпуски на GitHub…": {
+    "En": "Checking GitHub for new releases…",
+    "Zh": "正在检查 GitHub 上的新版本…"
+  },
+  "Проверяем обновления…": {
+    "En": "Checking for updates…",
+    "Zh": "正在检查更新…"
+  },
+  "Проверяем папку приложения…": {
+    "En": "Checking application folder…",
+    "Zh": "正在检查应用文件夹…"
+  },
+  "Проверяем поток и восстанавливаем подключение…": {
+    "En": "Checking the stream and restoring the connection…",
+    "Zh": "正在检查视频流并恢复连接…"
+  },
+  "Проверяем…": {
+    "En": "Checking…",
+    "Zh": "正在检查…"
+  },
+  "Программа пока недоступна": {
+    "En": "Programme unavailable",
+    "Zh": "暂无节目信息"
+  },
+  "Продолжаем загрузку FFmpeg…": {
+    "En": "Resuming FFmpeg download…",
+    "Zh": "正在继续下载 FFmpeg…"
+  },
+  "Проигрыватель ещё не готов.": {
+    "En": "The player is not ready yet.",
+    "Zh": "播放器尚未准备就绪。"
+  },
+  "Производительность": {
+    "En": "Performance",
+    "Zh": "性能"
+  },
+  "Пропущено кадров": {
+    "En": "Dropped frames",
+    "Zh": "丢帧数"
+  },
+  "Просмотр": {
+    "En": "Viewing",
+    "Zh": "观看"
+  },
+  "Просмотр архива завершён": {
+    "En": "Archive playback finished",
+    "Zh": "回看播放已结束"
+  },
+  "Просмотр архива телеканалов с учётом доступной глубины в плейлисте: выбор прошедших передач в телепрограмме и просмотр текущей передачи с начала. В основном плеере появились шкала перемотки, выбор даты и времени и возврат в прямой эфир. Описание и следующие передачи соответствуют просматриваемой записи. Поддерживаются tvg-rec, timeshift и параметры catchup. Мини-плеер без заголовка: кнопки закрытия и закрепления поверх окон появляются при движении мыши. В полноэкранном режиме управление и описание не реагируют на небольшое дрожание курсора. Цвет и анимация иконок работают при наведении даже без фокуса приложения.": {
+    "En": "Channel archives respect the retention declared in the playlist. Select earlier programmes in the TV guide or watch the current programme from its start. The main player adds a seek bar, date/time selection and a return to live TV. Descriptions and upcoming programmes follow the recording being watched. tvg-rec, timeshift and catchup parameters are supported. The mini-player is borderless, with close and always-on-top buttons appearing on mouse movement. Tiny pointer movements no longer reveal fullscreen controls and descriptions. Navigation icons highlight and animate on hover even when the app is unfocused.",
+    "Zh": "频道回看会遵循播放列表中标注的可用天数。可在节目单中选择此前节目，或从头观看当前节目。主播放器新增定位条、日期时间选择和返回直播功能；简介及后续节目会跟随正在观看的录像。支持 tvg-rec、timeshift 和 catchup 参数。迷你播放器不显示标题栏，鼠标移动时才显示关闭和置顶按钮。全屏控制栏与简介不再因轻微鼠标抖动而出现；即使应用未获得焦点，导航图标仍会在悬停时变色并播放动画。"
+  },
+  "Просмотр завершён. Выберите канал заново.": {
+    "En": "Viewing has ended. Select the channel again.",
+    "Zh": "观看已结束，请重新选择频道。"
+  },
+  "Просмотр на телефонах отключён на компьютере.": {
+    "En": "Mobile viewing is disabled on the computer.",
+    "Zh": "电脑上已停用手机观看。"
+  },
+  "Прямое воспроизведение": {
+    "En": "Direct playback",
+    "Zh": "直连播放"
+  },
+  "Прямое воспроизведение требует разрешения адресов и потока без специальных HTTP-заголовков.": {
+    "En": "Direct playback requires permission to share source addresses and a stream without custom HTTP headers.",
+    "Zh": "直连播放需要允许提供原始地址，且视频流不能要求自定义 HTTP 请求头。"
+  },
+  "Прямой режим передаёт телефону адрес и токен провайдера. Рекомендуется локальный прокси.": {
+    "En": "Direct mode shares the provider's address and token with the phone. The local proxy is recommended.",
+    "Zh": "直连模式会将服务提供商地址和令牌提供给手机，建议使用本地代理。"
+  },
+  "Прямой эфир": {
+    "En": "Live TV",
+    "Zh": "直播"
+  },
+  "ПРЯМОЙ ЭФИР": {
+    "En": "LIVE TV",
+    "Zh": "直播"
+  },
+  "Пустая команда.": {
+    "En": "Empty command.",
+    "Zh": "命令为空。"
+  },
+  "пусто": {
+    "En": "empty",
+    "Zh": "空"
+  },
+  "Пустой запрос.": {
+    "En": "Empty request.",
+    "Zh": "请求为空。"
+  },
+  "Путь архива выходит за каталог пиконов.": {
+    "En": "The archive path escapes the channel-logo directory.",
+    "Zh": "压缩包路径超出了频道标志目录。"
+  },
+  "Путь выходит за пределы папки установки.": {
+    "En": "The path is outside the installation folder.",
+    "Zh": "路径超出了安装文件夹范围。"
+  },
+  "Путь к ffmpeg.exe": {
+    "En": "Path to ffmpeg.exe",
+    "Zh": "ffmpeg.exe 路径"
+  },
+  "Развёрнутое окно учитывает панель задач текущего монитора. Канал, включённый из телепрограммы, выделяется в основном списке. Добавлены фильтры плейлиста и категории, логотипы каналов в телепрограмме. При наведении на текущую или следующую передачу полное описание появляется сбоку и не перекрывает видео. Новые иконки навигации плавно окрашиваются и анимируются при наведении.": {
+    "En": "Maximized windows respect the current monitor's taskbar. Channels played from the TV guide are selected in the main list. Playlist and category filters and channel logos have been added to the guide. Hovering a current or upcoming programme shows its full description to the side without covering the video. New navigation icons smoothly change color and animate on hover.",
+    "Zh": "最大化窗口会避开当前显示器的任务栏。从节目单播放的频道会在主列表中选中。节目单新增播放列表、分类筛选及频道标志。悬停在当前节目或下一节目上时，完整简介会显示在侧边，不遮挡视频。新的导航图标会在悬停时平滑变色并播放动画。"
+  },
+  "Развернуть панель": {
+    "En": "Expand sidebar",
+    "Zh": "展开侧栏"
+  },
+  "Размер обновления не совпадает с опубликованным.": {
+    "En": "The update size does not match the published size.",
+    "Zh": "更新大小与发布的大小不一致。"
+  },
+  "Размер обновления превышает опубликованный.": {
+    "En": "The update exceeds its published size.",
+    "Zh": "更新超出了发布的大小。"
+  },
+  "Размер файла обновления не совпадает с манифестом.": {
+    "En": "The update file size does not match the manifest.",
+    "Zh": "更新文件大小与清单不一致。"
+  },
+  "Разрешение": {
+    "En": "Resolution",
+    "Zh": "分辨率"
+  },
+  "Разрешения пульта": {
+    "En": "Remote-control permissions",
+    "Zh": "遥控权限"
+  },
+  "Разрешить": {
+    "En": "Allow",
+    "Zh": "允许"
+  },
+  "Разрешить исходные IPTV-адреса на телефоне": {
+    "En": "Allow original IPTV addresses on the phone",
+    "Zh": "允许向手机提供原始 IPTV 地址"
+  },
+  "Разрешить подключение?": {
+    "En": "Allow this connection?",
+    "Zh": "允许此连接吗？"
+  },
+  "Разрешить преобразование через FFmpeg": {
+    "En": "Allow FFmpeg conversion",
+    "Zh": "允许使用 FFmpeg 转换"
+  },
+  "Разрешить просмотр ТВ на телефоне": {
+    "En": "Allow TV viewing on the phone",
+    "Zh": "允许在手机上观看电视"
+  },
+  "Разрешить HTTP также для других источников логотипов": {
+    "En": "Allow HTTP for other logo sources too",
+    "Zh": "也允许其他频道标志来源使用 HTTP"
+  },
+  "РАНЕЕ В ЭФИРЕ": {
+    "En": "PREVIOUSLY AIRED",
+    "Zh": "此前播出"
+  },
+  "Раскрытое описание остаётся открытым при переходе с «Подробнее» на сам текст. Его можно прокручивать колёсиком и полосой прокрутки. Блок закрывается после ухода курсора с кнопки и описания.": {
+    "En": "The full description stays open when moving from Details onto the text. Scroll with the wheel or scrollbar. It closes after the pointer leaves both the button and description.",
+    "Zh": "鼠标从“详情”按钮移到文本上时，完整简介会保持打开。可使用滚轮或滚动条阅读，鼠标离开按钮和简介后才会关闭。"
+  },
+  "Распаковка DzhiggaTV…": {
+    "En": "Extracting DzhiggaTV…",
+    "Zh": "正在解压 DzhiggaTV…"
+  },
+  "Распаковываем FFmpeg…": {
+    "En": "Extracting FFmpeg…",
+    "Zh": "正在解压 FFmpeg…"
+  },
+  "Растянуть": {
+    "En": "Stretch",
+    "Zh": "拉伸"
+  },
+  "Резервная копия создана без адресов трансляций и токенов.": {
+    "En": "Backup created without stream addresses or tokens.",
+    "Zh": "备份已创建，未包含视频流地址或令牌。"
+  },
+  "Результат проверки обновлений": {
+    "En": "Update check result",
+    "Zh": "更新检查结果"
+  },
+  "Русскоязычный": {
+    "En": "Russian-language",
+    "Zh": "俄语"
+  },
+  "Ручной выбор": {
+    "En": "Manual selection",
+    "Zh": "手动选择"
+  },
+  "С учётом поправки сейчас:\n{0}\n{1:HH:mm} — {2:HH:mm}": {
+    "En": "Now, with correction applied:\n{0}\n{1:HH:mm} — {2:HH:mm}",
+    "Zh": "校正后的当前节目：\n{0}\n{1:HH:mm} — {2:HH:mm}"
+  },
+  "Сбалансированный (стандарт mpv)": {
+    "En": "Balanced (mpv default)",
+    "Zh": "均衡（mpv 默认）"
+  },
+  "Сбросить": {
+    "En": "Reset",
+    "Zh": "重置"
+  },
+  "Свернуть панель": {
+    "En": "Collapse sidebar",
+    "Zh": "折叠侧栏"
+  },
+  "Сверьте этот код на телефоне. Разрешайте доступ только знакомому устройству. HTTP в домашней сети не шифрует трафик.": {
+    "En": "Compare this code with the one on your phone. Only allow devices you recognize. Home-network HTTP traffic is not encrypted.",
+    "Zh": "请与手机上的验证码核对，仅允许您认识的设备连接。家庭网络中的 HTTP 流量不加密。"
+  },
+  "Светлая": {
+    "En": "Light",
+    "Zh": "浅色"
+  },
+  "Сдвинуть передачи на, мин": {
+    "En": "Shift programmes by, min",
+    "Zh": "节目时间偏移（分钟）"
+  },
+  "Сейчас": {
+    "En": "Now",
+    "Zh": "现在"
+  },
+  "Сейчас {0}  ·  Загрузка {1:N1} МБ": {
+    "En": "Now {0}  ·  Download {1:N1} MB",
+    "Zh": "当前 {0} · 下载 {1:N1} MB"
+  },
+  "СЕЙЧАС В ЭФИРЕ": {
+    "En": "ON NOW",
+    "Zh": "正在播出"
+  },
+  "Сейчас смотрю": {
+    "En": "Now watching",
+    "Zh": "正在观看"
+  },
+  "Сервер доступен устройствам в выбранной домашней сети.": {
+    "En": "The server is available to devices on the selected home network.",
+    "Zh": "服务器可供所选家庭网络中的设备访问。"
+  },
+  "Сервер не ответил. Перезапустите Remote.": {
+    "En": "The server did not respond. Restart Remote.",
+    "Zh": "服务器无响应，请重启 Remote。"
+  },
+  "Сервер отвечает на компьютере.": {
+    "En": "The server is responding on the computer.",
+    "Zh": "电脑上的服务器响应正常。"
+  },
+  "Сервер перенаправил запрос на неразрешённый адрес EPG или логотипов.": {
+    "En": "The server redirected to an unauthorized EPG or logo address.",
+    "Zh": "服务器将请求重定向到了未经允许的节目单或标志地址。"
+  },
+  "Сервер EPG или логотипов ({0}) не ответил за 30 секунд.": {
+    "En": "The EPG or logo server ({0}) did not respond within 30 seconds.",
+    "Zh": "节目单或标志服务器（{0}）在 30 秒内未响应。"
+  },
+  "Сервер EPG или логотипов вернул HTTP {0}.": {
+    "En": "The EPG or logo server returned HTTP {0}.",
+    "Zh": "节目单或标志服务器返回 HTTP {0}。"
+  },
+  "Сервер EPG или логотипов не указал адрес переадресации.": {
+    "En": "The EPG or logo server did not provide a redirect address.",
+    "Zh": "节目单或标志服务器未提供重定向地址。"
+  },
+  "Сервер EPG.ONE перенаправил запрос за пределы разрешённых публичных серверов.": {
+    "En": "The EPG.ONE server redirected outside the allowed public servers.",
+    "Zh": "EPG.ONE 服务器将请求重定向到了允许的公共服务器范围之外。"
+  },
+  "Сетевой адаптер": {
+    "En": "Network adapter",
+    "Zh": "网络适配器"
+  },
+  "Сетевой адаптер Remote": {
+    "En": "Remote network adapter",
+    "Zh": "Remote 网络适配器"
+  },
+  "Сетевой плейлист": {
+    "En": "Online playlist",
+    "Zh": "网络播放列表"
+  },
+  "Сеть Windows больше не является частной. Остановите Remote и проверьте сетевой профиль.": {
+    "En": "The Windows network is no longer private. Stop Remote and check the network profile.",
+    "Zh": "Windows 网络已不再是专用网络，请停止 Remote 并检查网络类型。"
+  },
+  "Системное устройство": {
+    "En": "System device",
+    "Zh": "系统设备"
+  },
+  "Скрытые каналы возвращены в библиотеку.": {
+    "En": "Hidden channels have been restored to the library.",
+    "Zh": "隐藏的频道已恢复到媒体库。"
+  },
+  "Скрыть канал": {
+    "En": "Hide channel",
+    "Zh": "隐藏频道"
+  },
+  "Следующий день": {
+    "En": "Next day",
+    "Zh": "后一天"
+  },
+  "Слишком большое текстовое поле XMLTV.": {
+    "En": "An XMLTV text field is too large.",
+    "Zh": "XMLTV 文本字段过大。"
+  },
+  "Слишком большой манифест обновления.": {
+    "En": "The update manifest is too large.",
+    "Zh": "更新清单过大。"
+  },
+  "Слишком большой плейлист HLS.": {
+    "En": "The HLS playlist is too large.",
+    "Zh": "HLS 播放列表过大。"
+  },
+  "Слишком длинная строка каталога EPG.": {
+    "En": "An EPG catalog entry is too long.",
+    "Zh": "EPG 目录条目过长。"
+  },
+  "Слишком много запросов. Подождите минуту.": {
+    "En": "Too many requests. Wait a minute.",
+    "Zh": "请求过多，请等待一分钟。"
+  },
+  "Слишком много переадресаций EPG или логотипов.": {
+    "En": "Too many EPG or logo redirects.",
+    "Zh": "节目单或标志请求重定向次数过多。"
+  },
+  "Слишком много перенаправлений при загрузке обновления.": {
+    "En": "Too many redirects while downloading the update.",
+    "Zh": "下载更新时重定向次数过多。"
+  },
+  "Слишком много перенаправлений IPTV.": {
+    "En": "Too many IPTV redirects.",
+    "Zh": "IPTV 重定向次数过多。"
+  },
+  "Слишком много ссылок в HLS-плейлисте.": {
+    "En": "Too many links in the HLS playlist.",
+    "Zh": "HLS 播放列表中的链接过多。"
+  },
+  "Слишком много устройств. Проверьте список подключений на ПК.": {
+    "En": "Too many devices. Check the connection list on the PC.",
+    "Zh": "设备过多，请在电脑上检查连接列表。"
+  },
+  "Слишком много файлов в архиве пиконов.": {
+    "En": "Too many files in the channel-logo archive.",
+    "Zh": "频道标志压缩包中的文件过多。"
+  },
+  "Смотреть в архиве": {
+    "En": "Watch archive",
+    "Zh": "观看回看"
+  },
+  "Смотреть выбранную передачу в архиве": {
+    "En": "Watch the selected archived programme",
+    "Zh": "观看所选回看节目"
+  },
+  "Смотреть выбранную передачу с начала": {
+    "En": "Watch the selected programme from the start",
+    "Zh": "从头观看所选节目"
+  },
+  "Смотреть канал": {
+    "En": "Watch channel",
+    "Zh": "观看频道"
+  },
+  "Смотреть прямой эфир": {
+    "En": "Watch live TV",
+    "Zh": "观看直播"
+  },
+  "Смотреть с начала": {
+    "En": "Watch from start",
+    "Zh": "从头观看"
+  },
+  "Смотрите на iPhone": {
+    "En": "Watch on iPhone",
+    "Zh": "在 iPhone 上观看"
+  },
+  "Смотрите телевизор на телефоне по домашнему Wi-Fi и управляйте плеером на компьютере. Мобильный просмотр не переключает канал на ПК.": {
+    "En": "Watch TV on your phone over home Wi-Fi and control the computer player. Mobile viewing does not switch the PC channel.",
+    "Zh": "通过家庭 Wi-Fi 在手机上观看电视，并遥控电脑播放器。手机观看不会切换电脑上的频道。"
+  },
+  "Сначала включите мультиэкран.": {
+    "En": "Enable Multi-screen first.",
+    "Zh": "请先启用多画面。"
+  },
+  "Сначала включите Remote": {
+    "En": "Enable Remote first",
+    "Zh": "请先启用 Remote"
+  },
+  "Сначала включите Remote.": {
+    "En": "Enable Remote first.",
+    "Zh": "请先启用 Remote。"
+  },
+  "Сначала инициализируйте видеоповерхность.": {
+    "En": "Initialize the video surface first.",
+    "Zh": "请先初始化视频画面。"
+  },
+  "Сначала назначьте каналу телепрограмму через его контекстное меню.": {
+    "En": "First assign a TV guide to the channel through its context menu.",
+    "Zh": "请先通过频道右键菜单为其匹配节目单。"
+  },
+  "Сначала освободите последние экраны или перетащите их каналы в начало схемы.": {
+    "En": "First clear the last screens or move their channels to the beginning of the layout.",
+    "Zh": "请先清空末尾的画面，或将其中的频道移到布局前方。"
+  },
+  "Снять назначение": {
+    "En": "Remove mapping",
+    "Zh": "取消匹配"
+  },
+  "Совместимость iPhone включена": {
+    "En": "iPhone compatibility enabled",
+    "Zh": "已启用 iPhone 兼容模式"
+  },
+  "Совместимость iPhone включена. Обновите страницу на телефоне и выберите канал заново.": {
+    "En": "iPhone compatibility is enabled. Refresh the phone page and select the channel again.",
+    "Zh": "已启用 iPhone 兼容模式，请刷新手机页面后重新选择频道。"
+  },
+  "СОЗДАТЕЛИ И ДЕТАЛИ": {
+    "En": "CAST & DETAILS",
+    "Zh": "演职员与资料"
+  },
+  "Создать подборку": {
+    "En": "Create collection",
+    "Zh": "创建合集"
+  },
+  "Соотношение сторон": {
+    "En": "Aspect ratio",
+    "Zh": "画面比例"
+  },
+  "Сопряжено": {
+    "En": "Paired",
+    "Zh": "已配对"
+  },
+  "Состав дельта-пакета не совпадает с манифестом.": {
+    "En": "The delta package contents do not match the manifest.",
+    "Zh": "差分更新包的内容与清单不一致。"
+  },
+  "Состояние трансляции": {
+    "En": "Stream status",
+    "Zh": "视频流状态"
+  },
+  "Сохранить": {
+    "En": "Save",
+    "Zh": "保存"
+  },
+  "Сохранить и применить": {
+    "En": "Save and apply",
+    "Zh": "保存并应用"
+  },
+  "Сохраняем настройки и ждём закрытия плеера…": {
+    "En": "Saving settings and waiting for the player to close…",
+    "Zh": "正在保存设置并等待播放器关闭…"
+  },
+  "Списки используют виртуализацию, логотипы — ограниченную фоновую очередь. Сетевой буфер регулируется средствами libmpv.": {
+    "En": "Lists are virtualized and logos use a limited background queue. The network buffer is managed by libmpv.",
+    "Zh": "列表使用虚拟化，频道标志通过有限的后台队列加载。网络缓冲由 libmpv 管理。"
+  },
+  "Ссылка HLS устарела.": {
+    "En": "This HLS link has expired.",
+    "Zh": "此 HLS 链接已过期。"
+  },
+  "Стабильное соединение": {
+    "En": "Stable connection",
+    "Zh": "稳定连接"
+  },
+  "Сторонний сервер требует незащищённый HTTP. Разрешите HTTP для сторонних источников EPG в настройках.": {
+    "En": "The third-party server requires unencrypted HTTP. Allow HTTP for third-party EPG sources in Settings.",
+    "Zh": "第三方服务器要求使用未加密的 HTTP，请在设置中允许第三方 EPG 来源使用 HTTP。"
+  },
+  "Текущая версия — {0}": {
+    "En": "Current version — {0}",
+    "Zh": "当前版本 — {0}"
+  },
+  "Текущая передача выделена бирюзовой рамкой, более выразительным фоном и индикатором эфира; размер карточки сохранён. Справа показаны две следующие передачи одна под другой, с названием и временем. Полные описания доступны по «Подробнее», без перекрытия видео и списка каналов.": {
+    "En": "The current programme now has a turquoise outline, a stronger background and a live indicator, without changing card size. The next two programmes are stacked to its right with titles and times. Full descriptions are available through Details without covering the video or channel list.",
+    "Zh": "当前节目卡片新增青绿色边框、更明显的背景和直播指示，尺寸保持不变。右侧上下排列后续两个节目，显示名称和时间。通过“详情”可查看完整简介，不遮挡视频或频道列表。"
+  },
+  "Текущий PIN": {
+    "En": "Current PIN",
+    "Zh": "当前 PIN 码"
+  },
+  "Телевизор и пульт на вашем телефоне. Подключение по домашнему Wi-Fi.": {
+    "En": "TV and a remote on your phone, connected over home Wi-Fi.",
+    "Zh": "通过家庭 Wi-Fi，在手机上观看电视并遥控播放器。"
+  },
+  "Телепрограмма": {
+    "En": "TV guide",
+    "Zh": "节目单"
+  },
+  "ТЕЛЕПРОГРАММА": {
+    "En": "TV GUIDE",
+    "Zh": "节目单"
+  },
+  "Телепрограмма и логотипы ещё не загружены": {
+    "En": "TV guide and logos have not been loaded yet",
+    "Zh": "节目单和标志尚未加载"
+  },
+  "Телепрограмма и логотипы ещё не загружены · нажмите «Подключить EPG.ONE»": {
+    "En": "TV guide and logos have not been loaded yet · select Enable EPG.ONE",
+    "Zh": "节目单和标志尚未加载 · 请点击“启用 EPG.ONE”"
+  },
+  "Телепрограмма и логотипы EPG.ONE подключаются автоматически, включая публичное HTTP-зеркало самого сервиса. Адреса трансляций сервису не передаются. Дополнительное разрешение для EPG.ONE не требуется.": {
+    "En": "The EPG.ONE TV guide and logos connect automatically, including the service's public HTTP mirror. Stream addresses are never sent to the service. No extra EPG.ONE permission is needed.",
+    "Zh": "EPG.ONE 节目单和频道标志会自动连接，包括该服务的公共 HTTP 镜像。不会向该服务发送视频流地址，也无需额外授予 EPG.ONE 权限。"
+  },
+  "Телепрограмма канала со звуком": {
+    "En": "TV guide for the audio channel",
+    "Zh": "声音来源频道的节目单"
+  },
+  "Телепрограмма не назначена": {
+    "En": "No TV guide assigned",
+    "Zh": "尚未匹配节目单"
+  },
+  "Телепрограмма EPG.ONE": {
+    "En": "EPG.ONE TV guide",
+    "Zh": "EPG.ONE 节目单"
+  },
+  "Телефон": {
+    "En": "Phone",
+    "Zh": "手机"
+  },
+  "Тема": {
+    "En": "Theme",
+    "Zh": "主题"
+  },
+  "Тёмная": {
+    "En": "Dark",
+    "Zh": "深色"
+  },
+  "Трансляция приостановилась": {
+    "En": "The stream has stalled",
+    "Zh": "视频流已卡住"
+  },
+  "Требуется HWND видеоповерхности.": {
+    "En": "A video-surface HWND is required.",
+    "Zh": "需要视频画面的 HWND 句柄。"
+  },
+  "У вас актуальная версия": {
+    "En": "You're up to date",
+    "Zh": "已是最新版本"
+  },
+  "У канала нет поддерживаемого архива.": {
+    "En": "This channel has no supported archive.",
+    "Zh": "此频道没有受支持的回看功能。"
+  },
+  "У каналов используются те же звёздочки избранного, что в левом меню, вдвое меньшего размера: с цветом и анимацией при наведении, цветным состоянием избранного и прежней областью нажатия. Все полосы прокрутки стали ещё на 50% уже. Из описаний убран заголовок «Сведения».": {
+    "En": "Channel favorite stars now match the sidebar icon at half its size, preserving the hit area, hover color and animation, and the colored favorite state. All scrollbars are another 50% narrower. The extra Information heading has been removed from descriptions.",
+    "Zh": "频道旁的收藏星标现与侧栏图标一致，尺寸为其一半，保留原点击区域、悬停颜色和动画，以及收藏状态的颜色。所有滚动条进一步缩窄 50%。简介中移除了多余的“资料”标题。"
+  },
+  "У этого канала нет архива": {
+    "En": "This channel has no archive",
+    "Zh": "此频道不支持回看"
+  },
+  "Убран информационный блок EPG.ONE над поиском каналов.": {
+    "En": "The EPG.ONE information block above channel search has been removed.",
+    "Zh": "已移除频道搜索上方的 EPG.ONE 信息块。"
+  },
+  "Убрана кнопка сортировки «Плейлист». Полоса прокрутки стала шире, бегунок — крупнее и заметнее при наведении.": {
+    "En": "The Playlist sort button has been removed. The scrollbar is wider, with a larger thumb that becomes clearer on hover.",
+    "Zh": "已移除“播放列表”排序按钮。滚动条加宽，滑块增大，并在悬停时更加醒目。"
+  },
+  "Убрано смещение строк каналов при наведении: рамка меняет только цвет. Поиск в списке каналов находит также текущие и предстоящие передачи во всей загруженной телепрограмме. В результатах видны название передачи и время начала; категории и избранное учитываются.": {
+    "En": "Channel rows no longer shift on hover; only the border color changes. Channel search also finds current and upcoming programmes across the entire loaded guide. Results include programme titles and start times and respect categories and Favorites.",
+    "Zh": "频道行在悬停时不再移动，仅改变边框颜色。频道搜索也可在所有已加载的节目单中查找当前和即将播出的节目。结果显示节目名称及开始时间，并遵循分类与收藏筛选。"
+  },
+  "Убраны буквы под логотипами и исправлено закрытие приложения.": {
+    "En": "Letters behind channel logos have been removed, and application shutdown has been fixed.",
+    "Zh": "已移除频道标志后方的字母，并修复应用关闭问题。"
+  },
+  "Убраны лишние кнопки из верхней панели.": {
+    "En": "Extra buttons have been removed from the top bar.",
+    "Zh": "已移除顶部栏中的多余按钮。"
+  },
+  "Убрать из избранного": {
+    "En": "Remove from favorites",
+    "Zh": "取消收藏"
+  },
+  "Убрать канал с этого экрана": {
+    "En": "Remove channel from this screen",
+    "Zh": "从此画面移除频道"
+  },
+  "Убрать канал: {0}": {
+    "En": "Remove channel: {0}",
+    "Zh": "移除频道：{0}"
+  },
+  "Убрать: {0}": {
+    "En": "Remove: {0}",
+    "Zh": "移除：{0}"
+  },
+  "Удалить выбранную подборку": {
+    "En": "Delete selected collection",
+    "Zh": "删除所选合集"
+  },
+  "Удалить выбранный источник": {
+    "En": "Remove selected source",
+    "Zh": "移除所选来源"
+  },
+  "Уже работает одна задача преобразования. Остановите её перед запуском другой.": {
+    "En": "A conversion task is already running. Stop it before starting another.",
+    "Zh": "已有转换任务正在运行，请先停止该任务再启动其他任务。"
+  },
+  "Укажите полный путь к папке DzhiggaTV.": {
+    "En": "Enter the full path to the DzhiggaTV folder.",
+    "Zh": "请输入 DzhiggaTV 文件夹的完整路径。"
+  },
+  "Уменьшены расход памяти на логотипы и фоновая нагрузка интерфейса и видеодвижка. Логотипы загружаются с учётом размера и DPI экрана, общий кэш ограничен. Телепрограмма видимых каналов читается одним согласованным снимком базы; при импорте XMLTV повторно используется текстовый буфер. Добавлена фоновая очистка завершённых старых обновлений с сохранением текущих и новых пакетов и работающего установщика. Установщик сжат без удаления компонентов, кодеков или изменения качества видео.": {
+    "En": "Logo memory use and background UI and video-engine load have been reduced. Logo loading respects screen size and DPI, with a bounded shared cache. Visible-channel guide data is read from a single consistent database snapshot, and XMLTV import reuses its text buffer. Completed old updates are cleaned up in the background while current/new packages and active installers are preserved. The installer is compressed without removing components or codecs or changing video quality.",
+    "Zh": "降低了频道标志的内存占用，以及界面和视频引擎的后台负载。标志按屏幕尺寸和 DPI 加载，并限制共享缓存大小。可见频道的节目单通过一致的数据库快照读取，XMLTV 导入会复用文本缓冲区。后台会清理已完成的旧更新，同时保留当前及更新版本的更新包和正在运行的安装程序。安装程序经过压缩，但未移除组件或编码器，也不改变视频画质。"
+  },
+  "Управление": {
+    "En": "Controls",
+    "Zh": "操作控制"
+  },
+  "Управление звуком отключено на ПК.": {
+    "En": "Audio control is disabled on the PC.",
+    "Zh": "电脑上已停用声音控制。"
+  },
+  "Управление мультиэкраном отключено на ПК.": {
+    "En": "Multi-screen control is disabled on the PC.",
+    "Zh": "电脑上已停用多画面控制。"
+  },
+  "Управлять мультиэкраном": {
+    "En": "Control Multi-screen",
+    "Zh": "控制多画面"
+  },
+  "Управлять Windows-плеером": {
+    "En": "Control the Windows player",
+    "Zh": "控制 Windows 播放器"
+  },
+  "Упрощена навигация; категории открываются по клику, боковая панель свёрнута при запуске.": {
+    "En": "Navigation is simpler. Categories open on click, and the sidebar starts collapsed.",
+    "Zh": "导航更加简洁，点击即可打开分类，启动时侧栏默认折叠。"
+  },
+  "Ускорена подготовка Remote: вместо ZIP на 109,5 МБ используется архив FFmpeg на 33,8 МБ с теми же кодеками. Основной сервер загрузки — GitHub; при ошибке или слишком медленном ответе включается резервный. При отмене, обрыве связи или перезапуске загрузка продолжается с сохранённого места. В прогрессе показывается скорость. Распаковка выполняется в фоне, проверка SHA-256 и исходное качество видео сохранены.": {
+    "En": "Remote setup is faster: FFmpeg uses a 33.8 MB archive instead of a 109.5 MB ZIP, with the same codecs. GitHub is the primary download server, with fallback on errors or slow responses. Downloads resume after cancellation, disconnection or restart, and show speed. Extraction runs in the background. SHA-256 verification and original video quality are preserved.",
+    "Zh": "Remote 准备速度更快：FFmpeg 改用 33.8 MB 压缩包，代替 109.5 MB 的 ZIP，编码组件保持不变。优先从 GitHub 下载，出错或响应过慢时使用备用服务器。取消、断线或重启后可断点续传，并显示下载速度。解压在后台进行，保留 SHA-256 验证和原始视频画质。"
+  },
+  "Установить логотип…": {
+    "En": "Set logo…",
+    "Zh": "设置标志…"
+  },
+  "Установка отменена.": {
+    "En": "Installation cancelled.",
+    "Zh": "安装已取消。"
+  },
+  "Установлена версия {0}": {
+    "En": "Installed version {0}",
+    "Zh": "已安装版本 {0}"
+  },
+  "Установочный архив повреждён.": {
+    "En": "The installation archive is damaged.",
+    "Zh": "安装压缩包已损坏。"
+  },
+  "Установочный архив превышает допустимый размер.": {
+    "En": "The installation archive exceeds the size limit.",
+    "Zh": "安装压缩包超出大小限制。"
+  },
+  "Установщик в выпуске имеет недопустимый размер.": {
+    "En": "The published installer has an invalid size.",
+    "Zh": "发布的安装程序大小无效。"
+  },
+  "Устройств в сети: {0} · Потоков: {1}/{2} · Передано: {3:F1} МБ": {
+    "En": "Online devices: {0} · Streams: {1}/{2} · Transferred: {3:F1} MB",
+    "Zh": "在线设备：{0} · 视频流：{1}/{2} · 已传输：{3:F1} MB"
+  },
+  "Устройства": {
+    "En": "Devices",
+    "Zh": "设备"
+  },
+  "Устройство вывода": {
+    "En": "Output device",
+    "Zh": "输出设备"
+  },
+  "Файл и папка имеют одинаковый путь в архиве.": {
+    "En": "A file and folder have the same path in the archive.",
+    "Zh": "压缩包中的文件和文件夹使用了相同路径。"
+  },
+  "Файл обновления или установленная копия не прошли проверку. Нужен полный установщик.": {
+    "En": "The update file or installed copy failed verification. The full installer is required.",
+    "Zh": "更新文件或已安装副本未通过验证，需要使用完整安装程序。"
+  },
+  "Файл обновления повреждён. Повторите загрузку.": {
+    "En": "The update file is damaged. Download it again.",
+    "Zh": "更新文件已损坏，请重新下载。"
+  },
+  "Файл пикона слишком большой.": {
+    "En": "The channel logo file is too large.",
+    "Zh": "频道标志文件过大。"
+  },
+  "Файлы предыдущей установки изменены. Выберите новую папку, чтобы сохранить изменения.": {
+    "En": "Files in the previous installation have changed. Choose a new folder to preserve your changes.",
+    "Zh": "原安装目录中的文件已被修改，请选择新文件夹以保留这些更改。"
+  },
+  "Фоновое ежедневное обновление": {
+    "En": "Daily background updates",
+    "Zh": "每日后台更新"
+  },
+  "Формат архива канала не поддерживается.": {
+    "En": "This channel's archive format is not supported.",
+    "Zh": "不支持此频道的回看格式。"
+  },
+  "Фрагмент ещё не готов. Повторите подключение.": {
+    "En": "The segment is not ready yet. Reconnect and try again.",
+    "Zh": "此片段尚未准备好，请重新连接后重试。"
+  },
+  "Фрагмент не найден.": {
+    "En": "Segment not found.",
+    "Zh": "未找到片段。"
+  },
+  "Часы над видео увеличены до размера названия канала: 22, полужирное начертание.": {
+    "En": "The clock above the video now matches the channel title size: 22, semibold.",
+    "Zh": "视频上方的时钟现与频道标题一样，使用 22 号半粗体。"
+  },
+  "Шаблон архива содержит неподдерживаемые параметры.": {
+    "En": "The archive template contains unsupported parameters.",
+    "Zh": "回看模板包含不受支持的参数。"
+  },
+  "Ширина карточки описания в полном экране увеличена до 35% — в основном плеере и при разворачивании одного канала «Мультиэкрана».": {
+    "En": "The fullscreen description card is now 35% wide in both the main player and an expanded Multi-screen channel.",
+    "Zh": "主播放器和多画面中单个频道全屏时，简介卡片宽度均调整为屏幕的 35%。"
+  },
+  "Экран {0}: {1}": {
+    "En": "Screen {0}: {1}",
+    "Zh": "画面 {0}：{1}"
+  },
+  "Экспортировать избранное, подборки и EPG-сопоставления…": {
+    "En": "Export favorites, collections and EPG mappings…",
+    "Zh": "导出收藏、合集和 EPG 匹配…"
+  },
+  "Эта передача недоступна в архиве канала.": {
+    "En": "This programme is not available in the channel's archive.",
+    "Zh": "此频道的回看中没有该节目。"
+  },
+  "Эта функция отключена в настройках Remote на ПК.": {
+    "En": "This feature is disabled in Remote settings on the PC.",
+    "Zh": "此功能已在电脑的 Remote 设置中停用。"
+  },
+  "Это не HLS-поток. Разрешите преобразование через FFmpeg в настройках Remote на компьютере.": {
+    "En": "This is not an HLS stream. Allow FFmpeg conversion in Remote settings on the computer.",
+    "Zh": "这不是 HLS 视频流，请在电脑的 Remote 设置中允许使用 FFmpeg 转换。"
+  },
+  "Этот адрес потока нельзя передать в Remote.": {
+    "En": "This stream address cannot be shared with Remote.",
+    "Zh": "无法向 Remote 提供此视频流地址。"
+  },
+  "ЭФИР ЗАВЕРШЁН": {
+    "En": "BROADCAST ENDED",
+    "Zh": "播出已结束"
+  },
+  "Языки задаются кодами через запятую.": {
+    "En": "Enter language codes separated by commas.",
+    "Zh": "请输入语言代码，以逗号分隔。"
+  },
+  "C# / .NET 10 · WPF · libmpv · SQLite\n\nАдреса трансляций и источников зашифрованы Windows DPAPI для текущего пользователя. Они не записываются в журналы и не входят в экспорт настроек.\n\nEPG.ONE — публичная программа и логотипы. Приложение не предоставляет права на IPTV-контент и не обещает телеархив или запись.\n\nЛицензии и источники зависимостей приложены к дистрибутиву. Сборка не подписана цифровым сертификатом.\n\nРасположение данных: ": {
+    "En": "C# / .NET 10 · WPF · libmpv · SQLite\n\nStream and playlist-source addresses are encrypted with Windows DPAPI for the current user. They are not logged or included in exported settings.\n\nEPG.ONE provides public guide data and logos. The app does not grant rights to IPTV content or guarantee archive or recording availability.\n\nDependency licenses and sources are included in the distribution. This build is not digitally signed.\n\nData location: ",
+    "Zh": "C# / .NET 10 · WPF · libmpv · SQLite\n\n视频流和播放列表来源地址使用当前用户的 Windows DPAPI 加密，不会写入日志或导出的设置。\n\nEPG.ONE 提供公共节目单和频道标志。本应用不授予 IPTV 内容权利，也不保证回看或录制可用。\n\n发行包附有依赖组件的许可证和来源。本构建未进行数字签名。\n\n数据位置："
+  },
+  "DzhiggaTV — удаление\r\n\r\n1. Закройте DzhiggaTV.\r\n2. Удалите эту папку приложения: ": {
+    "En": "DzhiggaTV — uninstall\r\n\r\n1. Close DzhiggaTV.\r\n2. Delete this application folder: ",
+    "Zh": "DzhiggaTV — 卸载\r\n\r\n1. 关闭 DzhiggaTV。\r\n2. 删除此应用文件夹："
+  },
+  "DzhiggaTV · добавить плейлист": {
+    "En": "DzhiggaTV · Add playlist",
+    "Zh": "DzhiggaTV · 添加播放列表"
+  },
+  "DzhiggaTV · История версий": {
+    "En": "DzhiggaTV · Version history",
+    "Zh": "DzhiggaTV · 版本历史"
+  },
+  "DzhiggaTV · Мультиэкран": {
+    "En": "DzhiggaTV · Multi-screen",
+    "Zh": "DzhiggaTV · 多画面"
+  },
+  "DzhiggaTV · Настройки": {
+    "En": "DzhiggaTV · Settings",
+    "Zh": "DzhiggaTV · 设置"
+  },
+  "DzhiggaTV · Обновление": {
+    "En": "DzhiggaTV · Update",
+    "Zh": "DzhiggaTV · 更新"
+  },
+  "DzhiggaTV · Описание передачи": {
+    "En": "DzhiggaTV · Programme details",
+    "Zh": "DzhiggaTV · 节目详情"
+  },
+  "DzhiggaTV · Поправка времени телепрограммы": {
+    "En": "DzhiggaTV · TV guide time correction",
+    "Zh": "DzhiggaTV · 节目单时间校正"
+  },
+  "DzhiggaTV · сопоставление EPG": {
+    "En": "DzhiggaTV · EPG mapping",
+    "Zh": "DzhiggaTV · EPG 匹配"
+  },
+  "DzhiggaTV · телепрограмма": {
+    "En": "DzhiggaTV · TV guide",
+    "Zh": "DzhiggaTV · 节目单"
+  },
+  "DzhiggaTV · Телепрограмма": {
+    "En": "DzhiggaTV · TV guide",
+    "Zh": "DzhiggaTV · 节目单"
+  },
+  "DzhiggaTV {0}\nIPTV-плеер для Windows 11 x64.": {
+    "En": "DzhiggaTV {0}\nIPTV player for Windows 11 x64.",
+    "Zh": "DzhiggaTV {0}\n适用于 Windows 11 x64 的 IPTV 播放器。"
+  },
+  "DzhiggaTV установлен": {
+    "En": "DzhiggaTV installed",
+    "Zh": "DzhiggaTV 已安装"
+  },
+  "DzhiggaTV установлен. Инструкция по удалению находится в папке приложения.": {
+    "En": "DzhiggaTV is installed. Uninstall instructions are in the application folder.",
+    "Zh": "DzhiggaTV 已安装，卸载说明位于应用文件夹中。"
+  },
+  "DzhiggaTV Remote · Новое устройство": {
+    "En": "DzhiggaTV Remote · New device",
+    "Zh": "DzhiggaTV Remote · 新设备"
+  },
+  "DzhiggaTV Remote · Подключите телефон": {
+    "En": "DzhiggaTV Remote · Connect your phone",
+    "Zh": "DzhiggaTV Remote · 连接手机"
+  },
+  "DzhiggaTV Remote: самостоятельный просмотр IPTV на телефоне через домашнюю сеть и отдельный пульт Windows-плеера. Подключение по QR-коду с подтверждением на ПК, сохранённые устройства и отзыв доступа. Общие каналы, категории, плейлисты, логотипы, EPG, избранное и подборки. HLS-прокси без раскрытия адресов провайдера, звуковые дорожки и субтитры потока, независимые мобильные сессии и лимит трансляций. Управление каналами, громкостью, полным экраном и существующим мультиэкраном; синхронизация через WebSocket. Для несовместимых потоков доступно преобразование H.264/AAC при настройке FFmpeg. Remote выключен по умолчанию; включение — в Настройках → Remote.": {
+    "En": "DzhiggaTV Remote provides independent IPTV viewing on a phone over the home network and a separate remote for the Windows player. Pair by QR code with PC approval, save trusted devices and revoke access. Channels, categories, playlists, logos, EPG, favorites and collections are shared. An HLS proxy hides provider addresses, supports stream audio tracks and subtitles, independent mobile sessions and stream limits. Control channels, volume, fullscreen and the existing Multi-screen, synchronized over WebSocket. Incompatible streams can be converted to H.264/AAC with FFmpeg configured. Remote is disabled by default; enable it in Settings → Remote.",
+    "Zh": "DzhiggaTV Remote 可通过家庭网络在手机上独立观看 IPTV，并提供单独的 Windows 播放器遥控界面。通过二维码配对并在电脑上批准，支持保存受信任设备及撤销访问权限。共享频道、分类、播放列表、标志、节目单、收藏和合集。HLS 代理可隐藏服务商地址，支持视频流中的音轨和字幕、独立手机会话及播放流数量限制。可控制频道、音量、全屏和现有多画面，通过 WebSocket 同步。配置 FFmpeg 后，不兼容的视频流可转换为 H.264／AAC。Remote 默认停用，可在“设置 → Remote”中启用。"
+  },
+  "EPG обновлена: {0:N0} передач.": {
+    "En": "EPG updated: {0:N0} programmes.",
+    "Zh": "EPG 已更新：{0:N0} 个节目。"
+  },
+  "EPG.ONE · загрузка…": {
+    "En": "EPG.ONE · loading…",
+    "Zh": "EPG.ONE · 正在加载…"
+  },
+  "EPG.ONE · программа назначена {0:N0} каналам": {
+    "En": "EPG.ONE · guide mapped to {0:N0} channels",
+    "Zh": "EPG.ONE · 已为 {0:N0} 个频道匹配节目单"
+  },
+  "EPG.ONE временно недоступен. Нажмите «Подключить EPG.ONE», чтобы повторить. Последняя программа сохранена.": {
+    "En": "EPG.ONE is temporarily unavailable. Select Enable EPG.ONE to retry. The last guide has been kept.",
+    "Zh": "EPG.ONE 暂不可用，请点击“启用 EPG.ONE”重试。已保留上次的节目单。"
+  },
+  "EPG.ONE подключена · программа для {0:N0} каналов; логотипы загружаются.": {
+    "En": "EPG.ONE connected · guide for {0:N0} channels; logos are loading.",
+    "Zh": "EPG.ONE 已连接 · {0:N0} 个频道有节目单，正在加载标志。"
+  },
+  "EPG.ONE: подключение к источнику…": {
+    "En": "EPG.ONE: connecting to source…",
+    "Zh": "EPG.ONE：正在连接来源…"
+  },
+  "FFmpeg для совместимости Remote": {
+    "En": "FFmpeg for Remote compatibility",
+    "Zh": "用于 Remote 兼容模式的 FFmpeg"
+  },
+  "FFmpeg не прошёл проверку H.264, AAC и HLS. Попробуйте подготовить Remote ещё раз.": {
+    "En": "FFmpeg failed H.264, AAC and HLS verification. Try preparing Remote again.",
+    "Zh": "FFmpeg 未通过 H.264、AAC 和 HLS 验证，请重新准备 Remote。"
+  },
+  "FFmpeg не смог открыть поток. Проверьте поддержку H.264/AAC в выбранной сборке FFmpeg.": {
+    "En": "FFmpeg could not open the stream. Check H.264/AAC support in the selected FFmpeg build.",
+    "Zh": "FFmpeg 无法打开视频流，请检查所选 FFmpeg 构建是否支持 H.264／AAC。"
+  },
+  "GitHub вернул недопустимый адрес обновления.": {
+    "En": "GitHub returned an invalid update address.",
+    "Zh": "GitHub 返回了无效的更新地址。"
+  },
+  "GitHub временно ограничил проверки. Попробуйте позже.": {
+    "En": "GitHub has temporarily limited update checks. Try again later.",
+    "Zh": "GitHub 暂时限制了更新检查，请稍后重试。"
+  },
+  "GitHub не вернул адрес загрузки.": {
+    "En": "GitHub did not provide a download address.",
+    "Zh": "GitHub 未提供下载地址。"
+  },
+  "HDR дисплея: требуется проверка Windows/монитора.": {
+    "En": "Display HDR: Windows/monitor verification required.",
+    "Zh": "显示器 HDR：需要检查 Windows 和显示器。"
+  },
+  "HDR и цвет": {
+    "En": "HDR & color",
+    "Zh": "HDR 与色彩"
+  },
+  "HLS-плейлист слишком велик или формат потока несовместим с Safari.": {
+    "En": "The HLS playlist is too large or the stream format is incompatible with Safari.",
+    "Zh": "HLS 播放列表过大，或视频流格式与 Safari 不兼容。"
+  },
+  "HLS-прокси": {
+    "En": "HLS proxy",
+    "Zh": "HLS 代理"
+  },
+  "HTTP не шифрует трафик. Используйте Remote только в своей домашней сети. Компьютер должен оставаться включённым.": {
+    "En": "HTTP does not encrypt traffic. Use Remote only on your own home network. The computer must stay on.",
+    "Zh": "HTTP 不会加密流量，请仅在您自己的家庭网络中使用 Remote。电脑必须保持开机。"
+  },
+  "IPTV-плейлисты (*.m3u;*.m3u8)|*.m3u;*.m3u8|Все файлы|*.*": {
+    "En": "IPTV playlists (*.m3u;*.m3u8)|*.m3u;*.m3u8|All files|*.*",
+    "Zh": "IPTV 播放列表 (*.m3u;*.m3u8)|*.m3u;*.m3u8|所有文件|*.*"
+  },
+  "IPTV-поток временно недоступен.": {
+    "En": "The IPTV stream is temporarily unavailable.",
+    "Zh": "IPTV 视频流暂不可用。"
+  },
+  "IPTV-провайдер отклонил запрос. Возможно, исчерпан лимит подключений.": {
+    "En": "The IPTV provider rejected the request. The connection limit may have been reached.",
+    "Zh": "IPTV 服务提供商拒绝了请求，可能已达到连接数量上限。"
+  },
+  "libmpv: {0} (код {1}).": {
+    "En": "libmpv: {0} (code {1}).",
+    "Zh": "libmpv：{0}（代码 {1}）。"
+  },
+  "PIN не подтверждён.": {
+    "En": "PIN not verified.",
+    "Zh": "PIN 码验证未通过。"
+  },
+  "PIN сохранён.": {
+    "En": "PIN saved.",
+    "Zh": "PIN 码已保存。"
+  },
+  "QR-код быстрого подключения телефона": {
+    "En": "Phone quick-connect QR code",
+    "Zh": "手机快速连接二维码"
+  },
+  "QR-код подключения телефона": {
+    "En": "Phone pairing QR code",
+    "Zh": "手机配对二维码"
+  },
+  "QR-код появится\nпосле включения Remote": {
+    "En": "The QR code will appear\nafter enabling Remote",
+    "Zh": "启用 Remote 后\n将显示二维码"
+  },
+  "QR-код считан.\nПодтвердите подключение в окне на компьютере.": {
+    "En": "QR code scanned.\nApprove the connection in the computer window.",
+    "Zh": "二维码已扫描。\n请在电脑窗口中批准连接。"
+  },
+  "Remote выключен": {
+    "En": "Remote is disabled",
+    "Zh": "Remote 已停用"
+  },
+  "Remote выключен по умолчанию. Для подключения отсканируйте QR-код и подтвердите устройство. Внешний сервер и отдельная учётная запись не нужны.": {
+    "En": "Remote is disabled by default. Scan the QR code and approve the device to connect. No external server or separate account is needed.",
+    "Zh": "Remote 默认停用。扫描二维码并批准设备后即可连接，无需外部服务器或单独账户。"
+  },
+  "Remote выключен. Нажмите, чтобы подключить телефон снова.": {
+    "En": "Remote is disabled. Tap to connect your phone again.",
+    "Zh": "Remote 已停用，点击可重新连接手机。"
+  },
+  "Remote выключен. Проверьте сведения о сети выше и нажмите «Включить Remote».": {
+    "En": "Remote is disabled. Check the network information above and select Enable Remote.",
+    "Zh": "Remote 已停用，请检查上方网络信息，然后点击“启用 Remote”。"
+  },
+  "Remote доступен только в частной сети Windows. Проверьте профиль выбранного адаптера.": {
+    "En": "Remote works only on a private Windows network. Check the selected adapter's network profile.",
+    "Zh": "Remote 仅可用于 Windows 专用网络，请检查所选适配器的网络类型。"
+  },
+  "Remote не обращается к локальным и служебным адресам источников.": {
+    "En": "Remote does not access local or service addresses as sources.",
+    "Zh": "Remote 不会将本地网络或内部服务地址用作视频来源。"
+  },
+  "Remote работает": {
+    "En": "Remote is running",
+    "Zh": "Remote 正在运行"
+  },
+  "Remote работает · код действует 3 минуты": {
+    "En": "Remote is running · code valid for 3 minutes",
+    "Zh": "Remote 正在运行 · 二维码 3 分钟内有效"
+  },
+  "Remote: исправлен запуск канала на iPhone по одному нажатию. Плеер начинает запуск со звуком в обработчике выбора канала, до ожидания ответа сервера. Один видеоэлемент сохраняется при смене канала и включении совместимого звука; убрана повторная установка источника при обновлении интерфейса. Остановка отменяет ожидающий запуск, а ручная пауза сохраняется.": {
+    "En": "Remote channel playback on iPhone now starts with one tap. Audio playback begins inside the channel-selection handler before waiting for the server. The same video element is kept for channel changes and compatible audio, without resetting its source on UI updates. Stop cancels pending playback, and manual pause is preserved.",
+    "Zh": "已修复 Remote 在 iPhone 上需要多次点击才能播放频道的问题。选择频道时，会在等待服务器前开始有声播放。切换频道或启用兼容声音时保留同一个视频元素，界面更新不再重复设置视频来源。停止操作会取消待启动的播放，并保留手动暂停状态。"
+  },
+  "Remote: совместимость UHD-каналов со звуком MP2. При ошибке кодека на iPhone поток может автоматически перейти в fMP4 с AAC-звуком, сохранив исходное видео, разрешение 4K и качество. Полное преобразование видео в H.264 доступно отдельно. Добавлена кнопка включения совместимости iPhone на первом экране Remote; требуется установленный FFmpeg. Сетевые ошибки отделены от ошибок кодека, повторная попытка ограничена. Удобнее выбор каналов во время просмотра: компактные плеер, шапка и строки списка, фильтры под кнопкой, поиск остаётся видимым. Плеер можно свернуть без остановки потока; в горизонтальном положении видео и каналы расположены рядом.": {
+    "En": "Remote supports UHD channels with MP2 audio. On an iPhone codec error, the stream can switch automatically to fMP4 with AAC audio while preserving the original video, 4K resolution and quality. Full H.264 conversion is offered separately. An Enable iPhone compatibility button is on the first Remote screen and requires installed FFmpeg. Network and codec errors are handled separately, with limited retries. Channel browsing is easier during playback: compact player, header and rows, filters behind a button, and visible search. The player can collapse without stopping the stream; landscape places video and channels side by side.",
+    "Zh": "Remote 新增对 MP2 音频 UHD 频道的兼容支持。iPhone 遇到编码错误时，可自动切换为 fMP4 和 AAC 声音，同时保持原始视频、4K 分辨率和画质。完整 H.264 转换作为独立选项提供。Remote 首页新增“启用 iPhone 兼容模式”按钮，需要已安装的 FFmpeg。网络错误与编码错误分别处理，并限制重试次数。播放时浏览频道更加方便：播放器、顶部栏和列表行更紧凑，筛选收纳在按钮中，搜索始终可见。可折叠播放器而不中断视频流；横屏时视频和频道并排显示。"
+  },
+  "URL плейлиста": {
+    "En": "Playlist URL",
+    "Zh": "播放列表网址"
+  },
+  "XMLTV не содержит каналов и корректных передач; сохранена предыдущая программа.": {
+    "En": "XMLTV contains no channels or valid programmes; the previous guide has been kept.",
+    "Zh": "XMLTV 中没有频道或有效节目，已保留此前的节目单。"
+  },
+  "ZIP с пиконами|*.zip": {
+    "En": "Channel logo ZIP|*.zip",
+    "Zh": "频道标志 ZIP 压缩包|*.zip"
+  },
+  "Добавить канал в избранное": {
+    "En": "Add channel to favorites",
+    "Zh": "收藏此频道"
+  },
+  "Убрать канал из избранного": {
+    "En": "Remove channel from favorites",
+    "Zh": "取消收藏此频道"
+  },
+  "Логотип DzhiggaTV": {
+    "En": "DzhiggaTV logo",
+    "Zh": "DzhiggaTV 标志"
+  },
+  "Версия и обновления": {
+    "En": "Version and updates",
+    "Zh": "版本与更新"
+  },
+  "Свернуть": {
+    "En": "Minimize",
+    "Zh": "最小化"
+  },
+  "Свернуть окно": {
+    "En": "Minimize window",
+    "Zh": "最小化窗口"
+  },
+  "Закрыть окно": {
+    "En": "Close window",
+    "Zh": "关闭窗口"
+  },
+  "БИБЛИОТЕКА": {
+    "En": "LIBRARY",
+    "Zh": "媒体库"
+  },
+  "Категории": {
+    "En": "Categories",
+    "Zh": "分类"
+  },
+  "Недавно просмотренные": {
+    "En": "Recently watched",
+    "Zh": "最近观看"
+  },
+  "DzhiggaTV Remote · телефон и пульт": {
+    "En": "DzhiggaTV Remote · phone viewing and remote",
+    "Zh": "DzhiggaTV Remote · 手机观看与遥控"
+  },
+  "Настройки": {
+    "En": "Settings",
+    "Zh": "设置"
+  },
+  "Канал или передача сейчас и далее (Ctrl+F)": {
+    "En": "Channel or current/upcoming programme (Ctrl+F)",
+    "Zh": "频道或当前及后续节目（Ctrl+F）"
+  },
+  "Поиск каналов и передач": {
+    "En": "Search channels and programmes",
+    "Zh": "搜索频道和节目"
+  },
+  "⌕  Канал или передача": {
+    "En": "⌕  Channel or programme",
+    "Zh": "⌕  频道或节目"
+  },
+  "Логотип текущего канала": {
+    "En": "Current channel logo",
+    "Zh": "当前频道标志"
+  },
+  "Ранее": {
+    "En": "Earlier",
+    "Zh": "此前"
+  },
+  "Следующая передача": {
+    "En": "Next programme",
+    "Zh": "下一节目"
+  },
+  "Телепрограмма →": {
+    "En": "TV guide →",
+    "Zh": "节目单 →"
+  },
+  "Открыть телепрограмму": {
+    "En": "Open TV guide",
+    "Zh": "打开节目单"
+  },
+  "В прямой эфир": {
+    "En": "Go live",
+    "Zh": "返回直播"
+  },
+  "Вернуться к прямому эфиру и актуальным передачам": {
+    "En": "Return to live TV and current programmes",
+    "Zh": "返回直播及当前节目"
+  },
+  "Подробнее о текущей передаче": {
+    "En": "Current programme details",
+    "Zh": "当前节目详情"
+  },
+  "Подробнее о следующей передаче": {
+    "En": "Next programme details",
+    "Zh": "下一节目详情"
+  },
+  "Подробнее о второй следующей передаче": {
+    "En": "Later programme details",
+    "Zh": "后续节目详情"
+  },
+  "F11  полный экран": {
+    "En": "F11  fullscreen",
+    "Zh": "F11  全屏"
+  },
+  "История версий и проверка обновлений": {
+    "En": "Version history and update checks",
+    "Zh": "版本历史与更新检查"
+  },
+  "Доступна новая версия — нажмите, чтобы обновить": {
+    "En": "A new version is available — click to update",
+    "Zh": "有新版本可用 — 点击更新"
+  },
+  "Развернуть": {
+    "En": "Maximize",
+    "Zh": "最大化"
+  },
+  "Развернуть окно": {
+    "En": "Maximize window",
+    "Zh": "最大化窗口"
+  },
+  "Восстановить размер": {
+    "En": "Restore size",
+    "Zh": "还原大小"
+  },
+  "Восстановить размер окна": {
+    "En": "Restore window size",
+    "Zh": "还原窗口大小"
+  },
+  "Наведите для полного описания. Перейдите на описание, чтобы прочитать и прокрутить его.": {
+    "En": "Hover for the full description. Move onto the text to read and scroll it.",
+    "Zh": "悬停查看完整简介，移到文本上即可阅读和滚动。"
+  },
+  "Сообщение о доступности архива": {
+    "En": "Archive availability message",
+    "Zh": "回看可用性提示"
+  },
+  "Закрыть сообщение": {
+    "En": "Close message",
+    "Zh": "关闭提示"
+  },
+  "Ваш эфир. Ваш ритм.": {
+    "En": "Your TV. Your rhythm.",
+    "Zh": "您的电视，您的节奏。"
+  },
+  "Импортируйте плейлист и выберите канал.\nТелепрограмма и логотипы — из EPG.ONE.": {
+    "En": "Import a playlist and choose a channel.\nTV guide and logos by EPG.ONE.",
+    "Zh": "导入播放列表并选择频道。\n节目单和标志由 EPG.ONE 提供。"
+  },
+  "Открыть плейлист": {
+    "En": "Open playlist",
+    "Zh": "打开播放列表"
+  },
+  "Поверх всех окон": {
+    "En": "Always on top",
+    "Zh": "窗口置顶"
+  },
+  "Закрыть плеер": {
+    "En": "Close player",
+    "Zh": "关闭播放器"
+  },
+  "Сейчас в эфире": {
+    "En": "On now",
+    "Zh": "正在播出"
+  },
+  "Описание фильма": {
+    "En": "Film description",
+    "Zh": "影片简介"
+  },
+  "Сведения о фильме": {
+    "En": "Film details",
+    "Zh": "影片资料"
+  },
+  "О ФИЛЬМЕ": {
+    "En": "FILM DETAILS",
+    "Zh": "影片资料"
+  },
+  "Смотреть текущую телепередачу с начала": {
+    "En": "Watch the current programme from the start",
+    "Zh": "从头观看当前节目"
+  },
+  "Телепрограмма и архив передач (G)": {
+    "En": "TV guide and archive (G)",
+    "Zh": "节目单与回看（G）"
+  },
+  "В прямой эфир →": {
+    "En": "Go live →",
+    "Zh": "返回直播 →"
+  },
+  "Перемотка архива": {
+    "En": "Archive seek bar",
+    "Zh": "回看定位条"
+  },
+  "Нажмите или перетащите для перехода. ← / → — 10 секунд, Ctrl + ← / → — минута.": {
+    "En": "Click or drag to seek. ← / → — 10 seconds; Ctrl + ← / → — one minute.",
+    "Zh": "点击或拖动定位。←／→ 为 10 秒，Ctrl + ←／→ 为一分钟。"
+  },
+  "Канал назад (PgUp)": {
+    "En": "Previous channel (PgUp)",
+    "Zh": "上一频道（PgUp）"
+  },
+  "Пауза (Space)": {
+    "En": "Pause (Space)",
+    "Zh": "暂停（空格）"
+  },
+  "Следующий канал (PgDn)": {
+    "En": "Next channel (PgDn)",
+    "Zh": "下一频道（PgDn）"
+  },
+  "Звук (M)": {
+    "En": "Audio (M)",
+    "Zh": "声音（M）"
+  },
+  "До конца осталось: ": {
+    "En": "Time remaining: ",
+    "Zh": "剩余时间："
+  },
+  "Избранное (F)": {
+    "En": "Favorites (F)",
+    "Zh": "收藏（F）"
+  },
+  "Dzhigga Remote · подключить iPhone": {
+    "En": "Dzhigga Remote · connect iPhone",
+    "Zh": "Dzhigga Remote · 连接 iPhone"
+  },
+  "Быстрое подключение Dzhigga Remote": {
+    "En": "Dzhigga Remote quick connect",
+    "Zh": "Dzhigga Remote 快速连接"
+  },
+  "Звук, соотношение сторон и информация о потоке": {
+    "En": "Audio, aspect ratio and stream information",
+    "Zh": "音轨、画面比例与流信息"
+  },
+  "Меню плеера": {
+    "En": "Player menu",
+    "Zh": "播放器菜单"
+  },
+  "Мини-плеер (Ctrl+M)": {
+    "En": "Mini-player (Ctrl+M)",
+    "Zh": "迷你播放器（Ctrl+M）"
+  },
+  "Полный экран (F11) / Вернуться": {
+    "En": "Fullscreen (F11) / Return",
+    "Zh": "全屏（F11）／返回"
+  },
+  "С начала передачи": {
+    "En": "From programme start",
+    "Zh": "从节目开头播放"
+  },
+  "DzhiggaTV · Мультиэкран — выбор каналов": {
+    "En": "DzhiggaTV · Multi-screen — choose channels",
+    "Zh": "DzhiggaTV · 多画面 — 选择频道"
+  },
+  "Каналы мультиэкрана": {
+    "En": "Multi-screen channels",
+    "Zh": "多画面频道"
+  },
+  "Зажмите канал и перетащите на схему или отметьте галочкой. До 4 экранов, звук — с одного канала.": {
+    "En": "Drag channels onto the layout or select their checkboxes. Up to 4 screens, with audio from one channel.",
+    "Zh": "将频道拖到布局中，或勾选频道。最多 4 个画面，声音来自其中一个频道。"
+  },
+  "Поиск по названию канала": {
+    "En": "Search by channel name",
+    "Zh": "按频道名称搜索"
+  },
+  "Поиск каналов мультиэкрана": {
+    "En": "Search Multi-screen channels",
+    "Zh": "搜索多画面频道"
+  },
+  "Поиск каналов": {
+    "En": "Search channels",
+    "Zh": "搜索频道"
+  },
+  "Категория каналов мультиэкрана": {
+    "En": "Multi-screen channel category",
+    "Zh": "多画面频道分类"
+  },
+  "Перетащите канал на нужный экран": {
+    "En": "Drag a channel onto a screen",
+    "Zh": "将频道拖到所需画面"
+  },
+  "Каналы не найдены": {
+    "En": "No channels found",
+    "Zh": "未找到频道"
+  },
+  "Расположение": {
+    "En": "Layout",
+    "Zh": "布局"
+  },
+  "Экранов": {
+    "En": "Screens",
+    "Zh": "画面数"
+  },
+  "Количество экранов": {
+    "En": "Number of screens",
+    "Zh": "画面数量"
+  },
+  "Перетащите на пустое место, чтобы добавить канал. Занятые экраны можно менять местами или заменять другим каналом.": {
+    "En": "Drop into an empty slot to add a channel. Swap occupied slots or replace them with another channel.",
+    "Zh": "拖入空位以添加频道，已占用的位置可互换，或用其他频道替换。"
+  },
+  "Сброс": {
+    "En": "Reset",
+    "Zh": "重置"
+  },
+  "Снять выбор со всех каналов": {
+    "En": "Deselect all channels",
+    "Zh": "取消选择所有频道"
+  },
+  "Смотреть": {
+    "En": "Watch",
+    "Zh": "观看"
+  },
+  "Телевидение в вашем ритме": {
+    "En": "Television at your pace",
+    "Zh": "随心观看电视"
+  },
+  "Установка для текущего пользователя": {
+    "En": "Install for the current user",
+    "Zh": "为当前用户安装"
+  },
+  "Плеер и видеодвижок устанавливаются вместе. Плейлисты и настройки сохраняются отдельно.": {
+    "En": "The player and video engine are installed together. Playlists and settings are stored separately.",
+    "Zh": "播放器与视频引擎会一起安装，播放列表和设置单独保存。"
+  },
+  "Папка DzhiggaTV": {
+    "En": "DzhiggaTV folder",
+    "Zh": "DzhiggaTV 文件夹"
+  },
+  "Обзор…": {
+    "En": "Browse…",
+    "Zh": "浏览…"
+  },
+  "Ярлык в меню «Пуск»": {
+    "En": "Start menu shortcut",
+    "Zh": "开始菜单快捷方式"
+  },
+  "Ярлык на рабочем столе": {
+    "En": "Desktop shortcut",
+    "Zh": "桌面快捷方式"
+  },
+  "Готово к установке": {
+    "En": "Ready to install",
+    "Zh": "准备安装"
+  },
+  "Установить": {
+    "En": "Install",
+    "Zh": "安装"
+  },
+  "Нет подключения к DzhiggaTV. Проверьте домашнюю сеть.": {
+    "En": "No connection to DzhiggaTV. Check your home network.",
+    "Zh": "无法连接到 DzhiggaTV，请检查家庭网络。"
+  },
+  "Не удалось выполнить действие.": {
+    "En": "The action could not be completed.",
+    "Zh": "操作未能完成。"
+  },
+  "Браузер": {
+    "En": "Browser",
+    "Zh": "浏览器"
+  },
+  "Подключение отклонено на компьютере.": {
+    "En": "The connection was denied on the computer.",
+    "Zh": "电脑上已拒绝此连接。"
+  },
+  "Код истёк. Обновите QR-код на компьютере.": {
+    "En": "The code expired. Refresh the QR code on the computer.",
+    "Zh": "二维码已过期，请在电脑上刷新。"
+  },
+  "Откройте настройки Remote на компьютере и отсканируйте QR-код.": {
+    "En": "Open Remote settings on the computer and scan the QR code.",
+    "Zh": "请打开电脑上的 Remote 设置并扫描二维码。"
+  },
+  "Доступ устройства отозван. Для подключения нужен новый QR-код.": {
+    "En": "Access for this device was revoked. Pair again with a new QR code.",
+    "Zh": "此设备的访问权限已被撤销，请使用新二维码重新配对。"
+  },
+  "ВАШ ТЕЛЕВИЗОР. РЯДОМ.": {
+    "En": "YOUR TV. CLOSE BY.",
+    "Zh": "您的电视，近在身边。"
+  },
+  "Подтвердите на компьютере": {
+    "En": "Approve on the computer",
+    "Zh": "在电脑上批准"
+  },
+  "Код на обоих экранах должен совпадать.": {
+    "En": "The code must match on both screens.",
+    "Zh": "两块屏幕上的验证码应一致。"
+  },
+  "После подтверждения здесь откроются каналы.": {
+    "En": "Channels will appear here once approved.",
+    "Zh": "批准后，频道将显示在此处。"
+  },
+  "Подключаемся…": {
+    "En": "Connecting…",
+    "Zh": "正在连接…"
+  },
+  "Откройте камеру iPhone и отсканируйте QR-код в DzhiggaTV.": {
+    "En": "Open the iPhone camera and scan the QR code in DzhiggaTV.",
+    "Zh": "请打开 iPhone 相机，扫描 DzhiggaTV 中的二维码。"
+  },
+  "Телефон и компьютер должны быть в одной домашней сети. Проверьте, что Remote включён, компьютер не спит, а гостевой Wi-Fi или VPN не блокирует доступ.": {
+    "En": "The phone and computer must be on the same home network. Make sure Remote is enabled, the computer is awake, and guest Wi-Fi or VPN is not blocking access.",
+    "Zh": "手机和电脑必须连接同一家庭网络。请确认 Remote 已启用、电脑未休眠，且访客 Wi-Fi 或 VPN 未阻止访问。"
+  },
+  "Нет подключения к DzhiggaTV. Команда не отправлена.": {
+    "En": "No connection to DzhiggaTV. The command was not sent.",
+    "Zh": "无法连接到 DzhiggaTV，命令未发送。"
+  },
+  "Просмотр на телефоне отключён на компьютере.": {
+    "En": "Mobile viewing is disabled on the computer.",
+    "Zh": "电脑上已停用手机观看。"
+  },
+  "Нажмите ▶ на видео, чтобы начать просмотр со звуком.": {
+    "En": "Tap ▶ on the video to start playback with sound.",
+    "Zh": "请点击视频上的 ▶ 以开始有声播放。"
+  },
+  "Не удалось открыть канал с компьютера. Выберите канал в списке.": {
+    "En": "Could not open the computer's channel. Choose a channel from the list.",
+    "Zh": "无法打开电脑上的频道，请从列表中选择频道。"
+  },
+  "Подбираем совместимый звук · качество видео сохраняется": {
+    "En": "Preparing compatible audio · video quality is preserved",
+    "Zh": "正在准备兼容声音 · 保留原始视频画质"
+  },
+  "Этот формат видео тоже несовместим с Safari. Можно преобразовать видео в H.264.": {
+    "En": "This video format is also incompatible with Safari. You can convert the video to H.264.",
+    "Zh": "此视频格式也与 Safari 不兼容，可将视频转换为 H.264。"
+  },
+  "Safari не поддерживает формат этого потока. Попробуйте совместимый звук или преобразование видео.": {
+    "En": "Safari does not support this stream format. Try compatible audio or video conversion.",
+    "Zh": "Safari 不支持此视频流格式，请尝试兼容声音或视频转换。"
+  },
+  "Для этого канала включите «Совместимость iPhone» в окне Remote на компьютере. Это позволит преобразовать звук, сохранив качество видео.": {
+    "En": "For this channel, enable iPhone compatibility in Remote on the computer. Audio can then be converted while keeping the video quality.",
+    "Zh": "请在电脑的 Remote 窗口中为此频道启用 iPhone 兼容模式，以转换声音并保留视频画质。"
+  },
+  "Safari не смог загрузить поток. Проверьте сеть и лимит подключений провайдера.": {
+    "En": "Safari could not load the stream. Check the network and your provider's connection limit.",
+    "Zh": "Safari 无法加载视频流，请检查网络和服务提供商的连接数量限制。"
+  },
+  "На ПК: {0}": {
+    "En": "On PC: {0}",
+    "Zh": "电脑播放：{0}"
+  },
+  "Дома": {
+    "En": "At home",
+    "Zh": "家庭网络"
+  },
+  "Нет подключения": {
+    "En": "Not connected",
+    "Zh": "未连接"
+  },
+  "Нет подключения к DzhiggaTV · пробуем восстановить связь": {
+    "En": "No connection to DzhiggaTV · reconnecting",
+    "Zh": "无法连接到 DzhiggaTV · 正在重新连接"
+  },
+  "Плеер телефона": {
+    "En": "Phone player",
+    "Zh": "手机播放器"
+  },
+  "Подключение…": {
+    "En": "Connecting…",
+    "Zh": "正在连接…"
+  },
+  "Начать просмотр": {
+    "En": "Start watching",
+    "Zh": "开始观看"
+  },
+  "Остановить просмотр": {
+    "En": "Stop watching",
+    "Zh": "停止观看"
+  },
+  "СМОТРЮ АРХИВ": {
+    "En": "WATCHING ARCHIVE",
+    "Zh": "正在回看"
+  },
+  "СМОТРЮ ЗДЕСЬ": {
+    "En": "WATCHING HERE",
+    "Zh": "在此观看"
+  },
+  "· ИСХОДНОЕ ВИДЕО / AAC": {
+    "En": "· ORIGINAL VIDEO / AAC",
+    "Zh": "· 原始视频／AAC"
+  },
+  "Телепрограмма пока недоступна": {
+    "En": "TV guide unavailable for now",
+    "Zh": "暂无节目单"
+  },
+  "Развернуть плеер": {
+    "En": "Expand player",
+    "Zh": "展开播放器"
+  },
+  "Свернуть плеер": {
+    "En": "Collapse player",
+    "Zh": "折叠播放器"
+  },
+  "Картинка в картинке": {
+    "En": "Picture in Picture",
+    "Zh": "画中画"
+  },
+  "Совместимый звук · без потери видео": {
+    "En": "Compatible audio · original video",
+    "Zh": "兼容声音 · 保留原始视频"
+  },
+  "Преобразовать видео в H.264": {
+    "En": "Convert video to H.264",
+    "Zh": "将视频转换为 H.264"
+  },
+  "Канал для экрана {0}": {
+    "En": "Channel for screen {0}",
+    "Zh": "画面 {0} 的频道"
+  },
+  "Телевидение": {
+    "En": "Television",
+    "Zh": "电视"
+  },
+  "каналов": {
+    "En": "channels",
+    "Zh": "个频道"
+  },
+  "Режим выбора канала": {
+    "En": "Channel selection mode",
+    "Zh": "频道选择模式"
+  },
+  "Смотреть здесь": {
+    "En": "Watch here",
+    "Zh": "在此观看"
+  },
+  "Управлять ПК": {
+    "En": "Control PC",
+    "Zh": "遥控电脑"
+  },
+  "Канал, фильм или матч": {
+    "En": "Channel, film or match",
+    "Zh": "频道、电影或赛事"
+  },
+  "Поиск канала или передачи": {
+    "En": "Search channel or programme",
+    "Zh": "搜索频道或节目"
+  },
+  "Фильтры каналов": {
+    "En": "Channel filters",
+    "Zh": "频道筛选"
+  },
+  "Недавно смотрел": {
+    "En": "Recently watched",
+    "Zh": "最近观看"
+  },
+  "Сортировка": {
+    "En": "Sort",
+    "Zh": "排序"
+  },
+  "По порядку": {
+    "En": "Playlist order",
+    "Zh": "播放列表顺序"
+  },
+  "А–Я": {
+    "En": "A–Z",
+    "Zh": "名称顺序"
+  },
+  "Выберите канал в разделе ТВ или найдите его ниже.": {
+    "En": "Choose a channel on the TV tab or find it below.",
+    "Zh": "请在电视页面选择频道，或在下方查找。"
+  },
+  "Найти канал для телепрограммы": {
+    "En": "Find a channel for the TV guide",
+    "Zh": "查找需要查看节目单的频道"
+  },
+  "Найти канал": {
+    "En": "Find channel",
+    "Zh": "查找频道"
+  },
+  "Канал телепрограммы": {
+    "En": "TV guide channel",
+    "Zh": "节目单频道"
+  },
+  "Дата программы": {
+    "En": "Guide date",
+    "Zh": "节目单日期"
+  },
+  "Загружаем программу…": {
+    "En": "Loading guide…",
+    "Zh": "正在加载节目单…"
+  },
+  "Для этого канала пока нет программы.": {
+    "En": "No guide is available for this channel yet.",
+    "Zh": "此频道暂无节目单。"
+  },
+  "Просмотр ТВ доступен без EPG.": {
+    "En": "You can watch TV without EPG.",
+    "Zh": "没有节目单也可以观看电视。"
+  },
+  "Пульт": {
+    "En": "Remote",
+    "Zh": "遥控"
+  },
+  "СЕЙЧАС НА КОМПЬЮТЕРЕ": {
+    "En": "NOW ON COMPUTER",
+    "Zh": "电脑正在播放"
+  },
+  "Управление плеером отключено в настройках на компьютере.": {
+    "En": "Player control is disabled in settings on the computer.",
+    "Zh": "电脑设置中已停用播放器遥控。"
+  },
+  "Предыдущий канал": {
+    "En": "Previous channel",
+    "Zh": "上一频道"
+  },
+  "Воспроизвести": {
+    "En": "Play",
+    "Zh": "播放"
+  },
+  "Следующий канал": {
+    "En": "Next channel",
+    "Zh": "下一频道"
+  },
+  "Выключить или включить звук": {
+    "En": "Mute or unmute",
+    "Zh": "静音或取消静音"
+  },
+  "Выбрать канал": {
+    "En": "Choose channel",
+    "Zh": "选择频道"
+  },
+  "Выключить": {
+    "En": "Turn off",
+    "Zh": "关闭"
+  },
+  "Включить": {
+    "En": "Turn on",
+    "Zh": "开启"
+  },
+  "экран": {
+    "En": "screen",
+    "Zh": "个画面"
+  },
+  "экрана": {
+    "En": "screens",
+    "Zh": "个画面"
+  },
+  "ЭКРАН": {
+    "En": "SCREEN",
+    "Zh": "画面"
+  },
+  "Звук экрана {0}": {
+    "En": "Audio for screen {0}",
+    "Zh": "画面 {0} 的声音"
+  },
+  "Развернуть экран {0}": {
+    "En": "Expand screen {0}",
+    "Zh": "全屏显示画面 {0}"
+  },
+  "МОЁ УСТРОЙСТВО": {
+    "En": "MY DEVICE",
+    "Zh": "我的设备"
+  },
+  "Связь с компьютером": {
+    "En": "Computer connection",
+    "Zh": "电脑连接"
+  },
+  "Подключено": {
+    "En": "Connected",
+    "Zh": "已连接"
+  },
+  "Нет связи": {
+    "En": "Disconnected",
+    "Zh": "未连接"
+  },
+  "Мобильных потоков": {
+    "En": "Mobile streams",
+    "Zh": "手机视频流"
+  },
+  "до": {
+    "En": "up to",
+    "Zh": "最多"
+  },
+  "Просмотр на телефоне": {
+    "En": "Phone viewing",
+    "Zh": "手机观看"
+  },
+  "Разрешён": {
+    "En": "Allowed",
+    "Zh": "已允许"
+  },
+  "Выключен": {
+    "En": "Off",
+    "Zh": "已关闭"
+  },
+  "Быстрый доступ": {
+    "En": "Quick access",
+    "Zh": "快速访问"
+  },
+  "В Safari нажмите «Поделиться» → «На экран Домой». Так Remote будет всегда под рукой.": {
+    "En": "In Safari, tap Share → Add to Home Screen to keep Remote close at hand.",
+    "Zh": "在 Safari 中点击“分享 → 添加到主屏幕”，即可随时打开 Remote。"
+  },
+  "Локальный HTTP работает, пока компьютер включён и находится в той же сети. Офлайн-просмотр не поддерживается; HTTP не шифрует трафик.": {
+    "En": "Local HTTP works while the computer is on and on the same network. Offline viewing is not supported, and HTTP does not encrypt traffic.",
+    "Zh": "本地 HTTP 需要电脑保持开机且连接同一网络。不支持离线观看，HTTP 流量不加密。"
+  },
+  "Звук и видео на iPhone": {
+    "En": "iPhone audio and video",
+    "Zh": "iPhone 声音与视频"
+  },
+  "Громкость телефона регулируется его кнопками. Дорожки и субтитры доступны в штатном меню видео, если они есть в потоке. AirPlay и «Картинка в картинке» появляются при поддержке браузером.": {
+    "En": "Use the phone's buttons to adjust volume. Tracks and subtitles are available in the native video menu when provided by the stream. AirPlay and Picture in Picture appear when supported by the browser.",
+    "Zh": "使用手机按键调整音量。视频流提供音轨和字幕时，可在系统视频菜单中选择。浏览器支持时会显示 AirPlay 和画中画功能。"
+  },
+  "Каналы на телефоне и компьютере независимы. Лимит одновременных подключений задаёт ваш IPTV-провайдер.": {
+    "En": "Phone and computer channels are independent. Your IPTV provider sets the simultaneous-connection limit.",
+    "Zh": "手机和电脑播放的频道相互独立，同时连接数量由您的 IPTV 服务提供商限制。"
+  },
+  "Компьютер отвечает. Подключение работает.": {
+    "En": "The computer is responding. Your connection is working.",
+    "Zh": "电脑响应正常，连接可用。"
+  },
+  "Отключить это устройство": {
+    "En": "Disconnect this device",
+    "Zh": "断开此设备"
+  },
+  "Разделы": {
+    "En": "Sections",
+    "Zh": "页面导航"
+  },
+  "ТВ": {
+    "En": "TV",
+    "Zh": "电视"
+  },
+  "Программа": {
+    "En": "Guide",
+    "Zh": "节目单"
+  },
+  "Описание этой передачи пока недоступно.": {
+    "En": "A description for this programme is not available yet.",
+    "Zh": "此节目暂无简介。"
+  },
+  "Передача ещё не началась.": {
+    "En": "The programme has not started yet.",
+    "Zh": "节目尚未开始。"
+  },
+  "Откроется выбранная запись из архива.": {
+    "En": "The selected archive recording will open.",
+    "Zh": "将打开所选回看录像。"
+  },
+  "Включится текущий прямой эфир канала.": {
+    "En": "The channel's current live stream will play.",
+    "Zh": "将播放该频道的当前直播。"
+  },
+  "Включить на ПК": {
+    "En": "Play on PC",
+    "Zh": "在电脑上播放"
+  },
+  "КАНАЛ": {
+    "En": "CHANNEL",
+    "Zh": "频道"
+  },
+  "Смотреть на телефоне": {
+    "En": "Watch on phone",
+    "Zh": "在手机上观看"
+  },
+  "О передаче": {
+    "En": "About this programme",
+    "Zh": "节目详情"
+  },
+  "Добавить": {
+    "En": "Add",
+    "Zh": "添加"
+  },
+  "Убрать из подборки {0}": {
+    "En": "Remove from {0}",
+    "Zh": "从 {0} 中移除"
+  },
+  "Свободный экран": {
+    "En": "Empty screen",
+    "Zh": "空画面"
+  },
+  "Канал недоступен": {
+    "En": "Channel unavailable",
+    "Zh": "频道不可用"
+  },
+  "Громкость компьютера": {
+    "En": "Computer volume",
+    "Zh": "电脑音量"
+  },
+  "Загружаем каналы…": {
+    "En": "Loading channels…",
+    "Zh": "正在加载频道…"
+  },
+  "Каналы не найдены.": {
+    "En": "No channels found.",
+    "Zh": "未找到频道。"
+  },
+  "Попробуйте другой поиск или категорию.": {
+    "En": "Try another search or category.",
+    "Zh": "请尝试其他搜索词或分类。"
+  },
+  "Показать ещё": {
+    "En": "Show more",
+    "Zh": "显示更多"
+  },
+  "Убрать из избранного: ": {
+    "En": "Remove from favorites: ",
+    "Zh": "取消收藏："
+  },
+  "В избранное: ": {
+    "En": "Add to favorites: ",
+    "Zh": "添加到收藏："
+  },
+  "Действия с каналом ": {
+    "En": "Channel actions: ",
+    "Zh": "频道操作："
+  },
+  "Язык интерфейса": {
+    "En": "Interface language",
+    "Zh": "界面语言"
+  },
+  "Язык меняется сразу. Названия каналов и тексты телепрограммы остаются в исходном виде.": {
+    "En": "The language changes immediately. Channel names and TV guide content stay in their original language.",
+    "Zh": "语言更改会立即生效，频道名称和节目单内容保留原始语言。"
+  },
+  "В интерфейсе используются системные шрифты Windows. Анимации не требуются для навигации.": {
+    "En": "The interface uses Windows system fonts. Navigation does not require animations.",
+    "Zh": "界面使用 Windows 系统字体，导航不依赖动画。"
+  },
+  "F11 / Alt+Enter / двойной щелчок — полный экран\nEscape — вернуться в обычное окно\nSpace — пауза\nPgUp / PgDn — каналы\nBackspace — предыдущий просмотренный\n↑ / ↓ — громкость, M — звук\nF — избранное, Ctrl+F — поиск\nC — каналы поверх видео, G — программа\nI — информация о потоке, Ctrl+M — мини-плеер\n\nКомпактная панель управления появляется при наведении на видео и скрывается, когда курсор уходит. В полном экране и мини-плеере панели скрываются через секунду после ухода курсора. Наведение и взаимодействие удерживают их видимыми. Мини-плеер можно перемещать за видеоповерхность.": {
+    "En": "F11 / Alt+Enter / double-click — fullscreen\nEscape — return to the normal window\nSpace — pause\nPgUp / PgDn — channels\nBackspace — previously watched channel\n↑ / ↓ — volume, M — mute\nF — favorites, Ctrl+F — search\nC — channels over video, G — TV guide\nI — stream information, Ctrl+M — mini-player\n\nCompact controls appear when you point at the video and hide when you leave. In fullscreen and mini modes, panels hide one second after the pointer leaves. Hovering or interacting keeps them visible. Drag the video surface to move the mini-player.",
+    "Zh": "F11／Alt+Enter／双击 — 全屏\nEscape — 返回普通窗口\n空格 — 暂停\nPgUp／PgDn — 切换频道\nBackspace — 上次观看的频道\n↑／↓ — 音量，M — 静音\nF — 收藏，Ctrl+F — 搜索\nC — 在视频上显示频道，G — 节目单\nI — 流信息，Ctrl+M — 迷你播放器\n\n鼠标移到视频上时显示紧凑控制栏，移开后隐藏。全屏和迷你模式中，面板在鼠标离开一秒后隐藏，悬停或操作时保持可见。拖动视频画面可移动迷你播放器。"
+  },
+  "F11 / Alt+Enter / двойной щелчок — полный экран\nEscape — вернуться в обычное окно\nSpace — пауза\nPgUp / PgDn — каналы\nBackspace — предыдущий просмотренный\n↑ / ↓ — громкость, M — звук\nF — избранное, Ctrl+F — поиск\nC — каналы поверх видео, G — программа\nI — информация о потоке, Ctrl+M — мини-плеер\n\nКомпактная панель управления появляется при наведении на видео и скрывается, когда курсор уходит. В полном экране управление и курсор дополнительно скрываются через 3,5 секунды без движения. Мини-плеер можно перемещать за видеоповерхность.": {
+    "En": "F11 / Alt+Enter / double-click — fullscreen\nEscape — return to the normal window\nSpace — pause\nPgUp / PgDn — channels\nBackspace — previously watched channel\n↑ / ↓ — volume, M — mute\nF — favorites, Ctrl+F — search\nC — channels over video, G — TV guide\nI — stream information, Ctrl+M — mini-player\n\nCompact controls appear when you point at the video and hide when you leave. In fullscreen, controls and cursor also hide after 3.5 seconds without movement. Drag the video surface to move the mini-player.",
+    "Zh": "F11／Alt+Enter／双击 — 全屏\nEscape — 返回普通窗口\n空格 — 暂停\nPgUp／PgDn — 切换频道\nBackspace — 上次观看的频道\n↑／↓ — 音量，M — 静音\nF — 收藏，Ctrl+F — 搜索\nC — 在视频上显示频道，G — 节目单\nI — 流信息，Ctrl+M — 迷你播放器\n\n鼠标移到视频上时显示紧凑控制栏，移开后隐藏。全屏时，鼠标静止 3.5 秒后也会隐藏控制栏和光标。拖动视频画面可移动迷你播放器。"
+  },
+  "Интерфейс Windows и DzhiggaTV Remote переведён на английский и упрощённый китайский. Русский остаётся языком по умолчанию. Язык выбирается в настройках, сохраняется и меняется без перезапуска воспроизведения. Переведены основные и дополнительные окна, подсказки, сообщения, история версий и обновление. Даты и числа учитывают выбранный язык, для китайского используется подходящий системный шрифт. Названия каналов, категории плейлистов и тексты телепрограммы сохраняются в исходном виде. Язык телефона можно выбрать независимо от компьютера.": {
+    "En": "The Windows and DzhiggaTV Remote interfaces now support English and Simplified Chinese. Russian remains the default. Choose a language in Settings; it is saved and changes without restarting playback. Main and secondary windows, tooltips, messages, version history and updates are translated. Dates and numbers follow the selected language, with a suitable system font for Chinese. Channel names, playlist categories and TV guide content retain their original language. The phone's language can be chosen independently of the computer.",
+    "Zh": "Windows 和 DzhiggaTV Remote 界面新增英语和简体中文。俄语仍为默认语言。在设置中选择的语言会保存，并且无需重启播放即可切换。主界面、其他窗口、提示、消息、版本历史和更新均已翻译。日期和数字采用所选语言的格式，中文使用合适的系统字体。频道名称、播放列表分类和节目单内容保留原始语言。手机语言可独立于电脑选择。"
+  }
+}

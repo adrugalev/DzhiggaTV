@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Collections.ObjectModel;
 using System.Net.Http;
 using System.Security.Cryptography;
@@ -36,9 +37,9 @@ public sealed partial class MainViewModel : Observable, IDisposable
     private bool _epgBusy;
     public bool IsEpgBusy { get => _epgBusy; private set { if (Set(ref _epgBusy, value)) { Raise(nameof(CanRefreshEpg)); Raise(nameof(EpgButtonText)); } } }
     public bool CanRefreshEpg => !IsEpgBusy;
-    public string EpgButtonText => IsEpgBusy ? "EPG.ONE · загрузка…" : EpgChannels.Count == 0 ? "Подключить EPG.ONE" : "EPG.ONE  ↻";
-    private string _epgStatus = "Телепрограмма и логотипы ещё не загружены";
-    public string EpgStatus { get => _epgStatus; private set => Set(ref _epgStatus, value); }
+    public string EpgButtonText => IsEpgBusy ? L.T("EPG.ONE · загрузка…") : EpgChannels.Count == 0 ? L.T("Подключить EPG.ONE") : "EPG.ONE  ↻";
+    private string _epgStatus = L.T("Телепрограмма и логотипы ещё не загружены");
+    public string EpgStatus { get => L.Refresh(_epgStatus); private set => Set(ref _epgStatus, value); }
     private double _epgPercent;
     public double EpgPercent { get => _epgPercent; private set => Set(ref _epgPercent, value); }
     private bool _epgIndeterminate;
@@ -50,19 +51,19 @@ public sealed partial class MainViewModel : Observable, IDisposable
     private string _section = "all";
     public bool IsFavorites => _section == "favorites";
     public bool CanSearch => !IsFavorites;
-    public string SectionTitle => _section switch { "favorites" => "Избранное", "recent" => "Недавние", "watch" => "Сейчас смотрю", _ when _section.StartsWith("collection:") => _section[11..], _ => "Все каналы" };
-    public string ChannelCountText => IsFavorites ? $"{VisibleChannels.Count:N0} каналов" : $"{VisibleChannels.Count:N0} каналов · {Groups.Count - 1} категорий";
-    public string LibraryChannelCountText => $"{AllChannels.Count:N0} каналов";
+    public string SectionTitle => _section switch { "favorites" => L.T("Избранное"), "recent" => L.T("Недавние"), "watch" => L.T("Сейчас смотрю"), _ when _section.StartsWith("collection:") => _section[11..], _ => L.T("Все каналы") };
+    public string ChannelCountText => IsFavorites ? L.F("{0:N0} каналов", VisibleChannels.Count) : L.F("{0:N0} каналов · {1} категорий", VisibleChannels.Count, Groups.Count - 1);
+    public string LibraryChannelCountText => L.F("{0:N0} каналов", AllChannels.Count);
     private ChannelItem? _selectedChannel;
     public ChannelItem? SelectedChannel { get => _selectedChannel; set => Set(ref _selectedChannel, value); }
     private ChannelItem? _active;
     public ChannelItem? Active { get => _active; set { if (Set(ref _active, value)) RaisePlayback(); } }
     public string? PreviousId { get; set; }
-    public string ActiveName => Active?.Name ?? "Сейчас смотрю";
+    public string ActiveName => Active?.Name ?? L.T("Сейчас смотрю");
     private Programme? _archiveProgramme, _archiveNext, _archiveAfterNext;
     private DateTimeOffset? _archivePosition;
     public bool IsArchive => _archiveProgramme is not null;
-    public string PlaybackProgrammeLabel => IsArchive ? "АРХИВ" : "СЕЙЧАС В ЭФИРЕ";
+    public string PlaybackProgrammeLabel => IsArchive ? L.T("АРХИВ") : L.T("СЕЙЧАС В ЭФИРЕ");
     public Programme? PlayingProgramme => _archiveProgramme ?? Active?.Current;
     public Programme? PlayingNext => IsArchive ? _archiveNext : Active?.Next;
     public Programme? PlayingAfterNext => IsArchive ? _archiveAfterNext : Active?.AfterNext;
@@ -74,23 +75,23 @@ public sealed partial class MainViewModel : Observable, IDisposable
         RaisePlayback();
     }
     public void SetArchivePosition(DateTimeOffset time) { _archivePosition = time; Raise(nameof(CurrentProgress)); }
-    public string CurrentTitle => PlayingProgramme?.Title ?? "Программа пока недоступна";
+    public string CurrentTitle => PlayingProgramme?.Title ?? L.T("Программа пока недоступна");
     public string CurrentDescription => PlayingProgramme?.Description?.Trim() ?? "";
     public string CurrentDescriptionCompact => string.Join(" ", CurrentDescription.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     public ProgrammeText CurrentProgrammeText => ProgrammeText.From(PlayingProgramme);
     public string CurrentDescriptionPreview => CurrentProgrammeText is { Synopsis.Length: > 0 } text ? text.Synopsis : CurrentDescription;
-    public string CurrentTime => PlayingProgramme is { } p ? $"{(IsArchive ? p.Start.ToLocalTime().ToString("dd.MM · ") : "")}{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "Подключите EPG.ONE в настройках";
+    public string CurrentTime => PlayingProgramme is { } p ? $"{(IsArchive ? p.Start.ToLocalTime().ToString("dd.MM · ") : "")}{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : L.T("Подключите EPG.ONE в настройках");
     public double CurrentProgress => IsArchive && PlayingProgramme is { } p && p.End > p.Start ? Math.Clamp(((_archivePosition ?? p.Start) - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : Active?.Progress ?? 0;
-    public string NextTitle => PlayingNext?.Title ?? "Нет данных о следующей передаче";
+    public string NextTitle => PlayingNext?.Title ?? L.T("Нет данных о следующей передаче");
     public string NextDescription => PlayingNext?.Description?.Trim() ?? "";
     public string NextTime => PlayingNext is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "";
-    public string AfterNextTitle => PlayingAfterNext?.Title ?? "Дальнейшая программа пока недоступна";
+    public string AfterNextTitle => PlayingAfterNext?.Title ?? L.T("Дальнейшая программа пока недоступна");
     public string AfterNextDescription => PlayingAfterNext?.Description?.Trim() ?? "";
     public string AfterNextTime => PlayingAfterNext is { } p ? $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}" : "";
-    private string _status = "Готов к просмотру. Добавьте свой плейлист.";
-    public string Status { get => _status; set => Set(ref _status, value); }
-    private string _playbackStatus = "Выберите канал";
-    public string PlaybackStatus { get => _playbackStatus; set => Set(ref _playbackStatus, value); }
+    private string _status = L.T("Готов к просмотру. Добавьте свой плейлист.");
+    public string Status { get => L.Refresh(_status); set => Set(ref _status, value); }
+    private string _playbackStatus = L.T("Выберите канал");
+    public string PlaybackStatus { get => L.Refresh(_playbackStatus); set => Set(ref _playbackStatus, value); }
 
     public MainViewModel(string directory)
     {
@@ -107,6 +108,7 @@ public sealed partial class MainViewModel : Observable, IDisposable
     public async Task InitializeAsync()
     {
         await Store.InitializeAsync(); State = await Store.LoadUserStateAsync();
+        L.SetLanguage(Setting("ui.language", "ru"));
         Epg.AllowInsecureHttp = Logos.AllowInsecureHttp = Flag("epg.http");
         await Epg.InitializeAsync();
         await ReloadAsync();
@@ -132,7 +134,7 @@ public sealed partial class MainViewModel : Observable, IDisposable
         foreach (var group in AllChannels.Where(IsAllowed).Select(c => c.Group).Distinct().OrderBy(g => g)) Groups.Add(group);
         if (!Groups.Contains(_selectedGroup)) _selectedGroup = "Все категории";
         Raise(nameof(SelectedGroup)); Raise(nameof(LibraryChannelCountText)); RefreshFilter();
-        Status = $"Библиотека: {AllChannels.Count:N0} каналов. Пользовательские изменения сохранены локально.";
+        Status = L.F("Библиотека: {0:N0} каналов. Пользовательские изменения сохранены локально.", AllChannels.Count);
     }
     public bool IsAllowed(ChannelItem item) => !State.Hidden.Contains(item.Id) && (Flag("adult.enabled") || !IsAdult(item.Channel.Group) && !IsAdult(item.Group));
     public static bool IsAdult(string name) => new[] { "взрос", "adult", "xxx", "18+", "эроти", "porn" }.Any(x => name.Contains(x, StringComparison.OrdinalIgnoreCase));
@@ -160,7 +162,7 @@ public sealed partial class MainViewModel : Observable, IDisposable
             ApplyFilter(query, matches);
         }
         catch (OperationCanceledException) { }
-        catch { Status = "Поиск передач временно недоступен. Показаны совпадения по названию каналов."; }
+        catch { Status = L.T("Поиск передач временно недоступен. Показаны совпадения по названию каналов."); }
     }
     private void ApplyFilter(string query, IReadOnlyDictionary<string, Programme> matches)
     {
@@ -185,7 +187,7 @@ public sealed partial class MainViewModel : Observable, IDisposable
     }
     public async Task ImportAsync(string location, string? existingId = null)
     {
-        Status = "Импорт плейлиста…";
+        Status = L.T("Импорт плейлиста…");
         var sources = await Store.GetPlaylistSourcesAsync();
         var previous = sources.FirstOrDefault(s => s.Location == location);
         var id = existingId ?? previous?.Id ?? Guid.NewGuid().ToString("N");
@@ -202,11 +204,11 @@ public sealed partial class MainViewModel : Observable, IDisposable
             { if (memory.Length + read > 32 * 1024 * 1024) throw new InvalidDataException(); await memory.WriteAsync(buffer.AsMemory(0, read), _lifetime.Token); }
             memory.Position = 0; return await M3uParser.ParseAsync(memory, id, _lifetime.Token);
         });
-        if (list.Count == 0) throw new InvalidDataException("Плейлист не содержит каналов.");
-        await Store.SavePlaylistAsync(new(id, previous?.Name ?? (remote ? "Сетевой плейлист" : Path.GetFileNameWithoutExtension(location)), location, remote), list);
+        if (list.Count == 0) throw new InvalidDataException(L.T("Плейлист не содержит каналов."));
+        await Store.SavePlaylistAsync(new(id, previous?.Name ?? (remote ? L.T("Сетевой плейлист") : Path.GetFileNameWithoutExtension(location)), location, remote), list);
         await ReloadAsync();
         if (EpgChannels.Count > 0) { await Epg.MatchChannelsAsync(AllChannels.Select(c => c.Channel).ToArray()); await RefreshEpgViewAsync(); }
-        Status = $"Импортировано {list.Count:N0} каналов, {list.Select(c => c.Group).Distinct().Count()} категорий.";
+        Status = L.F("Импортировано {0:N0} каналов, {1} категорий.", list.Count, list.Select(c => c.Group).Distinct().Count());
     }
     public async Task RefreshEpgAsync()
     {
@@ -214,7 +216,7 @@ public sealed partial class MainViewModel : Observable, IDisposable
         try
         {
             SetSetting("epg.enabled", true); await SaveAsync();
-            Status = EpgStatus = "EPG.ONE: подключение к источнику…";
+            Status = EpgStatus = L.T("EPG.ONE: подключение к источнику…");
             var source = new Uri(Setting("epg.source", "https://epg.one/epg2.xml.gz"));
             var channels = AllChannels.Select(c => c.Channel).ToArray();
             var progress = new Progress<EpgProgress>(p =>
@@ -222,15 +224,15 @@ public sealed partial class MainViewModel : Observable, IDisposable
                 if (!IsEpgBusy) return;
                 EpgIndeterminate = p.TotalBytes is not > 0;
                 EpgPercent = p.TotalBytes is > 0 ? Math.Clamp(p.BytesDownloaded * 100d / p.TotalBytes.Value, 0, 100) : 0;
-                Status = EpgStatus = p.BytesDownloaded > 0 ? $"{p.Stage} · {p.BytesDownloaded / 1048576d:0.0} МиБ" + (p.TotalBytes is > 0 ? $" / {p.TotalBytes / 1048576d:0.0} МиБ" : "") : p.Stage;
+                Status = EpgStatus = p.BytesDownloaded > 0 ? L.F("{0} · {1:0.0} МиБ", p.Stage, p.BytesDownloaded / 1048576d) + (p.TotalBytes is > 0 ? L.F(" / {0:0.0} МиБ", p.TotalBytes / 1048576d) : "") : p.Stage;
             });
             var result = await Task.Run(async () => await Epg.RefreshAsync(channels, progress, _lifetime.Token, source));
             if (result.Updated) Logos.ResetFailedDownloads();
             await RefreshEpgViewAsync();
-            Status = EpgStatus = result.Updated ? $"EPG.ONE подключена · программа для {Mappings.Count:N0} каналов; логотипы загружаются." : result.Message;
+            Status = EpgStatus = result.Updated ? L.F("EPG.ONE подключена · программа для {0:N0} каналов; логотипы загружаются.", Mappings.Count) : result.Message;
         }
         catch (OperationCanceledException) { }
-        catch { Status = EpgStatus = "EPG.ONE временно недоступен. Нажмите «Подключить EPG.ONE», чтобы повторить. Последняя программа сохранена."; }
+        catch { Status = EpgStatus = L.T("EPG.ONE временно недоступен. Нажмите «Подключить EPG.ONE», чтобы повторить. Последняя программа сохранена."); }
         finally { IsEpgBusy = false; EpgIndeterminate = false; }
     }
     private async Task DailyEpgAsync()
@@ -263,7 +265,7 @@ public sealed partial class MainViewModel : Observable, IDisposable
         }
         await UpdateNowNextAsync();
         Raise(nameof(EpgButtonText));
-        if (!IsEpgBusy) EpgStatus = EpgChannels.Count == 0 ? "Телепрограмма и логотипы ещё не загружены · нажмите «Подключить EPG.ONE»" : $"EPG.ONE · программа назначена {Mappings.Count:N0} каналам";
+        if (!IsEpgBusy) EpgStatus = EpgChannels.Count == 0 ? L.T("Телепрограмма и логотипы ещё не загружены · нажмите «Подключить EPG.ONE»") : L.F("EPG.ONE · программа назначена {0:N0} каналам", Mappings.Count);
         await LoadViewportAsync(RelevantChannels());
     }
     private IEnumerable<ChannelItem> RelevantChannels() => AllChannels.Where(c => _viewportIds.Contains(c.Id)).Concat(VisibleChannels.Take(20)).Append(Active).OfType<ChannelItem>().Distinct();
@@ -288,13 +290,13 @@ public sealed partial class MainViewModel : Observable, IDisposable
             {
                 var now = guides[c.Id];
                 c.Current = now.Current; c.Next = now.Next; c.AfterNext = now.AfterNext;
-                c.NowTitle = now.Current?.Title ?? "Нет программы на это время";
+                c.NowTitle = now.Current?.Title ?? L.T("Нет программы на это время");
                 c.EndTime = now.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
                 c.Progress = now.Current is { } p ? Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : 0;
             }
             else
             {
-                c.Current = c.Next = c.AfterNext = null; c.NowTitle = "Телепрограмма не назначена"; c.EndTime = ""; c.Progress = 0;
+                c.Current = c.Next = c.AfterNext = null; c.NowTitle = L.T("Телепрограмма не назначена"); c.EndTime = ""; c.Progress = 0;
             }
         }
         RaisePlayback();
@@ -313,7 +315,7 @@ public sealed partial class MainViewModel : Observable, IDisposable
             if (Mappings.TryGetValue(item.Id, out var mapping) && item.Current is null)
             {
                 var guide = guides[item.Id]; item.Current = guide.Current; item.Next = guide.Next; item.AfterNext = guide.AfterNext;
-                item.NowTitle = guide.Current?.Title ?? "Нет программы на это время";
+                item.NowTitle = guide.Current?.Title ?? L.T("Нет программы на это время");
                 item.EndTime = guide.Current?.End.ToLocalTime().ToString("HH:mm") ?? "";
                 item.Progress = guide.Current is { } p ? Math.Clamp((DateTimeOffset.UtcNow - p.Start).TotalSeconds / (p.End - p.Start).TotalSeconds * 100, 0, 100) : 0;
                 activeGuideLoaded |= ReferenceEquals(item, Active);

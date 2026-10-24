@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.IO.Compression;
@@ -103,14 +104,14 @@ public sealed class LogoService : IDisposable
             await _downloads.WaitAsync(_lifetime.Token).ConfigureAwait(false); acquired = true;
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token); timeout.CancelAfter(TimeSpan.FromSeconds(20));
             using var response = await _remote.OpenAsync(uri, AllowInsecureHttp, timeout.Token).ConfigureAwait(false);
-            if (response.Content.Headers.ContentLength > MaximumImageBytes) throw new InvalidDataException("Логотип слишком большой.");
+            if (response.Content.Headers.ContentLength > MaximumImageBytes) throw new InvalidDataException(L.T("Логотип слишком большой."));
             temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             await using (var remote = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false))
             await using (var bounded = new BoundedReadStream(remote, MaximumImageBytes, true, readCancellationToken: timeout.Token))
             await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 32768, true))
                 await bounded.CopyToAsync(output, timeout.Token).ConfigureAwait(false);
             await using (var verify = File.OpenRead(temporary))
-                if (!await IsSupportedImageAsync(verify, timeout.Token).ConfigureAwait(false)) throw new InvalidDataException("Неподдерживаемый формат логотипа.");
+                if (!await IsSupportedImageAsync(verify, timeout.Token).ConfigureAwait(false)) throw new InvalidDataException(L.T("Неподдерживаемый формат логотипа."));
             File.Move(temporary, path, true); temporary = null;
             _failures.TryRemove(key, out _);
             await TrimCacheAsync(_lifetime.Token).ConfigureAwait(false);
@@ -134,7 +135,7 @@ public sealed class LogoService : IDisposable
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken); timeout.CancelAfter(TimeSpan.FromMinutes(8));
         using var response = await _remote.OpenAsync(square ? EpgOneSources.SquareLogos : EpgOneSources.TransparentLogos, AllowInsecureHttp, timeout.Token).ConfigureAwait(false);
         await using var input = await response.Content.ReadAsStreamAsync(timeout.Token).ConfigureAwait(false);
-        await using var bounded = new BoundedReadStream(input, Math.Min(MaximumCacheBytes, 128L * 1024 * 1024), true, bytes => progress?.Report(new("Загрузка пиконов", bytes, response.Content.Headers.ContentLength)), timeout.Token);
+        await using var bounded = new BoundedReadStream(input, Math.Min(MaximumCacheBytes, 128L * 1024 * 1024), true, bytes => progress?.Report(new(L.T("Загрузка пиконов"), bytes, response.Content.Headers.ContentLength)), timeout.Token);
         return await ImportZipAsync(bounded, timeout.Token).ConfigureAwait(false);
     }
 
@@ -151,7 +152,7 @@ public sealed class LogoService : IDisposable
             await using (var file = new FileStream(archiveFile, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, true))
                 await bounded.CopyToAsync(file, cancellationToken).ConfigureAwait(false);
             using var zip = ZipFile.OpenRead(archiveFile);
-            if (zip.Entries.Count > 16000) throw new InvalidDataException("Слишком много файлов в архиве пиконов.");
+            if (zip.Entries.Count > 16000) throw new InvalidDataException(L.T("Слишком много файлов в архиве пиконов."));
             Directory.CreateDirectory(extracted);
             var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             var collisions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -162,9 +163,9 @@ public sealed class LogoService : IDisposable
                 // Validate every entry, including unsupported formats and directory entries.
                 var path = SafeArchivePath(extracted, entry.FullName);
                 if (entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\')) continue;
-                if (entry.Length > MaximumImageBytes) throw new InvalidDataException("Файл пикона слишком большой.");
+                if (entry.Length > MaximumImageBytes) throw new InvalidDataException(L.T("Файл пикона слишком большой."));
                 total += entry.Length;
-                if (total > MaximumCacheBytes || total > 256L * 1024 * 1024) throw new InvalidDataException("Архив пиконов превышает допустимый размер.");
+                if (total > MaximumCacheBytes || total > 256L * 1024 * 1024) throw new InvalidDataException(L.T("Архив пиконов превышает допустимый размер."));
                 var extension = Path.GetExtension(path).ToLowerInvariant();
                 if (extension is not (".png" or ".jpg" or ".jpeg" or ".gif" or ".bmp")) continue;
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -182,7 +183,7 @@ public sealed class LogoService : IDisposable
                 }
                 count++;
             }
-            if (count == 0) throw new InvalidDataException("Архив не содержит поддерживаемых пиконов.");
+            if (count == 0) throw new InvalidDataException(L.T("Архив не содержит поддерживаемых пиконов."));
             foreach (var key in collisions) index.Remove(key);
             var indexFile = Path.Combine(_cache, "picons-index.json"); var temporaryIndex = indexFile + ".tmp";
             await File.WriteAllTextAsync(temporaryIndex, JsonSerializer.Serialize(index), cancellationToken).ConfigureAwait(false);
@@ -211,9 +212,9 @@ public sealed class LogoService : IDisposable
     public static string SafeArchivePath(string root, string name)
     {
         var fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        if (name.Contains(':') || Path.IsPathRooted(name)) throw new InvalidDataException("Небезопасный путь в архиве.");
+        if (name.Contains(':') || Path.IsPathRooted(name)) throw new InvalidDataException(L.T("Небезопасный путь в архиве."));
         var destination = Path.GetFullPath(Path.Combine(fullRoot, name.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar)));
-        if (!destination.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Путь архива выходит за каталог пиконов.");
+        if (!destination.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException(L.T("Путь архива выходит за каталог пиконов."));
         return destination;
     }
 

@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.ComponentModel;
 using DzhiggaTV.Core;
 
@@ -31,21 +32,21 @@ public sealed class ProgrammeBrowser : Observable, IDisposable
     public bool CanGoBack => !_loading && _previous is { } p && _model.Active?.Archive?.Contains(p.Start, _clock()) == true;
     public bool CanGoForward => !_loading && IsBrowsing && Next is { } p && p.Start <= _clock();
     public bool CanPlay => !_loading && _selection is { } p && _model.Active is { } c && Catchup.CanPlay(c.Channel, p, _clock());
-    public string BackHint => CanGoBack ? "Предыдущая передача" : "Более ранних передач в доступном архиве нет в телепрограмме";
-    public string PlaybackProgrammeLabel => IsBrowsing ? Current!.End <= _clock() ? "РАНЕЕ В ЭФИРЕ" : "СЕЙЧАС В ЭФИРЕ" : _model.PlaybackProgrammeLabel;
-    public string CurrentTitle => Current?.Title ?? "Программа пока недоступна";
+    public string BackHint => CanGoBack ? L.T("Предыдущая передача") : L.T("Более ранних передач в доступном архиве нет в телепрограмме");
+    public string PlaybackProgrammeLabel => IsBrowsing ? Current!.End <= _clock() ? L.T("РАНЕЕ В ЭФИРЕ") : L.T("СЕЙЧАС В ЭФИРЕ") : _model.PlaybackProgrammeLabel;
+    public string CurrentTitle => Current?.Title ?? L.T("Программа пока недоступна");
     public string CurrentDescription => Current?.Description?.Trim() ?? "";
     public string CurrentDescriptionPreview => ProgrammeText.From(Current) is { Synopsis.Length: > 0 } text ? text.Synopsis : CurrentDescription;
     public string CurrentTime => IsBrowsing && Current is { } p ? $"{p.Start.ToLocalTime():dd.MM · HH:mm} — {p.End.ToLocalTime():HH:mm}" : _model.CurrentTime;
     public double CurrentProgress => IsBrowsing ? 0 : _model.CurrentProgress;
-    public string NextTitle => Next?.Title ?? "Нет данных о следующей передаче";
+    public string NextTitle => Next?.Title ?? L.T("Нет данных о следующей передаче");
     public string NextDescription => Next?.Description?.Trim() ?? "";
     public string NextTime => FormatTime(Next);
-    public string AfterNextTitle => AfterNext?.Title ?? "Дальнейшая программа пока недоступна";
+    public string AfterNextTitle => AfterNext?.Title ?? L.T("Дальнейшая программа пока недоступна");
     public string AfterNextDescription => AfterNext?.Description?.Trim() ?? "";
     public string AfterNextTime => FormatTime(AfterNext);
-    public string PlayLabel => Current?.End > _clock() ? "▶ С начала" : "▶ Смотреть";
-    public string PlayHint => Current?.End > _clock() ? "Смотреть выбранную передачу с начала" : "Смотреть выбранную передачу в архиве";
+    public string PlayLabel => Current?.End > _clock() ? L.T("▶ С начала") : L.T("▶ Смотреть");
+    public string PlayHint => Current?.End > _clock() ? L.T("Смотреть выбранную передачу с начала") : L.T("Смотреть выбранную передачу в архиве");
     private string FormatTime(Programme? p) => p is null ? "" : IsBrowsing
         ? $"{p.Start.ToLocalTime():dd.MM · HH:mm} — {p.End.ToLocalTime():HH:mm}"
         : $"{p.Start.ToLocalTime():HH:mm} — {p.End.ToLocalTime():HH:mm}";
@@ -140,7 +141,7 @@ public sealed class ProgrammeBrowser : Observable, IDisposable
     private async Task RefreshSafelyAsync()
     {
         try { await RefreshAsync(); }
-        catch { if (!_disposed) _model.Status = "Не удалось загрузить предыдущие передачи. Попробуйте ещё раз."; }
+        catch { if (!_disposed) _model.Status = L.T("Не удалось загрузить предыдущие передачи. Попробуйте ещё раз."); }
     }
     private void Notify()
     {

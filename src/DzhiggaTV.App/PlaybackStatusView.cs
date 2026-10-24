@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -14,7 +15,7 @@ public sealed class PlaybackStatusView : Border
     private readonly RotateTransform _rotation = new(0, 21, 21);
     private readonly TextBlock _heading = new() { FontSize = 15, FontWeight = FontWeights.SemiBold, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap };
     private readonly TextBlock _detail = new() { FontSize = 11, TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, Margin = new(0, 6, 0, 0) };
-    private readonly Button _retry = new() { Content = "Повторить", FontSize = 12, Height = 30, Padding = new(14, 2, 14, 2), Margin = new(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
+    private readonly Button _retry = new() { Content = L.T("Повторить"), FontSize = 12, Height = 30, Padding = new(14, 2, 14, 2), Margin = new(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
     private bool _animate, _running;
     public event EventHandler? RetryRequested;
 
@@ -29,7 +30,7 @@ public sealed class PlaybackStatusView : Border
         var panel = new StackPanel(); panel.Children.Add(_spinner); panel.Children.Add(_heading); panel.Children.Add(_detail); panel.Children.Add(_retry); Child = panel;
         _retry.Click += (_, _) => RetryRequested?.Invoke(this, EventArgs.Empty);
         IsVisibleChanged += (_, _) => UpdateAnimation(); Unloaded += (_, _) => StopAnimation();
-        System.Windows.Automation.AutomationProperties.SetName(this, "Состояние трансляции");
+        System.Windows.Automation.AutomationProperties.SetName(this, L.T("Состояние трансляции"));
     }
     public void ShowState(PlaybackState state, string message, bool canRetry, bool reducedMotion, bool requiresRestart)
     {
@@ -39,17 +40,17 @@ public sealed class PlaybackStatusView : Border
         _spinner.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         _heading.Text = state switch
         {
-            PlaybackState.Loading => "Подключаемся к трансляции",
-            PlaybackState.Buffering => "Ожидаем данные",
-            PlaybackState.Stalled => "Трансляция приостановилась",
-            PlaybackState.Reconnecting => "Восстанавливаем трансляцию",
-            PlaybackState.Error => requiresRestart ? "Видеодвижок не отвечает" : "Не удалось восстановить трансляцию",
+            PlaybackState.Loading => L.T("Подключаемся к трансляции"),
+            PlaybackState.Buffering => L.T("Ожидаем данные"),
+            PlaybackState.Stalled => L.T("Трансляция приостановилась"),
+            PlaybackState.Reconnecting => L.T("Восстанавливаем трансляцию"),
+            PlaybackState.Error => requiresRestart ? L.T("Видеодвижок не отвечает") : L.T("Не удалось восстановить трансляцию"),
             _ => ""
         };
         _detail.Text = state switch
         {
-            PlaybackState.Stalled => "Проверяем поток и восстанавливаем подключение…",
-            PlaybackState.Buffering => "Воспроизведение продолжится автоматически",
+            PlaybackState.Stalled => L.T("Проверяем поток и восстанавливаем подключение…"),
+            PlaybackState.Buffering => L.T("Воспроизведение продолжится автоматически"),
             _ => message
         };
         _retry.Visibility = error && canRetry && !requiresRestart ? Visibility.Visible : Visibility.Collapsed;

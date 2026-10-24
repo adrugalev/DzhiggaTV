@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -96,7 +97,7 @@ public partial class OverlayWindow : Window
         }
         RefreshArchiveTimeline();
         RemainingTimeValue.Text = _main.IsArchivePlayback && _archiveTimeline is { } archive
-            ? $"{Math.Max(0, (int)Math.Ceiling((archive.End - archive.Position).TotalMinutes))} мин" : ProgrammeTiming.Remaining(_main.Model.PlayingProgramme, DateTimeOffset.UtcNow);
+            ? L.F("{0} мин", Math.Max(0, (int)Math.Ceiling((archive.End - archive.Position).TotalMinutes))) : ProgrammeTiming.Remaining(_main.Model.PlayingProgramme, DateTimeOffset.UtcNow);
         RemainingTimeText.Visibility = RemainingTimeValue.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateVisibility();
     }
@@ -146,8 +147,8 @@ public partial class OverlayWindow : Window
         ToolTipService.SetIsEnabled(MiniPinButton, MiniWindowActions.IsVisible);
         ToolTipService.SetIsEnabled(MiniCloseButton, MiniWindowActions.IsVisible);
         MiniPinButton.Foreground = (System.Windows.Media.Brush)FindResource(_main.Topmost ? "AccentBrush" : "TextBrush");
-        MiniPinButton.ToolTip = _main.Topmost ? "Поверх всех окон · выключить" : "Закрепить поверх всех окон";
-        System.Windows.Automation.AutomationProperties.SetHelpText(MiniPinButton, _main.Topmost ? "Закреплён поверх окон" : "Без закрепления");
+        MiniPinButton.ToolTip = _main.Topmost ? L.T("Поверх всех окон · выключить") : L.T("Закрепить поверх всех окон");
+        System.Windows.Automation.AutomationProperties.SetHelpText(MiniPinButton, _main.Topmost ? L.T("Закреплён поверх окон") : L.T("Без закрепления"));
         FullscreenProgrammeInfo.Visibility = ControlsPanel.Visibility == Visibility.Visible && _main.IsFullscreen && _main.Model.PlayingProgramme is not null ? Visibility.Visible : Visibility.Collapsed;
         Cursor = _pointerInside && idle ? Cursors.None : Cursors.Arrow;
     }
@@ -261,7 +262,7 @@ public partial class OverlayWindow : Window
         _syncingSeek = true;
         try { ArchiveSeekSlider.Maximum = Math.Max(1, (timeline.End - timeline.Start).TotalSeconds); ArchiveSeekSlider.Value = Math.Clamp((timeline.Position - timeline.Start).TotalSeconds, 0, ArchiveSeekSlider.Maximum); }
         finally { _syncingSeek = false; }
-        ArchiveBadge.Text = timeline.IsArchive ? _main.Player.State == PlaybackState.Idle ? "АРХИВ · ЗАВЕРШЁН" : _main.Player.State == PlaybackState.Error ? "АРХИВ · НЕ УДАЛОСЬ ЗАГРУЗИТЬ" : "АРХИВ" : "ПРЯМОЙ ЭФИР";
+        ArchiveBadge.Text = timeline.IsArchive ? _main.Player.State == PlaybackState.Idle ? L.T("АРХИВ · ЗАВЕРШЁН") : _main.Player.State == PlaybackState.Error ? L.T("АРХИВ · НЕ УДАЛОСЬ ЗАГРУЗИТЬ") : L.T("АРХИВ") : L.T("ПРЯМОЙ ЭФИР");
         ReturnLiveButton.Visibility = timeline.IsArchive ? Visibility.Visible : Visibility.Collapsed;
         if (timeline.IsArchive) ShowSeekTime(timeline.Position);
         else ArchivePositionText.Text = $"{timeline.Start.ToLocalTime():HH:mm} — {timeline.End.ToLocalTime():HH:mm}";
@@ -375,14 +376,14 @@ public partial class OverlayWindow : Window
         void Item(ItemsControl parent, string label, Action action, bool? check = null)
         { var entry = new MenuItem { Header = label, IsCheckable = check.HasValue, IsChecked = check ?? false }; entry.Click += (_, _) => action(); parent.Items.Add(entry); }
         var audio = _main.Player.GetTracks().Where(t => t.Type == "audio").ToArray();
-        var audioSection = new MenuItem { Header = "Звуковая дорожка", IsEnabled = audio.Length > 0 };
+        var audioSection = new MenuItem { Header = L.T("Звуковая дорожка"), IsEnabled = audio.Length > 0 };
         foreach (var track in audio) Item(audioSection, track.DisplayName, () => _main.Player.SelectAudio(track.Id), track.Selected);
         menu.Items.Add(audioSection);
-        var aspect = new MenuItem { Header = "Соотношение сторон" };
-        foreach (var (label, mode) in new[] { ("По источнику", AspectMode.Original), ("16:9", AspectMode.Fit16By9), ("4:3", AspectMode.Fit4By3), ("Растянуть", AspectMode.Stretch) })
+        var aspect = new MenuItem { Header = L.T("Соотношение сторон") };
+        foreach (var (label, mode) in new[] { (L.T("По источнику"), AspectMode.Original), ("16:9", AspectMode.Fit16By9), ("4:3", AspectMode.Fit4By3), (L.T("Растянуть"), AspectMode.Stretch) })
             Item(aspect, label, () => { _main.Player.SetAspect(mode); _main.Model.SetSetting("aspect", mode); }, _main.Model.Setting("aspect", "Original") == mode.ToString());
         menu.Items.Add(aspect);
-        var information = new MenuItem { Header = "Информация о потоке", InputGestureText = "I", IsCheckable = true, IsChecked = StatisticsPanel.Visibility == Visibility.Visible };
+        var information = new MenuItem { Header = L.T("Информация о потоке"), InputGestureText = "I", IsCheckable = true, IsChecked = StatisticsPanel.Visibility == Visibility.Visible };
         information.Click += (_, _) => ToggleStreamInformation();
         menu.Items.Add(information);
         menu.Opened += (_, _) => { _menuOpen = true; UpdateVisibility(); };
@@ -398,18 +399,18 @@ public partial class OverlayWindow : Window
     {
         if (StatisticsText is null) return;
         var s = _main.Player.GetStatistics();
-        static string V(object? value) => value is null ? "недоступно" : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)!;
+        static string V(object? value) => value is null ? L.T("недоступно") : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)!;
         var text = new StringBuilder();
         void Line(string name, object? value) => text.AppendLine($"{name,-19} {V(value)}");
-        Line("Канал", _main.Model.Active?.Name ?? "Локальное медиа");
-        Line("Разрешение", s.Width is { } w && s.Height is { } h ? $"{w} × {h}" : null);
-        Line("FPS", s.FramesPerSecond?.ToString("0.###")); Line("Видеокодек", s.VideoCodec); Line("Аудиокодек", s.AudioCodec);
-        Line("Декодер", s.VideoDecoder); Line("Аппаратный декодер", s.HardwareDecoder);
-        Line("Видеобитрейт", s.VideoBitrate is { } bitrate ? $"{bitrate / 1_000_000:0.00} Мбит/с" : null);
-        Line("Буфер, секунды", s.BufferedSeconds?.ToString("0.0")); Line("Пропущено кадров", s.DroppedFrames);
-        Line("Источник", s.SourceDynamicRange); Line("Transfer / primaries", $"{V(s.SourceTransfer)} / {V(s.SourcePrimaries)}");
-        Line("Вывод transfer", s.TargetTransfer); Line("Вывод primaries", s.TargetPrimaries); Line("Видеовывод", s.VideoOutput); Line("Аудиодорожки", s.AudioTrackCount);
-        text.AppendLine("HDR дисплея: требуется проверка Windows/монитора.");
+        Line(L.T("Канал"), _main.Model.Active?.Name ?? L.T("Локальное медиа"));
+        Line(L.T("Разрешение"), s.Width is { } w && s.Height is { } h ? $"{w} × {h}" : null);
+        Line("FPS", s.FramesPerSecond?.ToString("0.###")); Line(L.T("Видеокодек"), s.VideoCodec); Line(L.T("Аудиокодек"), s.AudioCodec);
+        Line(L.T("Декодер"), s.VideoDecoder); Line(L.T("Аппаратный декодер"), s.HardwareDecoder);
+        Line(L.T("Видеобитрейт"), s.VideoBitrate is { } bitrate ? L.F("{0:0.00} Мбит/с", bitrate / 1_000_000) : null);
+        Line(L.T("Буфер, секунды"), s.BufferedSeconds?.ToString("0.0")); Line(L.T("Пропущено кадров"), s.DroppedFrames);
+        Line(L.T("Источник"), s.SourceDynamicRange); Line("Transfer / primaries", $"{V(s.SourceTransfer)} / {V(s.SourcePrimaries)}");
+        Line(L.T("Вывод transfer"), s.TargetTransfer); Line(L.T("Вывод primaries"), s.TargetPrimaries); Line(L.T("Видеовывод"), s.VideoOutput); Line(L.T("Аудиодорожки"), s.AudioTrackCount);
+        text.AppendLine(L.T("HDR дисплея: требуется проверка Windows/монитора."));
         Line("libmpv", s.MpvVersion); StatisticsText.Text = text.ToString();
     }
 }

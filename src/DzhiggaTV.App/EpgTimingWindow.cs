@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -19,18 +20,18 @@ public sealed class EpgTimingWindow : Window
 
     public EpgTimingWindow(MainWindow main, Window owner, ChannelItem? channel = null)
     {
-        _model = main.Model; Theme.Window(this); Owner = owner; Title = "DzhiggaTV · Поправка времени телепрограммы";
+        _model = main.Model; Theme.Window(this); Owner = owner; Title = L.T("DzhiggaTV · Поправка времени телепрограммы");
         MaxWidth = Math.Max(320, SystemParameters.WorkArea.Width - 24); MaxHeight = Math.Max(320, SystemParameters.WorkArea.Height - 24);
         Width = Math.Min(600, MaxWidth); Height = Math.Min(580, MaxHeight); MinWidth = Math.Min(420, MaxWidth); MinHeight = Math.Min(440, MaxHeight);
         WindowStartupLocation = WindowStartupLocation.CenterOwner; WindowBounds.Attach(this, () => false);
         var body = new StackPanel { Margin = new(24) };
         Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        body.Children.Add(new TextBlock { Text = "Время телепрограммы", FontSize = 25, FontWeight = FontWeights.SemiBold, Margin = new(0, 0, 0, 14) });
-        body.Children.Add(new TextBlock { Text = "Поправка действует только для выбранного канала.", TextWrapping = TextWrapping.Wrap, Margin = new(0, 0, 0, 14) });
+        body.Children.Add(new TextBlock { Text = L.T("Время телепрограммы"), FontSize = 25, FontWeight = FontWeights.SemiBold, Margin = new(0, 0, 0, 14) });
+        body.Children.Add(new TextBlock { Text = L.T("Поправка действует только для выбранного канала."), TextWrapping = TextWrapping.Wrap, Margin = new(0, 0, 0, 14) });
         _channelChoices = _model.AllChannels.Where(_model.IsAllowed).OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).ToArray();
         _channels.ItemsSource = _channelChoices.Select(c => c.Name).ToArray();
         body.Children.Add(_channels);
-        body.Children.Add(new TextBlock { Text = "Сдвинуть передачи на, мин", Margin = new(0, 18, 0, 8) });
+        body.Children.Add(new TextBlock { Text = L.T("Сдвинуть передачи на, мин"), Margin = new(0, 18, 0, 8) });
         var controls = new WrapPanel();
         void Step(string label, int amount)
         {
@@ -39,25 +40,25 @@ public sealed class EpgTimingWindow : Window
             controls.Children.Add(button);
         }
         Step("−5", -5); Step("−1", -1); controls.Children.Add(_minutes); Step("+1", 1); Step("+5", 5);
-        var reset = new Button { Content = "Сбросить", Padding = new(10, 8, 10, 8) }; reset.Click += (_, _) => _minutes.Text = "0"; controls.Children.Add(reset); body.Children.Add(controls);
-        var help = new TextBlock { Text = "+10 — передача начинается на 10 минут позже расписания.\n−10 — на 10 минут раньше. 0 — без поправки.", TextWrapping = TextWrapping.Wrap, LineHeight = 21, FontSize = 12, Margin = new(0, 12, 0, 18) };
+        var reset = new Button { Content = L.T("Сбросить"), Padding = new(10, 8, 10, 8) }; reset.Click += (_, _) => _minutes.Text = "0"; controls.Children.Add(reset); body.Children.Add(controls);
+        var help = new TextBlock { Text = L.T("+10 — передача начинается на 10 минут позже расписания.\n−10 — на 10 минут раньше. 0 — без поправки."), TextWrapping = TextWrapping.Wrap, LineHeight = 21, FontSize = 12, Margin = new(0, 12, 0, 18) };
         help.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush"); body.Children.Add(help);
         var card = new Border { Child = _preview, Padding = new(14), CornerRadius = new(10) }; card.SetResourceReference(BackgroundProperty, "CardBrush"); body.Children.Add(card);
         _notice.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush"); body.Children.Add(_notice);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new(0, 16, 0, 0) };
-        var cancel = new Button { Content = "Отмена", IsCancel = true }; var apply = new Button { Content = "Применить", IsDefault = true };
+        var cancel = new Button { Content = L.T("Отмена"), IsCancel = true }; var apply = new Button { Content = L.T("Применить"), IsDefault = true };
         apply.SetResourceReference(BorderBrushProperty, "AccentBrush");
         apply.Click += async (_, _) =>
         {
             if (SelectedChannel is not { } selected || !ReadMinutes(out int value)) return;
             apply.IsEnabled = false;
             try { await _model.SetEpgOffsetAsync(selected.Id, value); DialogResult = true; }
-            catch { _notice.Text = "Не удалось сохранить поправку. Повторите попытку."; }
+            catch { _notice.Text = L.T("Не удалось сохранить поправку. Повторите попытку."); }
             finally { apply.IsEnabled = true; }
         };
         actions.Children.Add(cancel); actions.Children.Add(apply); body.Children.Add(actions);
-        System.Windows.Automation.AutomationProperties.SetName(_channels, "Канал для поправки времени");
-        System.Windows.Automation.AutomationProperties.SetName(_minutes, "Поправка телепрограммы в минутах");
+        System.Windows.Automation.AutomationProperties.SetName(_channels, L.T("Канал для поправки времени"));
+        System.Windows.Automation.AutomationProperties.SetName(_minutes, L.T("Поправка телепрограммы в минутах"));
         _channels.SelectionChanged += (_, _) => { if (SelectedChannel is { } selected) _minutes.Text = _model.EpgOffset(selected.Id).ToString(CultureInfo.InvariantCulture); };
         _minutes.TextChanged += async (_, _) => await PreviewAsync();
         _channels.SelectedIndex = Math.Max(0, Array.FindIndex(_channelChoices, c => c.Id == (channel ?? _model.Active)?.Id));
@@ -67,22 +68,22 @@ public sealed class EpgTimingWindow : Window
     private bool ReadMinutes(out int value)
     {
         if (int.TryParse(_minutes.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value) && value is >= -1440 and <= 1440) { _notice.Text = ""; return true; }
-        _notice.Text = "Введите целое число минут от −1440 до +1440."; return false;
+        _notice.Text = L.T("Введите целое число минут от −1440 до +1440."); return false;
     }
     private async Task PreviewAsync()
     {
         _query?.Cancel(); _query?.Dispose(); _query = new(); var token = _query.Token;
         if (SelectedChannel is not { } selected || !ReadMinutes(out int minutes)) return;
         var epg = _model.EpgFor(selected.Id);
-        if (epg is null) { _preview.Text = "Сначала назначьте каналу телепрограмму через его контекстное меню."; return; }
+        if (epg is null) { _preview.Text = L.T("Сначала назначьте каналу телепрограмму через его контекстное меню."); return; }
         try
         {
             await Task.Delay(180, token);
             var guide = await _model.Guide.GetNowNextAsync(epg with { OffsetMinutes = minutes }, token: token);
             if (_closed || token.IsCancellationRequested) return;
-            _preview.Text = guide.Current is { } current ? $"С учётом поправки сейчас:\n{current.Title}\n{current.Start.ToLocalTime():HH:mm} — {current.End.ToLocalTime():HH:mm}" : "На текущее время нет данных. Поправка будет применяться к загруженным передачам.";
+            _preview.Text = guide.Current is { } current ? L.F("С учётом поправки сейчас:\n{0}\n{1:HH:mm} — {2:HH:mm}", current.Title, current.Start.ToLocalTime(), current.End.ToLocalTime()) : L.T("На текущее время нет данных. Поправка будет применяться к загруженным передачам.");
         }
         catch (OperationCanceledException) { }
-        catch { if (!_closed && !token.IsCancellationRequested) _preview.Text = "Не удалось загрузить предварительный просмотр."; }
+        catch { if (!_closed && !token.IsCancellationRequested) _preview.Text = L.T("Не удалось загрузить предварительный просмотр."); }
     }
 }

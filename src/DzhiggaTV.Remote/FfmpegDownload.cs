@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
@@ -29,7 +30,7 @@ internal static class FfmpegDownload
                 token.ThrowIfCancellationRequested(); File.Move(partial, complete, true); return complete;
             }
             catch (Exception error) when (!token.IsCancellationRequested && index + 1 < sources.Length && error is HttpRequestException or IOException or OperationCanceledException)
-            { progress?.Report(new("Пробуем другой сервер загрузки FFmpeg…")); }
+            { progress?.Report(new(L.T("Пробуем другой сервер загрузки FFmpeg…"))); }
         }
         throw new IOException("FFmpeg download failed.");
     }
@@ -39,7 +40,7 @@ internal static class FfmpegDownload
         long offset = File.Exists(partial) ? new FileInfo(partial).Length : 0;
         if (offset > MaximumArchive || package.Size is { } expected && offset > expected) offset = 0;
         if (package.Size is { } known && offset == known && offset > 0) return;
-        progress?.Report(new(offset > 0 ? "Продолжаем загрузку FFmpeg…" : "Загружаем FFmpeg для Remote…", package.Size is > 0 ? 100d * offset / package.Size.Value : 0));
+        progress?.Report(new(offset > 0 ? L.T("Продолжаем загрузку FFmpeg…") : L.T("Загружаем FFmpeg для Remote…"), package.Size is > 0 ? 100d * offset / package.Size.Value : 0));
         using var response = await OpenAsync(client, source, offset, token).ConfigureAwait(false);
         long? size = response.Content.Headers.ContentLength;
         if (response.StatusCode == HttpStatusCode.PartialContent)
@@ -72,7 +73,7 @@ internal static class FfmpegDownload
                 throw new HttpRequestException("Slow FFmpeg mirror.");
             if (throttle.ElapsedMilliseconds < 200) continue;
             double speed = (received - offset) / Math.Max(0.1, elapsed.Elapsed.TotalSeconds);
-            progress?.Report(new($"Загружаем FFmpeg · {received / 1048576d:F1}" + (size is > 0 ? $" из {size / 1048576d:F1}" : "") + $" МБ · {speed / 1048576d:F1} МБ/с",
+            progress?.Report(new(L.F("Загружаем FFmpeg · {0:F1}", received / 1048576d) + (size is > 0 ? L.F(" из {0:F1}", size / 1048576d) : "") + L.F(" МБ · {0:F1} МБ/с", speed / 1048576d),
                 size is > 0 ? Math.Min(100, 100d * received / size.Value) : null)); throttle.Restart();
         }
         if (size is not null && received != size) throw new IOException("Incomplete FFmpeg download.");

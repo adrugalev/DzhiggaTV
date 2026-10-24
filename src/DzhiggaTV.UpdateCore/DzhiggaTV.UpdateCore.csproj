@@ -4,4 +4,5 @@
     <Compile Include="../DzhiggaTV.Installer/InstallEngine.cs" Link="InstallEngine.cs" />
     <Compile Include="../DzhiggaTV.Installer/UpdateRequest.cs" Link="UpdateRequest.cs" />
   </ItemGroup>
+<ItemGroup><ProjectReference Include="../DzhiggaTV.Localization/DzhiggaTV.Localization.csproj" /></ItemGroup>
 </Project>

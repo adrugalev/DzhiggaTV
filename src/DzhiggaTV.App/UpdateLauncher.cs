@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Diagnostics;
 using DzhiggaTV.Services;
 using DzhiggaTV.Installer;
@@ -51,15 +52,16 @@ internal static class UpdateLauncher
         var info = FileVersionInfo.GetVersionInfo(installer);
         Version runnerVersion = prepared.Payload is null ? expectedVersion : GitHubUpdateService.Normalize(typeof(App).Assembly.GetName().Version!);
         if (info.ProductName != "DzhiggaTV" || !Version.TryParse(info.FileVersion, out var version) || GitHubUpdateService.Normalize(version) != runnerVersion)
-            throw new UpdateException("Версия установщика не совпадает с выпуском. Обновление не запущено.");
+            throw new UpdateException(L.T("Версия установщика не совпадает с выпуском. Обновление не запущено."));
         string current = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
         string target = File.Exists(Path.Combine(current, ".dzhiggatv-install.json")) ? current :
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "DzhiggaTV");
         using var process = Process.GetCurrentProcess();
         var start = new ProcessStartInfo(installer) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(installer)! };
         foreach (var argument in new[] { "--update-target", target, "--wait-pid", process.Id.ToString(), "--wait-start", process.StartTime.ToUniversalTime().Ticks.ToString(), "--data-dir", Path.GetFullPath(dataDirectory) }) start.ArgumentList.Add(argument);
+        start.ArgumentList.Add("--language"); start.ArgumentList.Add(L.DefaultLanguage);
         if (prepared.Payload is not null)
             foreach (var argument in new[] { "--update-payload", prepared.Payload, "--payload-sha256", prepared.PayloadSha256!, "--target-version", expectedVersion.ToString(4) }) start.ArgumentList.Add(argument);
-        using var launched = Process.Start(start) ?? throw new UpdateException("Не удалось запустить установку обновления.");
+        using var launched = Process.Start(start) ?? throw new UpdateException(L.T("Не удалось запустить установку обновления."));
     }
 }

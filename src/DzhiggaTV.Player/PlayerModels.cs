@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 namespace DzhiggaTV.Player;
 
 public enum BufferPreset { LowLatency, Balanced, Stable }
@@ -25,7 +26,7 @@ public sealed class PlaybackStateChangedEventArgs(PlaybackState state, string me
 
 public sealed record MediaTrack(long Id, string Type, string? Language, string? Title, string? Codec, bool Selected, bool External)
 {
-    public string DisplayName => string.Join(" · ", new[] { Language, Title, Codec }.Where(s => !string.IsNullOrWhiteSpace(s))) is { Length: > 0 } label ? label : $"Дорожка {Id}";
+    public string DisplayName => string.Join(" · ", new[] { Language, Title, Codec }.Where(s => !string.IsNullOrWhiteSpace(s))) is { Length: > 0 } label ? label : L.F("Дорожка {0}", Id);
 }
 
 public sealed record AudioOutputDevice(string Name, string Description);
@@ -62,13 +63,13 @@ public sealed record PlaybackStatistics
         "pq" or "smpte2084" => "HDR / PQ",
         "hlg" or "arib-std-b67" => "HLG",
         "bt.1886" or "bt.709" or "srgb" or "gamma1.8" or "gamma2.0" or "gamma2.2" or "gamma2.4" or "gamma2.6" or "gamma2.8" => "SDR",
-        null => "Недоступно",
-        _ => "Передаточная функция: " + SourceTransfer
+        null => L.T("Недоступно"),
+        _ => L.T("Передаточная функция: ") + SourceTransfer
     };
 }
 
 public sealed class MpvException : Exception
 {
     public int ErrorCode { get; }
-    internal MpvException(string operation, int error) : base($"libmpv: {operation} (код {error}).") => ErrorCode = error;
+    internal MpvException(string operation, int error) : base(L.F("libmpv: {0} (код {1}).", operation, error)) => ErrorCode = error;
 }

@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using DzhiggaTV.Core;
 
 namespace DzhiggaTV.Remote;
@@ -23,10 +24,10 @@ public sealed record RemoteOptions
     {
         if (Port is < 1024 or > 65535 || MaximumStreams is < 1 or > 4 ||
             Delivery is not ("proxy" or "auto" or "direct") || TranscodeHeight is not (480 or 720 or 1080))
-            throw new RemoteException("Проверьте порт (1024–65535), число потоков (1–4) и режим передачи.");
-        if (Delivery == "direct" && !AllowDirectUrls) throw new RemoteException("Для прямого режима разрешите передачу исходного адреса потока доверенному телефону.");
+            throw new RemoteException(L.T("Проверьте порт (1024–65535), число потоков (1–4) и режим передачи."));
+        if (Delivery == "direct" && !AllowDirectUrls) throw new RemoteException(L.T("Для прямого режима разрешите передачу исходного адреса потока доверенному телефону."));
         if (requireFfmpeg && AllowTranscoding && (!File.Exists(FfmpegPath) || !Path.IsPathFullyQualified(FfmpegPath)))
-            throw new RemoteException("Выберите установленный ffmpeg.exe, чтобы включить преобразование видео.");
+            throw new RemoteException(L.T("Выберите установленный ffmpeg.exe, чтобы включить преобразование видео."));
     }
 }
 
@@ -42,7 +43,11 @@ public sealed record RemoteCatalog(IReadOnlyList<RemoteChannel> Channels, int To
 public sealed record RemoteTrack(long Id, string Label, bool Selected);
 public sealed record RemoteMultiscreen(bool Enabled, bool Fullscreen, string? AudioId, string? ExpandedId, IReadOnlyList<string?> Channels);
 public sealed record RemotePlayerState(string? ChannelId, string ChannelName, RemoteProgramme? Programme, string Status, double Volume,
-    bool Muted, bool Paused, bool Fullscreen, IReadOnlyList<RemoteTrack> Audio, RemoteMultiscreen Multiscreen, long Revision);
+    bool Muted, bool Paused, bool Fullscreen, IReadOnlyList<RemoteTrack> Audio, RemoteMultiscreen Multiscreen, long Revision)
+{
+    public RemotePlayerState InRequestLanguage() => this with
+    { Status = L.Refresh(Status), Audio = Audio.Select(track => track with { Label = L.Refresh(track.Label) }).ToArray() };
+}
 public sealed record RemoteCommand(string Action, string? ChannelId = null, double? Value = null, string? Name = null, string?[]? Channels = null, DateTimeOffset? ProgrammeStart = null);
 public sealed record StreamSource(string ChannelId, string Name, Uri Uri, IReadOnlyDictionary<string, string> Headers);
 public sealed record RemotePolicy(bool Viewing, bool Control, bool Volume, bool Multiscreen, bool Favorites, bool DirectUrls, bool Transcoding, int MaximumStreams);
@@ -58,7 +63,7 @@ public interface IRemoteLibrary
     Task<string?> LogoAsync(string channelId, CancellationToken token);
     Task<StreamSource> SourceAsync(string channelId, CancellationToken token);
     Task<StreamSource> SourceAsync(string channelId, DateTimeOffset? programmeStart, CancellationToken token) =>
-        programmeStart is null ? SourceAsync(channelId, token) : throw new RemoteException("Архивная передача недоступна.", 404);
+        programmeStart is null ? SourceAsync(channelId, token) : throw new RemoteException(L.T("Архивная передача недоступна."), 404);
     Task<RemotePlayerState> StateAsync(CancellationToken token);
     Task CommandAsync(RemoteCommand command, CancellationToken token);
 }

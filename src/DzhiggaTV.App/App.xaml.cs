@@ -1,3 +1,4 @@
+using L = DzhiggaTV.Localization.Texts;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -12,6 +13,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        DzhiggaTV.Localization.Wpf.ApplicationLanguage.Initialize();
         DispatcherUnhandledException += (_, args) =>
         {
             var diagnosticIndex = Array.IndexOf(e.Args, "--diagnostic-report");
@@ -21,7 +23,7 @@ public partial class App : Application
                 try { File.AppendAllText(e.Args[diagnosticIndex + 1], args.Exception.GetType().FullName + "\n" + args.Exception.StackTrace + "\n"); } catch { }
             }
             // Exception text may contain provider credentials. Display a fixed, safe message.
-            MessageBox.Show("Не удалось выполнить действие. Попробуйте ещё раз. Приватные адреса не записываются в журнал.", "DzhiggaTV", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(L.T("Не удалось выполнить действие. Попробуйте ещё раз. Приватные адреса не записываются в журнал."), "DzhiggaTV", MessageBoxButton.OK, MessageBoxImage.Warning);
             args.Handled = true;
         };
         MainWindow = new MainWindow(e.Args);
